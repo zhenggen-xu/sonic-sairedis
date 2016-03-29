@@ -45,6 +45,7 @@ Install prerequisite packages:
 You can compile and install from source using:
 
     ./autogen.sh
+    ./configure
     make && sudo make install
 
 You can also build a debian package using:
