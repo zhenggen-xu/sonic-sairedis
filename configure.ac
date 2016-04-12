@@ -11,7 +11,7 @@ AC_PROG_CXX
 AC_PROG_LIBTOOL
 AC_HEADER_STDC
 
-AC_ARG_ENABLE(debu;g,
+AC_ARG_ENABLE(debug,
 [  --enable-debug    Turn on debugging],
 [case "${enableval}" in
 	yes) debug=true ;;
