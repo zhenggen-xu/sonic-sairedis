@@ -1,0 +1,52 @@
+# Compiled Source #
+###################
+*.la
+*.lo
+*.o
+
+# Packaging Files #
+###################
+debian/files
+debian/libsairedis-dev.debhelper.log
+debian/libsairedis-dev.substvars
+debian/libsairedis.debhelper.log
+debian/libsairedis.postinst.debhelper
+debian/libsairedis.postrm.debhelper
+debian/libsairedis.substvars
+debian/syncd.debhelper.log
+debian/syncd.substvars
+
+debian/libsairedis-dev/
+debian/libsairedis/
+debian/syncd/
+
+# autogen.sh Files #
+####################
+AUTHORS
+COPYING
+ChangeLog
+INSTALL
+NEWS
+README
+
+aclocal.m4
+autom4te.cache/
+config.h
+config.h.in
+config.log
+config.status
+configure
+libtool
+Makefile.in
+stamp-h1
+**/.deps/
+**/.libs/
+**/Makefile
+
+# Dependency Folder #
+#####################
+deps/
+
+# Executables #
+###############
+syncd/syncd
