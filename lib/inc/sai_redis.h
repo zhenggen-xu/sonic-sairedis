@@ -9,6 +9,7 @@ extern "C" {
 }
 #include "saiserialize.h"
 #include "saiattributelist.h"
+#include "redisclient.h"
 
 #include "swss/dbconnector.h"
 #include "swss/producertable.h"
@@ -28,6 +29,8 @@ extern swss::ConsumerTable             *g_redisNotifications;
 
 extern swss::Table *g_vidToRid;
 extern swss::Table *g_ridToVid;
+
+extern swss::RedisClient               *g_redisClient;
 
 extern const sai_acl_api_t              redis_acl_api;
 extern const sai_buffer_api_t           redis_buffer_api;
@@ -58,15 +61,6 @@ extern const sai_wred_api_t             redis_wred_api;
 extern sai_switch_notification_t redis_switch_notifications;
 
 #define UNREFERENCED_PARAMETER(X)
-
-#define REDIS_LOG_ERR(MSG, ...)         swss::Logger::getInstance().write(swss::Logger::SWSS_ERROR, MSG, ##__VA_ARGS__)
-#define REDIS_LOG_WRN(MSG, ...)         swss::Logger::getInstance().write(swss::Logger::SWSS_WARN, MSG, ##__VA_ARGS__)
-#define REDIS_LOG_NTC(MSG, ...)         swss::Logger::getInstance().write(swss::Logger::SWSS_NOTICE, MSG, ##__VA_ARGS__)
-#define REDIS_LOG_INF(MSG, ...)         swss::Logger::getInstance().write(swss::Logger::SWSS_INFO, MSG, ##__VA_ARGS__)
-#define REDIS_LOG_DBG(MSG, ...)         swss::Logger::getInstance().write(swss::Logger::SWSS_DEBUG, MSG, ##__VA_ARGS__)
-
-#define REDIS_LOG_ENTER()               swss::Logger::getInstance().write(swss::Logger::SWSS_DEBUG, "%s>", __FUNCTION__)
-#define REDIS_LOG_EXIT()                swss::Logger::getInstance().write(swss::Logger::SWSS_DEBUG, "%s<", __FUNCTION__)
 
 sai_object_id_t redis_create_virtual_object_id(
         _In_ sai_object_type_t object_type);

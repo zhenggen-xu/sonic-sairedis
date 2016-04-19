@@ -12,21 +12,9 @@
 #include <map>
 #include <tuple>
 #include <string.h>
+#include "swss/logger.h"
 
 #define TO_STR(x) #x
-
-#define SERIALIZE_LOG(level, fmt, arg ...) {\
-    fprintf(stderr, "%d: ", level); \
-    fprintf(stderr, fmt, ##arg); \
-    fprintf(stderr, "\n"); }
-
-#define SERIALIZE_LOG_ENTER()   SERIALIZE_LOG(SAI_LOG_DEBUG, "%s: >", __FUNCTION__)
-#define SERIALIZE_LOG_EXIT()    SERIALIZE_LOG(SAI_LOG_DEBUG, "%s: <", __FUNCTION__)
-#define SERIALIZE_LOG_DBG(fmt, arg ...) SERIALIZE_LOG(SAI_LOG_DEBUG, fmt, ##arg)
-#define SERIALIZE_LOG_INF(fmt, arg ...) SERIALIZE_LOG(SAI_LOG_INFO, fmt, ##arg)
-#define SERIALIZE_LOG_WRN(fmt, arg ...) SERIALIZE_LOG(SAI_LOG_WARN, fmt, ##arg)
-#define SERIALIZE_LOG_ERR(fmt, arg ...) SERIALIZE_LOG(SAI_LOG_ERROR, fmt, ##arg)
-#define SERIALIZE_LOG_NTC(fmt, arg ...) SERIALIZE_LOG(SAI_LOG_NOTICE, fmt, ##arg)
 
 typedef enum _sai_attr_serialization_type_t 
 {
@@ -251,6 +239,42 @@ void transfer_list(
         transfer_primitive(src_element.list[i], dst_element.list[i]);
     }
 }
+
+void sai_serialize_ip_address(
+        _In_ const sai_ip_address_t &ip_address,
+        _Out_ std::string &s);
+
+void sai_deserialize_ip_address(
+        _In_ const std::string & s,
+        _In_ int &index,
+        _Out_ sai_ip_address_t &ip_address);
+
+void sai_serialize_ip_prefix(
+        _In_ const sai_ip_prefix_t &ip_prefix,
+        _Out_ std::string &s);
+
+void sai_deserialize_ip_prefix(
+        _In_ const std::string & s,
+        _In_ int &index,
+        _Out_ sai_ip_prefix_t &ip_prefix);
+
+void sai_serialize_neighbor_entry(
+        _In_ const sai_neighbor_entry_t &ne,
+        _Out_ std::string &s);
+
+void sai_deserialize_neighbor_entry(
+        _In_ const std::string & s,
+        _In_ int &index,
+        _Out_ sai_neighbor_entry_t &ne);
+
+void sai_serialize_route_entry(
+        _In_ const sai_unicast_route_entry_t &ne,
+        _Out_ std::string &s);
+
+void sai_deserialize_route_entry(
+        _In_ const std::string & s,
+        _In_ int &index,
+        _Out_ sai_unicast_route_entry_t &ne);
 
 sai_status_t sai_deserialize_attr_value(
         _In_ const std::string &s,
