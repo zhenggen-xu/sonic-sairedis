@@ -57,6 +57,8 @@ sai_status_t internal_redis_generic_get(
         _In_ uint32_t attr_count,
         _Out_ sai_attribute_t *attr_list)
 {
+    std::lock_guard<std::mutex> lock(g_mutex);
+
     SWSS_LOG_ENTER();
 
     std::vector<swss::FieldValueTuple> entry = SaiAttributeList::serialize_attr_list(
@@ -101,7 +103,7 @@ sai_status_t internal_redis_generic_get(
             const std::string &op = kfvOp(kco); 
             const std::string &key = kfvKey(kco);
 
-            SWSS_LOG_DEBUG("response: %s op = %s, key = %s", key.c_str(), op.c_str());
+            SWSS_LOG_DEBUG("response: op = %s, key = %s", key.c_str(), op.c_str());
 
             if (op != "getresponse") // ignore non response messages
                 continue;
