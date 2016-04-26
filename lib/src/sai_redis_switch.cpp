@@ -1,13 +1,15 @@
 #include "sai_redis.h"
 #include <thread>
 
+#include "selectableevent.h"
+
 // if we will not get response in 60 seconds when
 // notify syncd to compile new state or to switch
 // to compiled state, then there is something wrong
 #define NOTIFY_SYNCD_TIMEOUT (60*1000)
 
-#define NOTIFY_COMPILE  "compile"
-#define NOTIFY_SWITCH   "switch"
+#define NOTIFY_SAI_COMPILE_VIEW  "sai_compile_view"
+#define NOTIFY_SAI_SWITCH_VIEW   "sai_switch_view"
 
 sai_switch_notification_t redis_switch_notifications;
 
@@ -16,6 +18,9 @@ volatile bool g_run = false;
 
 std::shared_ptr<std::thread> notification_thread;
 
+// this event is used to nice end notifications thread
+swss::SelectableEvent g_redisNotificationTrheadEvent;
+
 void ntf_thread()
 {
     SWSS_LOG_ENTER();
@@ -23,6 +28,7 @@ void ntf_thread()
     swss::Select s;
 
     s.addSelectable(g_redisNotifications);
+    s.addSelectable(&g_redisNotificationTrheadEvent);
 
     while (g_run)
     {
@@ -30,27 +36,27 @@ void ntf_thread()
 
         int fd;
 
-        int result = s.select(&sel, &fd, 500);
+        int result = s.select(&sel, &fd);
+
+        if (sel == &g_redisNotificationTrheadEvent)
+        {
+            // user requested shutdown_switch
+            break;
+        }
 
         if (result == swss::Select::OBJECT)
         {
             swss::KeyOpFieldsValuesTuple kco;
 
-            g_redisNotifications->pop(kco);
+            std::string op;
+            std::string data;
+            std::vector<swss::FieldValueTuple> values;
 
-            const std::string &op = kfvOp(kco);
-            const std::string &key = kfvKey(kco);
-            const std::vector<swss::FieldValueTuple> &values = kfvFieldsValues(kco);
+            g_redisNotifications->pop(op, data, values);
 
-            SWSS_LOG_DEBUG("notification: op = %s, key = %s", op.c_str(), key.c_str());
+            SWSS_LOG_DEBUG("notification: op = %s, data = %s", op.c_str(), data.c_str());
 
-            if (op != "ntf")
-                continue;
-
-            const std::string &ntf = key.substr(0, key.find_first_of(":"));
-            const std::string &data = key.substr(key.find_last_of(":") + 1);
-
-            handle_notification(ntf, data, values);
+            handle_notification(op, data, values);
         }
     }
 }
@@ -61,7 +67,7 @@ sai_status_t notify_syncd(const std::string &op)
 
     std::vector<swss::FieldValueTuple> entry;
 
-    g_notifySyncdProducer->set("", entry, op);
+    g_notifySyncdProducer->send(op, "", entry);
 
     swss::Select s;
 
@@ -79,9 +85,13 @@ sai_status_t notify_syncd(const std::string &op)
     {
         swss::KeyOpFieldsValuesTuple kco;
 
-        g_notifySyncdConsumer->pop(kco);
+        std::string op;
+        std::string data;
+        std::vector<swss::FieldValueTuple> values;
 
-        const std::string &strStatus = kfvOp(kco);
+        g_notifySyncdConsumer->pop(op, data, values);
+
+        const std::string &strStatus = op;
 
         sai_status_t status;
 
@@ -134,7 +144,7 @@ sai_status_t redis_initialize_switch(
 
     SWSS_LOG_INFO("operation: '%s'", op.c_str());
 
-    if (op == NOTIFY_COMPILE || op == NOTIFY_SWITCH)
+    if (op == NOTIFY_SAI_COMPILE_VIEW || op == NOTIFY_SAI_SWITCH_VIEW)
     {
         sai_status_t status = notify_syncd(op);
 
@@ -218,6 +228,9 @@ void  redis_shutdown_switch(
     }
 
     g_run = false;
+
+    // notify thread that it should end
+    g_redisNotificationTrheadEvent.notify();
 
     notification_thread->join();
 

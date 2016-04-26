@@ -1,10 +1,12 @@
 #include <thread>
 #include "syncd.h"
 
+#include <getopt.h>
+
 std::mutex g_mutex;
 
-swss::RedisClient   *g_redisClient = NULL;
-swss::ProducerTable *notifySyncdResponse = NULL;
+swss::RedisClient           *g_redisClient = NULL;
+swss::NotificationProducer  *notifySyncdResponse = NULL;
 
 std::map<std::string, std::string> gProfileMap;
 
@@ -320,38 +322,77 @@ void internal_syncd_get_send(
 }
 
 
-swss::ConsumerTable *getRequest = NULL;
-swss::ProducerTable *getResponse = NULL;
-swss::ProducerTable *notifications = NULL;
+swss::ConsumerTable         *getRequest = NULL;
+swss::ProducerTable         *getResponse = NULL;
+swss::NotificationProducer  *notifications = NULL;
 
-const char* dummy_profile_get_value(
+const char* profile_get_value(
         _In_ sai_switch_profile_id_t profile_id,
         _In_ const char* variable)
 {
+    SWSS_LOG_ENTER();
+
+    if (variable == NULL)
+    {
+        SWSS_LOG_WARN("variable is null");
+        return NULL;
+    }
+
     auto it = gProfileMap.find(variable);
 
     if (it == gProfileMap.end())
+    {
+        SWSS_LOG_INFO("%s: NULL", variable);
         return NULL;
+    }
+
+    SWSS_LOG_INFO("%s: %s", variable, it->second.c_str());
 
     return it->second.c_str();
-
 }
 
-int dummy_profile_get_next_value(
+std::map<std::string, std::string>::iterator gProfileIter = gProfileMap.begin();
+
+int profile_get_next_value(
         _In_ sai_switch_profile_id_t profile_id,
         _Out_ const char** variable,
         _Out_ const char** value)
 {
-    UNREFERENCED_PARAMETER(profile_id);
-    UNREFERENCED_PARAMETER(variable);
-    UNREFERENCED_PARAMETER(value);
+    SWSS_LOG_ENTER();
 
-    return -1;
+    if (value == NULL)
+    {
+        SWSS_LOG_INFO("resetting profile map iterator");
+
+        gProfileIter = gProfileMap.begin();
+        return 0;
+    }
+
+    if (variable == NULL)
+    {
+        SWSS_LOG_WARN("variable is null");
+        return -1;
+    }
+
+    if (gProfileIter == gProfileMap.end())
+    {
+        SWSS_LOG_INFO("iterator reached end");
+        return -1;
+    }
+
+    *variable = gProfileIter->first.c_str();
+    *value = gProfileIter->second.c_str();
+
+    SWSS_LOG_INFO("key: %s:%s", *variable, *value);
+
+    gProfileIter++;
+
+    return 0;
 }
 
 const service_method_table_t test_services = {
-    dummy_profile_get_value,
-    dummy_profile_get_next_value
+    profile_get_value,
+    profile_get_next_value
 };
 
 sai_status_t handle_generic(
@@ -681,12 +722,7 @@ sai_status_t processEvent(swss::ConsumerTable &consumer)
     std::string str_object_type = key.substr(0, key.find(":"));
     std::string str_object_id = key.substr(key.find(":")+1);
 
-    SWSS_LOG_INFO(
-            "key: %s op: %s objtype: %s objid: %s",
-            key.c_str(),
-            op.c_str(),
-            str_object_type.c_str(),
-            str_object_id.c_str());
+    SWSS_LOG_INFO("key: %s op: %s", key.c_str(), op.c_str());
 
     sai_common_api_t api = SAI_COMMON_API_MAX;
 
@@ -766,46 +802,12 @@ sai_status_t processEvent(swss::ConsumerTable &consumer)
     }
     else if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to execute api: %s: %u", op.c_str(), status);
+        SWSS_LOG_ERROR("failed to execute api: %s: %d", op.c_str(), status);
 
         exit(EXIT_FAILURE);
     }
 
     return status;
-}
-
-void handler(int sig) 
-{
-    signal(SIGSEGV, SIG_DFL);
-
-    SWSS_LOG_ENTER();
-
-    SWSS_LOG_ERROR("SIGNAL %d", sig);
-
-    void *array[10];
-    char **strings;
-    size_t size;
-
-    size = backtrace(array, 10);
-
-    SWSS_LOG_ERROR("backtrace() returned %d addresses", size);
-
-    strings = backtrace_symbols(array, size);
-
-    if (strings == NULL) 
-    {
-        SWSS_LOG_ERROR("backtrace_sumbols() returned NULL");
-        exit(EXIT_FAILURE);
-    }
-
-    for (size_t j = 0; j < size; j++)
-        SWSS_LOG_ERROR("backtrace stack: %s", strings[j]);
-
-    free(strings);
-
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
-
-    exit(EXIT_FAILURE);
 }
 
 swss::Logger::Priority redisGetLogLevel()
@@ -858,23 +860,24 @@ void sendResponse(sai_status_t status)
 
     SWSS_LOG_INFO("sending response: %s", strStatus.c_str());
 
-    notifySyncdResponse->set("", entry, strStatus);
+    notifySyncdResponse->send(strStatus, "", entry);
 }
 
-void notifySyncd(swss::ConsumerTable &consumer)
+void notifySyncd(swss::NotificationConsumer &consumer)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
-    swss::KeyOpFieldsValuesTuple kco;
-    consumer.pop(kco);
+    std::string op;
+    std::string data;
+    std::vector<swss::FieldValueTuple> values;
 
-    const std::string &op = kfvOp(kco);
+    consumer.pop(op, data, values);
 
     sai_status_t status = SAI_STATUS_FAILURE;
 
-    if (op == "compile")
+    if (op == NOTIFY_SAI_COMPILE_VIEW)
     {
         // TODO
         SWSS_LOG_ERROR("op = %s - not implemented", op.c_str());
@@ -882,7 +885,7 @@ void notifySyncd(swss::ConsumerTable &consumer)
         status = SAI_STATUS_NOT_IMPLEMENTED;
     }
 
-    if (op == "switch")
+    if (op == NOTIFY_SAI_SWITCH_VIEW)
     {
         // TODO
         SWSS_LOG_ERROR("op = %s - not implemented", op.c_str());
@@ -897,13 +900,105 @@ void notifySyncd(swss::ConsumerTable &consumer)
     sendResponse(status);
 }
 
+struct cmdOptions
+{
+    bool diagShell;
+    std::string profileMapFile;
+};
+
+cmdOptions handleCmdLine(int argc, char **argv)
+{
+    SWSS_LOG_ENTER();
+
+    cmdOptions options = {};
+
+    while(true)
+    {
+        static struct option long_options[] =
+        {
+            {"diag",     no_argument,       0, 'd' },
+            {"profile",  required_argument, 0, 'p' },
+            {0, 0, 0, 0}
+        };
+
+        int option_index = 0;
+
+        int c = getopt_long(argc, argv, "dp:", long_options, &option_index);
+
+        if (c == -1)
+            break;
+
+        switch (c)
+        {
+            case 'd':
+                SWSS_LOG_INFO("enable diag shell");
+                options.diagShell = true;
+                break;
+
+            case 'p':
+                SWSS_LOG_INFO("profile map file: %s", optarg);
+                options.profileMapFile = std::string(optarg);
+                break;
+
+            case '?':
+                SWSS_LOG_WARN("unknown get opti option %c", optopt);
+                exit(EXIT_FAILURE);
+                break;
+
+            default:
+                SWSS_LOG_ERROR("getopt_long failure");
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    return options;
+}
+
+void handleProfileMap(const std::string& profileMapFile)
+{
+    SWSS_LOG_ENTER();
+
+    if (profileMapFile.size() == 0)
+        return;
+
+    std::ifstream profile(profileMapFile);
+
+    if (!profile.is_open())
+    {
+        SWSS_LOG_ERROR("failed to open profile map file: %s : %s", profileMapFile.c_str(), strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    std::string line;
+
+    while(getline(profile, line))
+    {
+        size_t pos = line.find("=");
+
+        if (pos == std::string::npos)
+        {
+            SWSS_LOG_WARN("not found '=' in line %s", line.c_str());
+            continue;
+        }
+
+        std::string key = line.substr(0, pos);
+        std::string value = line.substr(pos + 1);
+
+        gProfileMap[key] = value;
+
+        SWSS_LOG_INFO("insert: %s:%s", key.c_str(), value.c_str());
+    }
+}
+
 int main(int argc, char **argv)
 {
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_DEBUG);
 
     SWSS_LOG_ENTER();
 
-    signal(SIGSEGV, handler);
+    auto options = handleCmdLine(argc, argv);
+
+    handleProfileMap(options.profileMapFile);
 
     swss::DBConnector *db = new swss::DBConnector(ASIC_DB, "localhost", 6379, 0);
     swss::DBConnector *dbNtf = new swss::DBConnector(ASIC_DB, "localhost", 6379, 0);
@@ -913,15 +1008,15 @@ int main(int argc, char **argv)
     updateLogLevel();
 
     swss::ConsumerTable *asicState = new swss::ConsumerTable(db, "ASIC_STATE");
-    swss::ConsumerTable *notifySyncdQuery = new swss::ConsumerTable(db, "NOTIFYSYNCDREQUERY");
+    swss::NotificationConsumer *notifySyncdQuery = new swss::NotificationConsumer(db, "NOTIFYSYNCDREQUERY");
 
     // at the end we cant use producer consumer concept since
     // if one proces will restart there may be something in the queue
     // also "remove" from response queue will also trigger another "response"
     getRequest = new swss::ConsumerTable(db, "GETREQUEST");
     getResponse  = new swss::ProducerTable(db, "GETRESPONSE");
-    notifications = new swss::ProducerTable(dbNtf, "NOTIFICATIONS");
-    notifySyncdResponse = new swss::ProducerTable(db, "NOTIFYSYNCDRESPONSE");
+    notifications = new swss::NotificationProducer(dbNtf, "NOTIFICATIONS");
+    notifySyncdResponse = new swss::NotificationProducer(db, "NOTIFYSYNCDRESPONSE");
 
 #ifdef MLNXSAI
     std::string mlnx_config_file = "/etc/ssw/ACS-MSN2700/sai_2700.xml";
@@ -934,8 +1029,6 @@ int main(int argc, char **argv)
 
     initialize_common_api_pointers();
 
-#if 1
-
     sai_status_t status = sai_switch_api->initialize_switch(0, "0xb850", "", &switch_notifications);
 
     if (status != SAI_STATUS_SUCCESS)
@@ -946,25 +1039,15 @@ int main(int argc, char **argv)
 
 #ifdef BRCMSAI
 
-    for (int i = 0; i < argc; i++)
+    if (options.diagShell)
     {
-        if (strcmp(argv[i],"--diag") == 0)
-        {
-            std::thread bcm_diag_shell_thread = std::thread(sai_diag_shell);
-            bcm_diag_shell_thread.detach();
-            break;
-        }
+        SWSS_LOG_INFO("starting bcm diag shell thread");
+
+        std::thread bcm_diag_shell_thread = std::thread(sai_diag_shell);
+        bcm_diag_shell_thread.detach();
     }
 
 #endif /* BRCMSAI */
-
-#else
-    sai_switch_api->initialize_switch(
-            0,  // profile id
-            "dummy_hardware_id",
-            "dummy_firmwre_path_name",
-            &switch_notifications);
-#endif
 
     SWSS_LOG_INFO("syncd started");
 
@@ -1004,14 +1087,6 @@ int main(int argc, char **argv)
     {
         SWSS_LOG_ERROR("Runtime error: %s", e.what());
     }
-    catch(...)
-    {
-        SWSS_LOG_ERROR("Runtime error: unhandled exception");
-
-        handler(SIGSEGV);
-    }
 
     sai_api_uninitialize();
 }
-
-
