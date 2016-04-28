@@ -14,11 +14,16 @@ debian/libsairedis.postinst.debhelper
 debian/libsairedis.postrm.debhelper
 debian/libsairedis.substvars
 debian/syncd.debhelper.log
+debian/syncd.init
+debian/syncd.postinst.debhelper
+debian/syncd.postrm.debhelper
+debian/syncd.prerm.debhelper
 debian/syncd.substvars
 
 debian/libsairedis-dev/
 debian/libsairedis/
 debian/syncd/
+debian/tmp/
 
 # autogen.sh Files #
 ####################
