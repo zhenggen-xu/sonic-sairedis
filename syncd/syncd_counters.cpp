@@ -1,0 +1,130 @@
+#include "syncd.h"
+
+void collectCounters(swss::Table &countersTable,
+                     const std::vector<sai_port_stat_counter_t> &supportedCounters)
+{
+    // collect counters should be under mutex
+    // sice configuration can change and we
+    // don't want that during counters collection
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_TIMER("get counters");
+
+    uint32_t countersSize = supportedCounters.size();
+
+    std::vector<uint64_t> counters;
+
+    counters.resize(countersSize);
+
+    auto ports = saiGetPortList();
+
+    for (auto &portId: ports)
+    {
+        sai_status_t status = sai_port_api->get_port_stats(portId, supportedCounters.data(), countersSize, counters.data());
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_ERROR("failed to collect counters for port %llx: %d", portId, status);
+            return;
+        }
+
+        sai_object_id_t vid = translate_rid_to_vid(portId);
+
+        std::string strPortId;
+        sai_serialize_primitive(vid, strPortId);
+
+        std::vector<swss::FieldValueTuple> values;
+
+        for (size_t idx = 0; idx < counters.size(); idx++)
+        {
+            std::string field = sai_get_port_stat_counter_name(supportedCounters[idx]);
+            std::string value = std::to_string(counters[idx]);
+
+            swss::FieldValueTuple fvt(field, value);
+
+            values.push_back(fvt);
+        }
+
+        countersTable.set(strPortId, values, "");
+    }
+}
+
+std::vector<sai_port_stat_counter_t> getSupportedCounters(sai_object_id_t portId)
+{
+    SWSS_LOG_ENTER();
+
+    std::vector<sai_port_stat_counter_t> supportedCounters;
+
+    for (int idx = SAI_PORT_STAT_IF_IN_OCTETS;
+         idx <= SAI_PORT_STAT_ETHER_OUT_PKTS_9217_TO_16383_OCTETS;
+         ++idx)
+    {
+        sai_port_stat_counter_t counter = (sai_port_stat_counter_t)idx;
+
+        uint64_t value;
+
+        sai_status_t status = sai_port_api->get_port_stats(portId, &counter, 1, &value);
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            const std::string &name = sai_get_port_stat_counter_name(counter);
+
+            SWSS_LOG_WARN("counter %s is not supported on port RID %llx: %d", name.c_str(), portId, status);
+            continue;
+        }
+
+        supportedCounters.push_back(counter);
+    }
+
+    return std::move(supportedCounters);
+}
+
+static volatile bool  g_runCountersThread = false;
+static std::shared_ptr<std::thread> g_countersThread = NULL;
+
+void collectCountersThread(int intervalInSeconds)
+{
+    SWSS_LOG_ENTER();
+
+    swss::DBConnector db(COUNTERS_DB, "localhost", 6379, 0);
+    swss::Table countersTable(&db, "COUNTERS");
+
+    auto ports = saiGetPortList();
+
+    // get supported counters on first port
+    // we assume that all ports will support those counters
+    const auto &supportedCounters = getSupportedCounters(ports.at(0));
+
+    SWSS_LOG_INFO("supported counters count: %ld", supportedCounters.size());
+
+    while(g_runCountersThread)
+    {
+        collectCounters(countersTable, supportedCounters);
+
+        // collect counters every second
+        sleep(intervalInSeconds);
+    }
+}
+
+void startCountersThread(int intervalInSeconds)
+{
+    SWSS_LOG_ENTER();
+
+    g_runCountersThread = true;
+
+    g_countersThread = std::shared_ptr<std::thread>(new std::thread(collectCountersThread, intervalInSeconds));
+}
+
+void endCountersThread()
+{
+    SWSS_LOG_ENTER();
+
+    g_runCountersThread = false;
+
+    if (g_countersThread != NULL)
+    {
+        g_countersThread->join();
+    }
+}

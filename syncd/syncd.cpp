@@ -902,7 +902,9 @@ void notifySyncd(swss::NotificationConsumer &consumer)
 
 struct cmdOptions
 {
+    int countersThreadIntervalInSeconds;
     bool diagShell;
+    bool disableCountersThread;
     std::string profileMapFile;
 };
 
@@ -912,24 +914,35 @@ cmdOptions handleCmdLine(int argc, char **argv)
 
     cmdOptions options = {};
 
+    const int defaultCountersThreadIntervalInSeconds = 1;
+
+    options.countersThreadIntervalInSeconds = defaultCountersThreadIntervalInSeconds;
+
     while(true)
     {
         static struct option long_options[] =
         {
-            {"diag",     no_argument,       0, 'd' },
-            {"profile",  required_argument, 0, 'p' },
-            {0, 0, 0, 0}
+            { "diag",             no_argument,       0, 'd' },
+            { "nocounters",       no_argument,       0, 'N' },
+            { "profile",          required_argument, 0, 'p' },
+            { "countersInterval", required_argument, 0, 'i' },
+            { 0,                  0,                 0,  0  }
         };
 
         int option_index = 0;
 
-        int c = getopt_long(argc, argv, "dp:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "dNp:i:", long_options, &option_index);
 
         if (c == -1)
             break;
 
         switch (c)
         {
+            case 'N':
+                SWSS_LOG_INFO("disable counters thread");
+                options.disableCountersThread = true;
+                break;
+
             case 'd':
                 SWSS_LOG_INFO("enable diag shell");
                 options.diagShell = true;
@@ -938,6 +951,12 @@ cmdOptions handleCmdLine(int argc, char **argv)
             case 'p':
                 SWSS_LOG_INFO("profile map file: %s", optarg);
                 options.profileMapFile = std::string(optarg);
+                break;
+
+            case 'i':
+                SWSS_LOG_INFO("counters thread interval: %s", optarg);
+                options.countersThreadIntervalInSeconds = 
+                    std::max(defaultCountersThreadIntervalInSeconds, std::stoi(std::string(optarg)));
                 break;
 
             case '?':
@@ -1057,6 +1076,13 @@ int main(int argc, char **argv)
 
         SWSS_LOG_INFO("syncd listening for events");
 
+        if (options.disableCountersThread == false)
+        {
+            SWSS_LOG_INFO("starting counters thread");
+
+            startCountersThread(options.countersThreadIntervalInSeconds);
+        }
+
         swss::Select s;
 
         s.addSelectable(getRequest);
@@ -1087,6 +1113,8 @@ int main(int argc, char **argv)
     {
         SWSS_LOG_ERROR("Runtime error: %s", e.what());
     }
+
+    endCountersThread();
 
     sai_api_uninitialize();
 }
