@@ -1128,7 +1128,8 @@ int main(int argc, char **argv)
     notifySyncdResponse = new swss::NotificationProducer(db, "NOTIFYSYNCDRESPONSE");
 
 #ifdef MLNXSAI
-    std::string mlnx_config_file = "/etc/ssw/ACS-MSN2700/sai_2700.xml";
+    /* This file is included in Mellanox SAI package. */
+    std::string mlnx_config_file = "/usr/share/sai_2700.xml";
     gProfileMap[SAI_KEY_INIT_CONFIG_FILE] = mlnx_config_file;
 #endif /* MLNX_SAI */
 
