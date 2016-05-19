@@ -882,7 +882,7 @@ void notifySyncd(swss::NotificationConsumer &consumer)
         // applied on device, since it will make it easier to switch
         // to new asic state later on when we restart orch agent
 
-        if (op == NOTIFY_SAI_SWITCH_VIEW)
+        if (op == NOTIFY_SAI_APPLY_VIEW)
         {
             g_veryFirstRun = false;
 
