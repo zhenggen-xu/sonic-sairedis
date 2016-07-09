@@ -922,7 +922,7 @@ struct cmdOptions
 {
     int countersThreadIntervalInSeconds;
     bool diagShell;
-    bool warmStart;
+    int startType;
     bool disableCountersThread;
     std::string profileMapFile;
 };
@@ -943,7 +943,7 @@ cmdOptions handleCmdLine(int argc, char **argv)
         {
             { "diag",             no_argument,       0, 'd' },
             { "nocounters",       no_argument,       0, 'N' },
-            { "warmStart",        no_argument,       0, 'w' },
+            { "startType",        required_argument, 0, 't' },
             { "profile",          required_argument, 0, 'p' },
             { "countersInterval", required_argument, 0, 'i' },
             { 0,                  0,                 0,  0  }
@@ -951,7 +951,7 @@ cmdOptions handleCmdLine(int argc, char **argv)
 
         int option_index = 0;
 
-        int c = getopt_long(argc, argv, "dNwp:i:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "dNt:p:i:", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -993,9 +993,25 @@ cmdOptions handleCmdLine(int argc, char **argv)
                     break;
                 }
 
-            case 'w':
-                SWSS_LOG_NOTICE("warm start request");
-                options.warmStart = true;
+            case 't':
+                SWSS_LOG_NOTICE("start type: %s", optarg);
+                if (std::string(optarg) == "cold")
+                {
+                    options.startType = SAI_COLD_BOOT;
+                }
+                else if (std::string(optarg) == "warm")
+                {
+                    options.startType = SAI_WARM_BOOT;
+                }
+                else if (std::string(optarg) == "fast")
+                {
+                    options.startType = SAI_FAST_BOOT;
+                }
+                else
+                {
+                    SWSS_LOG_ERROR("unknown start type %s", optarg);
+                    exit(EXIT_FAILURE);
+                }
                 break;
 
             case '?':
@@ -1129,7 +1145,7 @@ int main(int argc, char **argv)
 
     g_veryFirstRun = isVeryFirstRun();
 
-    if (options.warmStart)
+    if (options.startType == SAI_WARM_BOOT)
     {
         const char *warmBootReadFile = profile_get_value(0, SAI_KEY_WARM_BOOT_READ_FILE);
 
@@ -1139,21 +1155,21 @@ int main(int argc, char **argv)
         {
             SWSS_LOG_WARN("user requested warmStart but warmBootReadFile is not specified or not accesible, forcing cold start");
 
-            options.warmStart = false;
+            options.startType = SAI_COLD_BOOT;
         }
     }
 
-    if (options.warmStart && g_veryFirstRun)
+    if (options.startType == SAI_WARM_BOOT && g_veryFirstRun)
     {
         SWSS_LOG_WARN("warm start requested, but this is very first syncd start, forcing cold start");
 
         // we force cold start since if it's first run then redis db is not complete
         // so redis asic view will not reflect warm boot asic state, if this happen
         // then orch agent needs to be restarted as well to repopulate asic view
-        options.warmStart = false;
+        options.startType = SAI_COLD_BOOT;
     }
 
-    gProfileMap[SAI_KEY_WARM_BOOT] = options.warmStart ? "1" : "0";
+    gProfileMap[SAI_KEY_BOOT_TYPE] = std::to_string(options.startType);
 
     sai_api_initialize(0, (service_method_table_t*)&test_services);
 
@@ -1187,7 +1203,7 @@ int main(int argc, char **argv)
 
     try
     {
-        onSyncdStart(options.warmStart);
+        onSyncdStart(options.startType == SAI_WARM_BOOT);
 
         if (options.disableCountersThread == false)
         {
