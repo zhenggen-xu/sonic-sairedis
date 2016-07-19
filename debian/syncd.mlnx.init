@@ -18,7 +18,7 @@ start)
     mkdir -p /dev/sxdevs
     [ -e /dev/sxdevs/sxcdev ] || mknod /dev/sxdevs/sxcdev c 231 193
 
-    start-stop-daemon --start --quiet --exec $DAEMON $DAEMON_ARGS
+    start-stop-daemon --start --quiet --exec $DAEMON -- $DAEMON_ARGS
     ;;
 stop)
     start-stop-daemon --stop --quiet --exec $DAEMON
