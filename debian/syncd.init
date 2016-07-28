@@ -13,7 +13,7 @@
 DAEMON_SYNCD=/usr/bin/syncd
 
 # dsserve: domain socket server for stdio
-DAEMON_DSSERVE=/usr/local/bin/dsserve
+DAEMON_DSSERVE=/usr/bin/dsserve
 DAEMON_DSSERVE_ARGS="-d $DAEMON_SYNCD --diag"
 
 if [ -x $DAEMON_DSSERVE ]; then
