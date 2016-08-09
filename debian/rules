@@ -28,5 +28,17 @@ DEB_SAI_FLAVOR ?= "bcm"
 #	dh_auto_configure -- \
 #	-DCMAKE_LIBRARY_PATH=$(DEB_HOST_MULTIARCH)
 
+ifeq ($(findstring --enable-rpcserver=yes,${CONFIGURE_ARGS}),--enable-rpcserver=yes)
+  saithrift = yes
+else
+  saithrift = no
+endif
+
 override_dh_auto_configure:
 	dh_auto_configure -- --with-sai=$(DEB_SAI_FLAVOR) ${CONFIGURE_ARGS}
+
+override_dh_installinit:
+  ifeq ($(saithrift), yes)
+	sed -i 's/ENABLE_SAITHRIFT=0/ENABLE_SAITHRIFT=1/' debian/syncd.init
+  endif
+	dh_installinit
