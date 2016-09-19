@@ -40,6 +40,13 @@ DEFINE_ENUM_VALUES(sai_port_media_type_t)
     //SAI_PORT_MEDIA_TYPE_COPPER
 };
 
+DEFINE_ENUM_VALUES(sai_port_internal_loopback_mode_t)
+{
+    SAI_PORT_INTERNAL_LOOPBACK_NONE,
+    SAI_PORT_INTERNAL_LOOPBACK_PHY,
+    SAI_PORT_INTERNAL_LOOPBACK_MAC
+};
+
 DEFINE_ENUM_VALUES(sai_port_fdb_learning_mode_t)
 {
     SAI_PORT_LEARN_MODE_DROP,
@@ -706,6 +713,20 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
     {
         .objecttype             = SAI_OBJECT_TYPE_PORT,
         .attrid                 = SAI_PORT_ATTR_INTERNAL_LOOPBACK,
+        .serializationtype      = SAI_SERIALIZATION_TYPE_INT32,
+        .flags                  = SAI_ATTR_FLAGS_CREATE_AND_SET,
+        .allowedobjecttypes     = { },
+        .allownullobjectid      = false,
+        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_CONST,
+        .defaultvalue           = { .s32 = SAI_PORT_INTERNAL_LOOPBACK_NONE },
+        .enumtypestr            = StringifyEnum ( sai_port_internal_loopback_mode_t ),
+        .enumallowedvalues      = ENUM_VALUES ( sai_port_internal_loopback_mode_t ),
+        .conditions             = { },
+    },
+
+    {
+        .objecttype             = SAI_OBJECT_TYPE_PORT,
+        .attrid                 = SAI_PORT_ATTR_FDB_LEARNING,
         .serializationtype      = SAI_SERIALIZATION_TYPE_INT32,
         .flags                  = SAI_ATTR_FLAGS_CREATE_AND_SET,
         .allowedobjecttypes     = { },
