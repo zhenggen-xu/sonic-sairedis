@@ -435,6 +435,7 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
         .enumallowedvalues      = ENUM_VALUES ( sai_port_media_type_t ),
         .conditions             = { },
     },
+*/
 
     {
         .objecttype             = SAI_OBJECT_TYPE_PORT,
@@ -451,7 +452,6 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
 
         // dynamic
     },
-*/
 
     {
         .objecttype             = SAI_OBJECT_TYPE_PORT,
