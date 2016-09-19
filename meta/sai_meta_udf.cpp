@@ -19,10 +19,6 @@ DEFINE_ENUM_VALUES(sai_udf_base_t)
     SAI_UDF_BASE_L4
 };
 
-#ifndef SAI_UDF_GROUP_GENERIC
-#define SAI_UDF_GROUP_GENERIC SAI_UDF_GROUP_GENERICi    // TODO remove on new SAI
-#endif
-
 DEFINE_ENUM_VALUES(sai_udf_group_type_t)
 {
     SAI_UDF_GROUP_GENERIC,

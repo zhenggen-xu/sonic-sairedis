@@ -36,8 +36,8 @@ DEFINE_ENUM_VALUES(sai_port_media_type_t)
 {
     SAI_PORT_MEDIA_TYPE_NOT_PRESENT,
     SAI_PORT_MEDIA_TYPE_UNKNONWN,
-    SAI_PORT_MEDIA_TYPE_FIBER,
-    SAI_PORT_MEDIA_TYPE_COPPER
+    //SAI_PORT_MEDIA_TYPE_FIBER,
+    //SAI_PORT_MEDIA_TYPE_COPPER
 };
 
 DEFINE_ENUM_VALUES(sai_port_fdb_learning_mode_t)
@@ -190,7 +190,7 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
         .enumallowedvalues      = { },
         .conditions             = { },
     },
-
+/*
     {
         .objecttype             = SAI_OBJECT_TYPE_PORT,
         .attrid                 = SAI_PORT_ATTR_SUPPORTED_HALF_DUPLEX_SPEED,
@@ -444,6 +444,7 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
 
         // dynamic
     },
+*/
 
     {
         .objecttype             = SAI_OBJECT_TYPE_PORT,
@@ -1140,7 +1141,7 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
         .conditions             = { },
     },
 
-    {
+    /*{
         .objecttype             = SAI_OBJECT_TYPE_PORT,
         .attrid                 = SAI_PORT_ATTR_EGRESS_BLOCK_PORT_LIST,
         .serializationtype      = SAI_SERIALIZATION_TYPE_OBJECT_LIST,
@@ -1166,7 +1167,7 @@ const sai_attr_metadata_t sai_port_attr_metadata[] = {
         .enumtypestr            = NULL,
         .enumallowedvalues      = { },
         .conditions             = { },
-    },
+    },*/
 };
 
 const size_t sai_port_attr_metadata_count = sizeof(sai_port_attr_metadata)/sizeof(sai_attr_metadata_t);

@@ -9,8 +9,8 @@ DEFINE_ENUM_VALUES(sai_samplepacket_type_t)
 
 DEFINE_ENUM_VALUES(sai_samplepacket_mode_t)
 {
-    SAI_SAMPLEPACKET_MODE_EXCLUSIVE,
-    SAI_SAMPLEPACKET_MODE_SHARED
+    //SAI_SAMPLEPACKET_MODE_EXCLUSIVE,
+    //SAI_SAMPLEPACKET_MODE_SHARED
 };
 
 const sai_attr_metadata_t sai_samplepacket_attr_metadata[] = {
@@ -43,7 +43,7 @@ const sai_attr_metadata_t sai_samplepacket_attr_metadata[] = {
         .conditions             = { },
     },
 
-    {
+    /*{
         .objecttype             = SAI_OBJECT_TYPE_SAMPLEPACKET,
         .attrid                 = SAI_SAMPLEPACKET_ATTR_MODE,
         .serializationtype      = SAI_SERIALIZATION_TYPE_INT32,
@@ -55,7 +55,7 @@ const sai_attr_metadata_t sai_samplepacket_attr_metadata[] = {
         .enumtypestr            = StringifyEnum ( sai_samplepacket_mode_t ),
         .enumallowedvalues      = ENUM_VALUES ( sai_samplepacket_mode_t ),
         .conditions             = { },
-    },
+    },*/
 };
 
 const size_t sai_samplepacket_attr_metadata_count = sizeof(sai_samplepacket_attr_metadata)/sizeof(sai_attr_metadata_t);
