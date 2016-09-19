@@ -64,7 +64,7 @@ const sai_attr_metadata_t sai_nexthop_attr_metadata[] = {
         .defaultvalue           = { },
         .enumtypestr            = NULL,
         .enumallowedvalues      = { },
-        .conditions             = { COND_ENUM ( SAI_NEXT_HOP_ATTR_TYPE, SAI_NEXT_HOP_IP ) },
+        .conditions             = { COND_ENUM ( SAI_NEXT_HOP_ATTR_TYPE, SAI_NEXT_HOP_TUNNEL_ENCAP ) },
     },
 };
 
