@@ -7,7 +7,7 @@ void send_notification(
 {
     SWSS_LOG_ENTER();
 
-    SWSS_LOG_NOTICE("%s %s", op.c_str(), data.c_str());
+    SWSS_LOG_INFO("%s %s", op.c_str(), data.c_str());
 
     notifications->send(op, data, entry);
 
