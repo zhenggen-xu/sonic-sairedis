@@ -23,7 +23,7 @@ sai_status_t internal_redis_generic_set(
     SWSS_LOG_ENTER();
 
     std::vector<swss::FieldValueTuple> entry = SaiAttributeList::serialize_attr_list(
-            object_type, 
+            object_type,
             1,
             attr,
             false);
@@ -48,6 +48,13 @@ sai_status_t redis_generic_set(
 {
     SWSS_LOG_ENTER();
 
+    if (object_id == SAI_NULL_OBJECT_ID && object_type != SAI_OBJECT_TYPE_SWITCH)
+    {
+        SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
+
+        return SAI_STATUS_INVALID_PARAMETER;
+    }
+
     std::string str_object_id;
     sai_serialize_primitive(object_id, str_object_id);
 
@@ -59,8 +66,7 @@ sai_status_t redis_generic_set(
     return status;
 }
 
-sai_status_t redis_generic_set(
-        _In_ sai_object_type_t object_type,
+sai_status_t redis_generic_set_fdb_entry(
         _In_ const sai_fdb_entry_t *fdb_entry,
         _In_ const sai_attribute_t *attr)
 {
@@ -70,15 +76,14 @@ sai_status_t redis_generic_set(
     sai_serialize_primitive(*fdb_entry, str_fdb_entry);
 
     sai_status_t status = internal_redis_generic_set(
-            object_type,
+            SAI_OBJECT_TYPE_FDB,
             str_fdb_entry,
             attr);
 
     return status;
 }
 
-sai_status_t redis_generic_set(
-        _In_ sai_object_type_t object_type,
+sai_status_t redis_generic_set_neighbor_entry(
         _In_ const sai_neighbor_entry_t* neighbor_entry,
         _In_ const sai_attribute_t *attr)
 {
@@ -88,15 +93,14 @@ sai_status_t redis_generic_set(
     sai_serialize_neighbor_entry(*neighbor_entry, str_neighbor_entry);
 
     sai_status_t status = internal_redis_generic_set(
-            object_type,
+            SAI_OBJECT_TYPE_NEIGHBOR,
             str_neighbor_entry,
             attr);
 
     return status;
 }
 
-sai_status_t redis_generic_set(
-        _In_ sai_object_type_t object_type,
+sai_status_t redis_generic_set_route_entry(
         _In_ const sai_unicast_route_entry_t* unicast_route_entry,
         _In_ const sai_attribute_t *attr)
 {
@@ -106,7 +110,7 @@ sai_status_t redis_generic_set(
     sai_serialize_route_entry(*unicast_route_entry, str_route_entry);
 
     sai_status_t status = internal_redis_generic_set(
-            object_type,
+            SAI_OBJECT_TYPE_ROUTE,
             str_route_entry,
             attr);
 
@@ -114,7 +118,6 @@ sai_status_t redis_generic_set(
 }
 
 sai_status_t redis_generic_set_vlan(
-        _In_ sai_object_type_t object_type,
         _In_ sai_vlan_id_t vlan_id,
         _In_ const sai_attribute_t *attr)
 {
@@ -124,8 +127,38 @@ sai_status_t redis_generic_set_vlan(
     sai_serialize_primitive(vlan_id, str_vlan_id);
 
     sai_status_t status = internal_redis_generic_set(
-            object_type,
+            SAI_OBJECT_TYPE_VLAN,
             str_vlan_id,
+            attr);
+
+    return status;
+}
+
+sai_status_t redis_generic_set_trap(
+        _In_ sai_hostif_trap_id_t hostif_trapid,
+        _In_ const sai_attribute_t *attr)
+{
+    SWSS_LOG_ENTER();
+
+    return redis_generic_set(
+            SAI_OBJECT_TYPE_TRAP,
+            hostif_trapid,
+            attr);
+}
+
+sai_status_t redis_generic_set_switch(
+        _In_ const sai_attribute_t *attr)
+{
+    SWSS_LOG_ENTER();
+
+    sai_object_id_t object_id = 0;
+
+    std::string str_object_id;
+    sai_serialize_primitive(object_id, str_object_id);
+
+    sai_status_t status = internal_redis_generic_set(
+            SAI_OBJECT_TYPE_SWITCH,
+            str_object_id,
             attr);
 
     return status;
