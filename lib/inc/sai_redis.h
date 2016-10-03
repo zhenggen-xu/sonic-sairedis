@@ -23,8 +23,14 @@ extern "C" {
 #include "swss/table.h"
 #include "swss/select.h"
 #include "swss/logger.h"
-
 #include "sai_meta.h"
+
+extern volatile bool                    g_record;
+extern void setRecording(bool record);
+extern void recordLine(std::string s);
+
+extern std::string joinFieldValues(
+        _In_ const std::vector<swss::FieldValueTuple> &values);
 
 // other global declarations
 
@@ -33,7 +39,6 @@ extern swss::DBConnector               *g_db;
 extern swss::ProducerTable             *g_asicState;
 
 extern swss::NotificationProducer      *g_notifySyncdProducer;
-extern swss::ProducerTable             *g_redisGetProducer;
 extern swss::ConsumerTable             *g_redisGetConsumer;
 extern swss::NotificationConsumer      *g_redisNotifications;
 extern swss::NotificationConsumer      *g_notifySyncdConsumer;

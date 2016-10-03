@@ -5,6 +5,11 @@
 
 // TODO it may be needed to obtain SAI_SWITCH_ATTR_DEFAULT_TRAP_GROUP object id
 
+// temporary until new SAI headers
+#ifndef SAI_SWITCH_ATTR_CUSTOM_RANGE_START
+#define SAI_SWITCH_ATTR_CUSTOM_RANGE_START 0x10000000
+#endif
+
 // if we will not get response in 60 seconds when
 // notify syncd to compile new state or to switch
 // to compiled state, then there is something wrong
@@ -221,6 +226,8 @@ sai_status_t redis_initialize_switch(
 
     g_run = true;
 
+    setRecording(g_record);
+
     SWSS_LOG_DEBUG("creating notification thread");
 
     notification_thread = std::make_shared<std::thread>(std::thread(ntf_thread));
@@ -336,6 +343,15 @@ sai_status_t redis_set_switch_attribute(
     std::lock_guard<std::mutex> lock(g_apimutex);
 
     SWSS_LOG_ENTER();
+
+    if (attr != NULL)
+    {
+        if (attr->id == SAI_SWITCH_ATTR_CUSTOM_RANGE_START + 1)
+        {
+            setRecording(attr->value.booldata);
+            return SAI_STATUS_SUCCESS;
+        }
+    }
 
     return meta_sai_set_switch(
             attr,
