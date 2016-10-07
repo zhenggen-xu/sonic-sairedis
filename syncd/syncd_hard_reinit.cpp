@@ -140,9 +140,11 @@ void checkAllIds()
         g_vidToRidMap.erase(it);
     }
 
-    if (g_vidToRidMap.size() != 0)
+    size_t size = g_vidToRidMap.size();
+
+    if (size != 0)
     {
-        SWSS_LOG_ERROR("vid to rid map is not empty after translation");
+        SWSS_LOG_ERROR("vid to rid map is not empty (%zu) after translation", size);
 
         for (auto &kv: g_vidToRidMap)
         {
@@ -207,6 +209,8 @@ void hardReinit()
 {
     SWSS_LOG_ENTER();
 
+    SWSS_LOG_TIMER("hard reinit");
+
     saiRemoveDefaultVlanMembers();
 
     // repopulate asic view from redis db after hard asic initialize
@@ -266,6 +270,33 @@ void hardReinit()
     checkAllIds();
 }
 
+bool shouldSkipCreateion(
+        sai_object_id_t vid,
+        sai_object_id_t& rid,
+        bool& createObject,
+        isDefaultFunction fun)
+{
+    auto it = g_vidToRidMap.find(vid);
+
+    if (it == g_vidToRidMap.end())
+    {
+        SWSS_LOG_ERROR("failed to find VID %llx in VIDTORID map", vid);
+
+        exit_and_notify(EXIT_FAILURE);
+    }
+
+    if (fun(it->second))
+    {
+        rid = it->second;
+
+        createObject = false;
+
+        return true;
+    }
+
+    return false;
+}
+
 sai_object_id_t processSingleVid(sai_object_id_t vid)
 {
     SWSS_LOG_ENTER();
@@ -299,79 +330,38 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
     if (objectType == SAI_OBJECT_TYPE_VIRTUAL_ROUTER)
     {
-        auto it = g_vidToRidMap.find(vid);
-
-        if (it == g_vidToRidMap.end())
+        if (shouldSkipCreateion(vid, rid, createObject, isDefaultVirtualRouterId))
         {
-            SWSS_LOG_ERROR("failed to find VID %llx in VIDTORID map", vid);
-
-            exit_and_notify(EXIT_FAILURE);
-        }
-
-        sai_object_id_t virtualRouterRid = it->second;
-
-        sai_object_id_t defaultVirtualRouterId = redisGetDefaultVirtualRouterId();
-
-        if (virtualRouterRid == defaultVirtualRouterId)
-        {
-            // this is default virtual router id
-            // we don't need to create it, just set attributes
-
-            rid = defaultVirtualRouterId;
-
-            createObject = false;
-
             SWSS_LOG_INFO("default virtual router will not be created, processed VID %llx to RID %llx", vid, rid);
         }
-
+    }
+    else if (objectType == SAI_OBJECT_TYPE_QUEUE)
+    {
+        if (shouldSkipCreateion(vid, rid, createObject, isDefaultQueueId))
+        {
+            SWSS_LOG_DEBUG("default queue will not be created, processed VID %llx to RID %llx", vid, rid);
+        }
+    }
+    else if (objectType == SAI_OBJECT_TYPE_PRIORITY_GROUP)
+    {
+        if (shouldSkipCreateion(vid, rid, createObject, isDefaultPriorityGroupId))
+        {
+            SWSS_LOG_DEBUG("default priority group will not be created, processed VID %llx to RID %llx", vid, rid);
+        }
     }
     else if (objectType == SAI_OBJECT_TYPE_TRAP_GROUP)
     {
-        auto it = g_vidToRidMap.find(vid);
-
-        if (it == g_vidToRidMap.end())
+        if (shouldSkipCreateion(vid, rid, createObject, isDefaultTrapGroupId))
         {
-            SWSS_LOG_ERROR("failed to find VID %llx in VIDTORID map", vid);
-
-            exit_and_notify(EXIT_FAILURE);
-        }
-
-        sai_object_id_t trapGroupRid = it->second;
-
-        sai_object_id_t defaultTrapGroupId = redisGetDefaultTrapGroupId();
-
-        if (trapGroupRid == defaultTrapGroupId)
-        {
-            // this is default trap group id
-            // we don't need to create it, just set attributes
-
-            rid = defaultTrapGroupId;
-
-            createObject = false;
-
             SWSS_LOG_INFO("default trap group will not be created, processed VID %llx to RID %llx", vid, rid);
         }
-
     }
     else if (objectType == SAI_OBJECT_TYPE_PORT)
     {
-        // currently we assume that port id's don't change,
-        // so we can just treat previous rid as current rid
-
-        auto it = g_vidToRidMap.find(vid);
-
-        if (it == g_vidToRidMap.end())
+        if (shouldSkipCreateion(vid, rid, createObject, isDefaultPortId))
         {
-            SWSS_LOG_ERROR("failed to find VID %llx in VIDTORID map", vid);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_INFO("port will not be created, processed VID %llx to RID %llx", vid, rid);
         }
-
-        rid = it->second;
-
-        createObject = false;
-
-        SWSS_LOG_INFO("port will not be created, processed VID %llx to RID %llx", vid, rid);
     }
 
     auto oit = g_oids.find(strVid);
