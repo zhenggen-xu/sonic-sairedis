@@ -675,11 +675,6 @@ std::vector<sai_object_id_t> saiGetPortQueues(sai_object_id_t portId)
 // later we need to have this in redis with port mapping
 std::set<sai_object_id_t> g_defaultQueuesRids;
 
-bool isDefaultQueueId(sai_object_id_t queueId)
-{
-    return g_defaultQueuesRids.find(queueId) != g_defaultQueuesRids.end();
-}
-
 void helperCheckQueuesIds()
 {
     SWSS_LOG_ENTER();
@@ -765,11 +760,6 @@ std::vector<sai_object_id_t> saiGetPortPriorityGroups(sai_object_id_t portId)
 // later we need to have this in redis with port mapping
 std::set<sai_object_id_t> g_defaultPriorityGroupsRids;
 
-bool isDefaultPriorityGroupId(sai_object_id_t pgId)
-{
-    return g_defaultPriorityGroupsRids.find(pgId) != g_defaultPriorityGroupsRids.end();
-}
-
 void helperCheckPriorityGroupsIds()
 {
     SWSS_LOG_ENTER();
@@ -793,27 +783,6 @@ void helperCheckPriorityGroupsIds()
             g_defaultPriorityGroupsRids.insert(pgId);
         }
     }
-}
-
-bool isDefaultVirtualRouterId(sai_object_id_t id)
-{
-    sai_object_id_t defaultVirtualRouterId = redisGetDefaultVirtualRouterId();
-
-    return id == defaultVirtualRouterId;
-}
-
-bool isDefaultTrapGroupId(sai_object_id_t id)
-{
-    sai_object_id_t defaultTrapGroupId = redisGetDefaultTrapGroupId();
-
-    return id == defaultTrapGroupId;
-}
-
-bool isDefaultPortId(sai_object_id_t id)
-{
-    // currenty all ports are considered default
-
-    return true;
 }
 
 void onSyncdStart(bool warmStart)
