@@ -1272,6 +1272,10 @@ int main(int argc, char **argv)
 
     SWSS_LOG_ENTER();
 
+    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_NOTICE);
+
+    meta_init_db();
+
     auto options = handleCmdLine(argc, argv);
 
     handleProfileMap(options.profileMapFile);
