@@ -1,7 +1,6 @@
+#include <iostream>
 #include "syncd.h"
 #include "sairedis.h"
-
-#include <iostream>
 
 std::mutex g_mutex;
 
@@ -1281,8 +1280,8 @@ int main(int argc, char **argv)
     }
 #endif // SAITHRIFT
 
-    swss::DBConnector *db = new swss::DBConnector(ASIC_DB, "localhost", 6379, 0);
-    swss::DBConnector *dbNtf = new swss::DBConnector(ASIC_DB, "localhost", 6379, 0);
+    swss::DBConnector *db = new swss::DBConnector(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    swss::DBConnector *dbNtf = new swss::DBConnector(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
 
     g_redisClient = new swss::RedisClient(db);
 

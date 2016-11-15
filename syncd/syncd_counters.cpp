@@ -1,6 +1,6 @@
-#include "syncd.h"
 #include <condition_variable>
 #include <sstream>
+#include "syncd.h"
 
 void collectCounters(swss::Table &countersTable,
                      const std::vector<sai_port_stat_counter_t> &supportedCounters)
@@ -97,7 +97,7 @@ void collectCountersThread(int intervalInSeconds)
 {
     SWSS_LOG_ENTER();
 
-    swss::DBConnector db(COUNTERS_DB, "localhost", 6379, 0);
+    swss::DBConnector db(COUNTERS_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
     swss::Table countersTable(&db, "COUNTERS");
 
     auto ports = saiGetPortList();
