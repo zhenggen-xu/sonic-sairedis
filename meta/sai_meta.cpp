@@ -736,7 +736,7 @@ void set_object(
     if (!object_exists(key))
     {
         SWSS_LOG_ERROR("FATAL: object %s don't exists", key.c_str());
-        throw;
+        throw std::runtime_error("FATAL: object don't exists" + key);
     }
 
     META_LOG_DEBUG(md, "set attribute %d on %s", attr->id, key.c_str());
@@ -2361,7 +2361,8 @@ void meta_generic_validation_post_create(
             break;
 
         case SAI_OBJECT_TYPE_FDB:
-            vlan_reference_inc(meta_key.key.fdb_entry.vlan_id);
+            // NOTE: we don't increase vlan reference on FDB entries, ignored
+            // vlan_reference_inc(meta_key.key.fdb_entry.vlan_id);
             break;
 
         case SAI_OBJECT_TYPE_VLAN:
@@ -2679,7 +2680,8 @@ void meta_generic_validation_post_remove(
             break;
 
         case SAI_OBJECT_TYPE_FDB:
-            vlan_reference_dec(meta_key.key.fdb_entry.vlan_id);
+            // NOTE: we don't decrease vlan reference on FDB entries, ignored
+            // vlan_reference_dec(meta_key.key.fdb_entry.vlan_id);
             break;
 
         case SAI_OBJECT_TYPE_TRAP:
@@ -3321,7 +3323,8 @@ sai_status_t meta_sai_get_switch(
 
 sai_status_t meta_sai_validate_fdb_entry(
         _In_ const sai_fdb_entry_t* fdb_entry,
-        _In_ bool create)
+        _In_ bool create,
+        _In_ bool get = false)
 {
     SWSS_LOG_ENTER();
 
@@ -3342,7 +3345,9 @@ sai_status_t meta_sai_validate_fdb_entry(
     }
 
     // check if vlan exists
+    // NOTE: this is disabled on purpose, we can create/set/get/remove fdb entris with non existing vlans
 
+    /*
     sai_object_meta_key_t meta_key_vlan = { .object_type = SAI_OBJECT_TYPE_VLAN, .key = { .vlan_id = vlan_id } };
 
     std::string key_vlan = get_object_meta_key_string(meta_key_vlan);
@@ -3353,6 +3358,7 @@ sai_status_t meta_sai_validate_fdb_entry(
 
         return SAI_STATUS_INVALID_PARAMETER;
     }
+    */
 
     // check if fdb entry exists
 
@@ -3374,7 +3380,7 @@ sai_status_t meta_sai_validate_fdb_entry(
 
     // set, get, remove
 
-    if (!object_exists(key_fdb))
+    if (!object_exists(key_fdb) && !get)
     {
         SWSS_LOG_ERROR("object key %s don't exists", key_fdb.c_str());
 
@@ -3541,7 +3547,9 @@ sai_status_t meta_sai_get_fdb_entry(
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_validate_fdb_entry(fdb_entry, false);
+    // NOTE: when doing get, entry may not exist on metadata db
+
+    sai_status_t status = meta_sai_validate_fdb_entry(fdb_entry, false, true);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -4837,4 +4845,100 @@ sai_status_t meta_sai_get_oid(
     }
 
     return status;
+}
+
+// NOTIFICATIONS
+
+void meta_sai_on_fdb_event_single(
+        _In_ const sai_fdb_event_notification_data_t& data)
+{
+    SWSS_LOG_ENTER();
+
+    // NOTE: vlan may not exists
+
+    sai_object_meta_key_t meta_key_vlan = { .object_type = SAI_OBJECT_TYPE_VLAN, .key = { .vlan_id = data.fdb_entry.vlan_id} };
+
+    std::string key_vlan = get_object_meta_key_string(meta_key_vlan);
+
+    if (!object_exists(key_vlan))
+    {
+        SWSS_LOG_WARN("object key %s don't exists", key_vlan.c_str());
+    }
+
+    const sai_object_meta_key_t meta_key_fdb = { .object_type = SAI_OBJECT_TYPE_FDB, .key = { .fdb_entry = data.fdb_entry } };
+
+    std::string key_fdb = get_object_meta_key_string(meta_key_fdb);
+
+    switch (data.event_type)
+    {
+        case SAI_FDB_EVENT_LEARNED:
+
+            if (object_exists(key_fdb))
+            {
+                SWSS_LOG_WARN("object key %s alearedy exists, but received LEARNED event", key_fdb.c_str());
+                break;
+            }
+
+            {
+                sai_attribute_t *list = data.attr;
+                uint32_t count = data.attr_count;
+
+                sai_attribute_t local[2]; // 2 for port id and type
+
+                if (count == 1)
+                {
+                    // workaround for missing "TYPE" attribute on notification
+
+                    local[0] = data.attr[0]; // copy 1st attr
+                    local[1].id = SAI_FDB_ENTRY_ATTR_TYPE;
+                    local[1].value.s32 = SAI_FDB_ENTRY_DYNAMIC; // assume learned entries are always dynamic
+
+                    list = local;
+                    count = 2; // now we added type
+                }
+
+                sai_status_t status = meta_generic_validation_create(meta_key_fdb, count, list);
+
+                if (status == SAI_STATUS_SUCCESS)
+                {
+                    meta_generic_validation_post_create(meta_key_fdb, count, list);
+                }
+                else
+                {
+                    SWSS_LOG_ERROR("failed to insert %s received in notification: %s", key_fdb.c_str(), sai_serialize_status(status).c_str());
+                }
+            }
+
+            break;
+
+        case SAI_FDB_EVENT_AGED:
+        case SAI_FDB_EVENT_FLUSHED:
+
+            if (!object_exists(key_fdb))
+            {
+                SWSS_LOG_WARN("object key %s don't exist but received AGED/FLUSHED event", key_fdb.c_str());
+                break;
+            }
+
+            meta_generic_validation_post_remove(meta_key_fdb);
+
+            break;
+
+        default:
+
+            SWSS_LOG_ERROR("got FDB_ENTRY notification with unknown event_type %d, bug?", data.event_type);
+            break;
+    }
+}
+
+void meta_sai_on_fdb_event(
+        _In_ uint32_t count,
+        _In_ sai_fdb_event_notification_data_t *data)
+{
+    SWSS_LOG_ENTER();
+
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        meta_sai_on_fdb_event_single(data[i]);
+    }
 }
