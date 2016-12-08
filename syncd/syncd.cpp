@@ -929,7 +929,7 @@ swss::Logger::Priority redisGetLogLevel()
 
     if (plevel == NULL)
     {
-        return swss::Logger::SWSS_NOTICE;
+        return swss::Logger::getInstance().getMinPrio();
     }
 
     return swss::Logger::stringToPriority(*plevel);
