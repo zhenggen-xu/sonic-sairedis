@@ -515,6 +515,22 @@ const sai_attr_metadata_t sai_acl_entry_attr_metadata[] = {
 
     {
         .objecttype             = SAI_OBJECT_TYPE_ACL_ENTRY,
+        .attrid                 = SAI_ACL_ENTRY_ATTR_ADMIN_STATE,
+        .attridname             = "SAI_ACL_ENTRY_ATTR_ADMIN_STATE",
+        .serializationtype      = SAI_SERIALIZATION_TYPE_BOOL,
+        .flags                  = SAI_ATTR_FLAGS_CREATE_AND_SET,
+        .allowedobjecttypes     = {  },
+        .allownullobjectid      = false,
+        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_CONST,
+        .defaultvalue           = { .booldata = true },
+        .enumtypestr            = NULL,
+        .enumallowedvalues      = { },
+        .enummetadata           = NULL,
+        .conditions             = { },
+    },
+
+    {
+        .objecttype             = SAI_OBJECT_TYPE_ACL_ENTRY,
         .attrid                 = SAI_ACL_ENTRY_ATTR_PRIORITY,
         .attridname             = "SAI_ACL_ENTRY_ATTR_PRIORITY",
         .serializationtype      = SAI_SERIALIZATION_TYPE_UINT32,
@@ -1812,7 +1828,7 @@ const sai_attr_metadata_t sai_acl_counter_attr_metadata[] = {
         .objecttype             = SAI_OBJECT_TYPE_ACL_COUNTER,
         .attrid                 = SAI_ACL_COUNTER_ATTR_PACKETS,
         .attridname             = "SAI_ACL_COUNTER_ATTR_PACKETS",
-        .serializationtype      = SAI_SERIALIZATION_TYPE_BOOL,
+        .serializationtype      = SAI_SERIALIZATION_TYPE_UINT64,
         .flags                  = SAI_ATTR_FLAGS_CREATE_AND_SET,
         .allowedobjecttypes     = { },
         .allownullobjectid      = false,
@@ -1830,7 +1846,7 @@ const sai_attr_metadata_t sai_acl_counter_attr_metadata[] = {
         .objecttype             = SAI_OBJECT_TYPE_ACL_COUNTER,
         .attrid                 = SAI_ACL_COUNTER_ATTR_BYTES,
         .attridname             = "SAI_ACL_COUNTER_ATTR_BYTES",
-        .serializationtype      = SAI_SERIALIZATION_TYPE_BOOL,
+        .serializationtype      = SAI_SERIALIZATION_TYPE_UINT64,
         .flags                  = SAI_ATTR_FLAGS_CREATE_AND_SET,
         .allowedobjecttypes     = { },
         .allownullobjectid      = false,
@@ -1851,40 +1867,36 @@ const size_t sai_acl_counter_attr_metadata_count = sizeof(sai_acl_counter_attr_m
 
 const sai_attr_metadata_t sai_acl_range_attr_metadata[] = {
 
-    // TODO declared only in newer SAI
-
-//    {
-//        .objecttype             = SAI_OBJECT_TYPE_ACL_RANGE,
-//        .attrid                 = SAI_ACL_RANGE_ATTR_TYPE,
-//        .attridname             = "SAI_ACL_RANGE_ATTR_TYPE",
-//        .serializationtype      = SAI_SERIALIZATION_TYPE_ACL_RANGE
-//        .flags                  = SAI_ATTR_FLAGS_MANDATORY_ON_CREATE | SAI_ATTR_FLAGS_CREATE_ONLY,
-//        .allowedobjecttypes     = { },
-//        .allownullobjectid      = false,
-//        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_NONE,
-//        .defaultvalue           = { },
-//        .enumtypestr            = StringifyEnum ( sai_acl_range_type_t ),
-//        .enumallowedvalues      = ENUM_VALUES ( sai_acl_range_type_t ),
-//        .conditions             =&metadata_enum_sai_acl_range_type_t,
-//    },
-
-//    {
-//        .objecttype             = SAI_OBJECT_TYPE_ACL_RANGE,
-//        .attrid                 = SAI_ACL_RANGE_ATTR_LIMIT,
-//        .attridname             = "SAI_ACL_RANGE_ATTR_LIMIT",
-//        .serializationtype      = SAI_SERIALIZATION_TYPE_ACL_RANGE
-//        .flags                  = SAI_ATTR_FLAGS_MANDATORY_ON_CREATE | SAI_ATTR_FLAGS_CREATE_ONLY,
-//        .allowedobjecttypes     = { },
-//        .allownullobjectid      = false,
-//        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_NONE,
-//        .defaultvalue           = { },
-//        .enumtypestr            = NULL,
-//        .enumallowedvalues      = { },
-//        .conditions             = { },
-//
-//        // TODO extra logic is needed to check that range depending on type
-//    },
-
+    {
+        .objecttype             = SAI_OBJECT_TYPE_ACL_RANGE,
+        .attrid                 = SAI_ACL_RANGE_ATTR_TYPE,
+        .attridname             = "SAI_ACL_RANGE_ATTR_TYPE",
+        .serializationtype      = SAI_SERIALIZATION_TYPE_INT32,
+        .flags                  = SAI_ATTR_FLAGS_MANDATORY_ON_CREATE | SAI_ATTR_FLAGS_CREATE_ONLY,
+        .allowedobjecttypes     = { },
+        .allownullobjectid      = false,
+        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_NONE,
+        .defaultvalue           = { },
+        .enumtypestr            = StringifyEnum ( sai_acl_range_type_t ),
+        .enumallowedvalues      = ENUM_VALUES ( sai_acl_range_type_t ),
+        .enummetadata           = &metadata_enum_sai_acl_range_type_t,
+        .conditions             = { },
+    },
+    {
+        .objecttype             = SAI_OBJECT_TYPE_ACL_RANGE,
+        .attrid                 = SAI_ACL_RANGE_ATTR_LIMIT,
+        .attridname             = "SAI_ACL_RANGE_ATTR_LIMIT",
+        .serializationtype      = SAI_SERIALIZATION_TYPE_UINT32_RANGE,
+        .flags                  = SAI_ATTR_FLAGS_MANDATORY_ON_CREATE | SAI_ATTR_FLAGS_CREATE_ONLY,
+        .allowedobjecttypes     = { },
+        .allownullobjectid      = false,
+        .defaultvaluetype       = SAI_DEFAULT_VALUE_TYPE_NONE,
+        .defaultvalue           = { },
+        .enumtypestr            = NULL,
+        .enumallowedvalues      = { },
+        .enummetadata           = NULL,
+        .conditions             = { },
+    }
 };
 
 const size_t sai_acl_range_attr_metadata_count = sizeof(sai_acl_range_attr_metadata)/sizeof(sai_attr_metadata_t);
