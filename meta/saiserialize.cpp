@@ -112,193 +112,193 @@ sai_status_t transfer_list(
 }
 
 sai_status_t transfer_attribute(
-        _In_ sai_attr_serialization_type_t serialization_type,
+        _In_ sai_attr_value_type_t serialization_type,
         _In_ sai_attribute_t &src_attr,
         _In_ sai_attribute_t &dst_attr,
         _In_ bool countOnly)
 {
     switch (serialization_type)
     {
-        case SAI_SERIALIZATION_TYPE_BOOL:
+        case SAI_ATTR_VALUE_TYPE_BOOL:
             transfer_primitive(src_attr.value.booldata, dst_attr.value.booldata);
             break;
 
-        case SAI_SERIALIZATION_TYPE_CHARDATA:
+        case SAI_ATTR_VALUE_TYPE_CHARDATA:
             transfer_primitive(src_attr.value.chardata, dst_attr.value.chardata);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT8:
+        case SAI_ATTR_VALUE_TYPE_UINT8:
             transfer_primitive(src_attr.value.u8, dst_attr.value.u8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT8:
+        case SAI_ATTR_VALUE_TYPE_INT8:
             transfer_primitive(src_attr.value.s8, dst_attr.value.s8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT16:
+        case SAI_ATTR_VALUE_TYPE_UINT16:
             transfer_primitive(src_attr.value.u16, dst_attr.value.u16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT16:
+        case SAI_ATTR_VALUE_TYPE_INT16:
             transfer_primitive(src_attr.value.s16, dst_attr.value.s16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT32:
+        case SAI_ATTR_VALUE_TYPE_UINT32:
             transfer_primitive(src_attr.value.u32, dst_attr.value.u32);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT32:
+        case SAI_ATTR_VALUE_TYPE_INT32:
             transfer_primitive(src_attr.value.s32, dst_attr.value.s32);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT64:
+        case SAI_ATTR_VALUE_TYPE_UINT64:
             transfer_primitive(src_attr.value.u64, dst_attr.value.u64);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT64:
+        case SAI_ATTR_VALUE_TYPE_INT64:
             transfer_primitive(src_attr.value.s64, dst_attr.value.s64);
             break;
 
-        case SAI_SERIALIZATION_TYPE_MAC:
+        case SAI_ATTR_VALUE_TYPE_MAC:
             transfer_primitive(src_attr.value.mac, dst_attr.value.mac);
             break;
 
-        case SAI_SERIALIZATION_TYPE_IP4:
+        case SAI_ATTR_VALUE_TYPE_IPV4:
             transfer_primitive(src_attr.value.ip4, dst_attr.value.ip4);
             break;
 
-        case SAI_SERIALIZATION_TYPE_IP6:
+        case SAI_ATTR_VALUE_TYPE_IPV6:
             transfer_primitive(src_attr.value.ip6, dst_attr.value.ip6);
             break;
 
-        case SAI_SERIALIZATION_TYPE_IP_ADDRESS:
+        case SAI_ATTR_VALUE_TYPE_IP_ADDRESS:
             transfer_primitive(src_attr.value.ipaddr, dst_attr.value.ipaddr);
             break;
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
             transfer_primitive(src_attr.value.oid, dst_attr.value.oid);
             break;
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.objlist, dst_attr.value.objlist, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT8_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.u8list, dst_attr.value.u8list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT8_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.s8list, dst_attr.value.s8list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT16_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.u16list, dst_attr.value.u16list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT16_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.s16list, dst_attr.value.s16list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT32_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.u32list, dst_attr.value.u32list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT32_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.s32list, dst_attr.value.s32list, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_UINT32_RANGE:
             transfer_primitive(src_attr.value.u32range, dst_attr.value.u32range);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_INT32_RANGE:
             transfer_primitive(src_attr.value.s32range, dst_attr.value.s32range);
             break;
 
-        case SAI_SERIALIZATION_TYPE_VLAN_LIST:
+        case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.vlanlist, dst_attr.value.vlanlist, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_QOS_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_QOS_MAP_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.qosmap, dst_attr.value.qosmap, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_TUNNEL_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_TUNNEL_MAP_LIST:
             RETURN_ON_ERROR(transfer_list(src_attr.value.tunnelmap, dst_attr.value.tunnelmap, countOnly));
             break;
 
             /* ACL FIELD DATA */
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.data.booldata, dst_attr.value.aclfield.data.booldata);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.u8, dst_attr.value.aclfield.mask.u8);
             transfer_primitive(src_attr.value.aclfield.data.u8, dst_attr.value.aclfield.data.u8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.s8, dst_attr.value.aclfield.mask.s8);
             transfer_primitive(src_attr.value.aclfield.data.s8, dst_attr.value.aclfield.data.s8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.u16, dst_attr.value.aclfield.mask.u16);
             transfer_primitive(src_attr.value.aclfield.data.u16, dst_attr.value.aclfield.data.u16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.s16, dst_attr.value.aclfield.mask.s16);
             transfer_primitive(src_attr.value.aclfield.data.s16, dst_attr.value.aclfield.data.s16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.u16, dst_attr.value.aclfield.mask.u16);
             transfer_primitive(src_attr.value.aclfield.data.u16, dst_attr.value.aclfield.data.u16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.s32, dst_attr.value.aclfield.mask.s32);
             transfer_primitive(src_attr.value.aclfield.data.s32, dst_attr.value.aclfield.data.s32);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.mac, dst_attr.value.aclfield.mask.mac);
             transfer_primitive(src_attr.value.aclfield.data.mac, dst_attr.value.aclfield.data.mac);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.ip4, dst_attr.value.aclfield.mask.ip4);
             transfer_primitive(src_attr.value.aclfield.data.ip4, dst_attr.value.aclfield.data.ip4);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.mask.ip6, dst_attr.value.aclfield.mask.ip6);
             transfer_primitive(src_attr.value.aclfield.data.ip6, dst_attr.value.aclfield.data.ip6);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             transfer_primitive(src_attr.value.aclfield.data.oid, dst_attr.value.aclfield.data.oid);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             RETURN_ON_ERROR(transfer_list(src_attr.value.aclfield.data.objlist, dst_attr.value.aclfield.data.objlist, countOnly));
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
             transfer_primitive(src_attr.value.aclfield.enable, dst_attr.value.aclfield.enable);
             RETURN_ON_ERROR(transfer_list(src_attr.value.aclfield.mask.u8list, dst_attr.value.aclfield.mask.u8list, countOnly));
             transfer_list(src_attr.value.aclfield.data.u8list, dst_attr.value.aclfield.data.u8list, countOnly);
@@ -306,58 +306,58 @@ sai_status_t transfer_attribute(
 
             /* ACL ACTION DATA */
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.u8, dst_attr.value.aclaction.parameter.u8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.s8, dst_attr.value.aclaction.parameter.s8);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.u16, dst_attr.value.aclaction.parameter.u16);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.s16, dst_attr.value.aclaction.parameter.s16);
             break;
 
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.u32, dst_attr.value.aclaction.parameter.u32);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.s32, dst_attr.value.aclaction.parameter.s32);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.mac, dst_attr.value.aclaction.parameter.mac);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.ip4, dst_attr.value.aclaction.parameter.ip4);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.ip6, dst_attr.value.aclaction.parameter.ip6);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             transfer_primitive(src_attr.value.aclaction.parameter.oid, dst_attr.value.aclaction.parameter.oid);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             transfer_primitive(src_attr.value.aclaction.enable, dst_attr.value.aclaction.enable);
             RETURN_ON_ERROR(transfer_list(src_attr.value.aclaction.parameter.objlist, dst_attr.value.aclaction.parameter.objlist, countOnly));
             break;
@@ -381,7 +381,7 @@ sai_status_t transfer_attributes(
         sai_attribute_t &src_attr = src_attr_list[i];
         sai_attribute_t &dst_attr = dst_attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, src_attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, src_attr.id);
 
         if (src_attr.id != dst_attr.id)
         {
@@ -391,11 +391,14 @@ sai_status_t transfer_attributes(
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %x, attribute %x", object_type, src_attr.id);
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
+                    sai_serialize_object_type(object_type).c_str(), 
+                    src_attr.id);
+
             throw std::runtime_error("unable to get metadata");
         }
 
-        RETURN_ON_ERROR(transfer_attribute(meta->serializationtype, src_attr, dst_attr, countOnly));
+        RETURN_ON_ERROR(transfer_attribute(meta->attrvaluetype, src_attr, dst_attr, countOnly));
     }
 
     return SAI_STATUS_SUCCESS;
@@ -642,6 +645,7 @@ std::string sai_serialize_neighbor_entry(
 
     json j;
 
+    j["switch_id"] = sai_serialize_object_id(ne.switch_id);
     j["rif"] = sai_serialize_object_id(ne.rif_id);
     j["ip"] = sai_serialize_ip_address(ne.ip_address);
 
@@ -649,12 +653,13 @@ std::string sai_serialize_neighbor_entry(
 }
 
 std::string sai_serialize_route_entry(
-        _In_ const sai_unicast_route_entry_t& route_entry)
+        _In_ const sai_route_entry_t& route_entry)
 {
     SWSS_LOG_ENTER();
 
     json j;
 
+    j["switch_id"] = sai_serialize_object_id(route_entry.switch_id);
     j["vr"] = sai_serialize_object_id(route_entry.vr_id);
     j["dest"] = sai_serialize_ip_prefix(route_entry.destination);
 
@@ -668,6 +673,7 @@ std::string sai_serialize_fdb_entry(
 
     json j;
 
+    j["switch_id"] = sai_serialize_object_id(fdb_entry.switch_id);
     j["mac"] = sai_serialize_mac(fdb_entry.mac_address);
     j["vlan"] = sai_serialize_vlan_id(fdb_entry.vlan_id);
 
@@ -675,19 +681,11 @@ std::string sai_serialize_fdb_entry(
 }
 
 std::string sai_serialize_port_stat(
-        _In_ const sai_port_stat_counter_t counter)
+        _In_ const sai_port_stat_t counter)
 {
     SWSS_LOG_ENTER();
 
     return sai_serialize_enum(counter, &metadata_enum_sai_port_stat_t);
-}
-
-std::string sai_serialize_hostif_trap_id(
-        _In_ const sai_hostif_trap_id_t hostif_trap_id)
-{
-    SWSS_LOG_ENTER();
-
-    return sai_serialize_enum(hostif_trap_id, &metadata_enum_sai_hostif_trap_type_t);
 }
 
 std::string sai_serialize_switch_oper_status(
@@ -971,43 +969,43 @@ std::string sai_serialize_acl_action(
         return "disabled";
     }
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
             return sai_serialize_number(action.parameter.u8);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
             return sai_serialize_number(action.parameter.s8);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
             return sai_serialize_number(action.parameter.u16);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
             return sai_serialize_number(action.parameter.s16);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
             return sai_serialize_number(action.parameter.u32);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
             return sai_serialize_enum(action.parameter.s32, meta.enummetadata);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
             return sai_serialize_mac(action.parameter.mac);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
             return sai_serialize_ipv4(action.parameter.ip4);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
             return sai_serialize_ipv6(action.parameter.ip6);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
             return sai_serialize_object_id(action.parameter.oid);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             return sai_serialize_oid_list(action.parameter.objlist, countOnly);
 
         default:
-            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.serializationtype);
+            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.attrvaluetype);
             throw std::runtime_error("serialization type is not supported");
     }
 }
@@ -1025,49 +1023,49 @@ std::string sai_serialize_acl_field(
         return "disabled";
     }
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
             return sai_serialize_bool(field.data.booldata);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
             return sai_serialize_number(field.data.u8) + "&mask:" + sai_serialize_number(field.mask.u8, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
             return sai_serialize_number(field.data.s8) + "&mask:" + sai_serialize_number(field.mask.s8, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
             return sai_serialize_number(field.data.u16) + "&mask:" + sai_serialize_number(field.mask.u16, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
             return sai_serialize_number(field.data.s16) + "&mask:" + sai_serialize_number(field.mask.s16, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
             return sai_serialize_number(field.data.u32) + "&mask:" + sai_serialize_number(field.mask.u32, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
             return sai_serialize_enum(field.data.s32, meta.enummetadata) + "&mask:" + sai_serialize_number(field.mask.s32, true);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
             return sai_serialize_mac(field.data.mac) +"&mask:" + sai_serialize_mac(field.mask.mac);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
             return sai_serialize_ipv4(field.data.ip4) +"&mask:" + sai_serialize_ipv4(field.mask.ip4);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
             return sai_serialize_ipv6(field.data.ip6) +"&mask:" + sai_serialize_ipv6(field.mask.ip6);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
             return sai_serialize_object_id(field.data.oid);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
             return sai_serialize_oid_list(field.data.objlist, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
             return sai_serialize_number_list(field.data.u8list, countOnly) + "&mask:" + sai_serialize_number_list(field.mask.u8list, countOnly, true);
 
         default:
-            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.serializationtype);
+            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.attrvaluetype);
             throw std::runtime_error("serialization type is not supported");
     }
 }
@@ -1079,119 +1077,119 @@ std::string sai_serialize_attr_value(
 {
     SWSS_LOG_ENTER();
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_BOOL:
+        case SAI_ATTR_VALUE_TYPE_BOOL:
             return sai_serialize_bool(attr.value.booldata);
 
-        case SAI_SERIALIZATION_TYPE_CHARDATA:
+        case SAI_ATTR_VALUE_TYPE_CHARDATA:
             return sai_serialize_chardata(attr.value.chardata);
 
-        case SAI_SERIALIZATION_TYPE_UINT8:
+        case SAI_ATTR_VALUE_TYPE_UINT8:
             return sai_serialize_number(attr.value.u8);
 
-        case SAI_SERIALIZATION_TYPE_INT8:
+        case SAI_ATTR_VALUE_TYPE_INT8:
             return sai_serialize_number(attr.value.s8);
 
-        case SAI_SERIALIZATION_TYPE_UINT16:
+        case SAI_ATTR_VALUE_TYPE_UINT16:
             return sai_serialize_number(attr.value.u16);
 
-        case SAI_SERIALIZATION_TYPE_INT16:
+        case SAI_ATTR_VALUE_TYPE_INT16:
             return sai_serialize_number(attr.value.s16);
 
-        case SAI_SERIALIZATION_TYPE_UINT32:
+        case SAI_ATTR_VALUE_TYPE_UINT32:
             return sai_serialize_number(attr.value.u32);
 
-        case SAI_SERIALIZATION_TYPE_INT32:
+        case SAI_ATTR_VALUE_TYPE_INT32:
             return sai_serialize_enum(attr.value.s32, meta.enummetadata);
 
-        case SAI_SERIALIZATION_TYPE_UINT64:
+        case SAI_ATTR_VALUE_TYPE_UINT64:
             return sai_serialize_number(attr.value.u64);
 
-        case SAI_SERIALIZATION_TYPE_INT64:
+        case SAI_ATTR_VALUE_TYPE_INT64:
             return sai_serialize_number(attr.value.s64);
 
-        case SAI_SERIALIZATION_TYPE_MAC:
+        case SAI_ATTR_VALUE_TYPE_MAC:
             return sai_serialize_mac(attr.value.mac);
 
-        case SAI_SERIALIZATION_TYPE_IP4:
+        case SAI_ATTR_VALUE_TYPE_IPV4:
             return sai_serialize_ipv4(attr.value.ip4);
 
-        case SAI_SERIALIZATION_TYPE_IP6:
+        case SAI_ATTR_VALUE_TYPE_IPV6:
             return sai_serialize_ipv6(attr.value.ip6);
 
-        case SAI_SERIALIZATION_TYPE_IP_ADDRESS:
+        case SAI_ATTR_VALUE_TYPE_IP_ADDRESS:
             return sai_serialize_ip_address(attr.value.ipaddr);
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
             return sai_serialize_object_id(attr.value.oid);
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
             return sai_serialize_oid_list(attr.value.objlist, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT8_LIST:
             return sai_serialize_number_list(attr.value.u8list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT8_LIST:
             return sai_serialize_number_list(attr.value.s8list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT16_LIST:
             return sai_serialize_number_list(attr.value.u16list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT16_LIST:
             return sai_serialize_number_list(attr.value.s16list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT32_LIST:
             return sai_serialize_number_list(attr.value.u32list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT32_LIST:
             return sai_serialize_enum_list(attr.value.s32list, meta.enummetadata, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_UINT32_RANGE:
             return sai_serialize_range(attr.value.u32range);
 
-        case SAI_SERIALIZATION_TYPE_INT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_INT32_RANGE:
             return sai_serialize_range(attr.value.s32range);
 
-        case SAI_SERIALIZATION_TYPE_VLAN_LIST:
+        case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
             return sai_serialize_number_list(attr.value.vlanlist, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_QOS_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_QOS_MAP_LIST:
             return sai_serialize_qos_map_list(attr.value.qosmap, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_TUNNEL_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_TUNNEL_MAP_LIST:
             return sai_serialize_tunnel_map_list(attr.value.tunnelmap, countOnly);
 
             // ACL FIELD DATA
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
             return sai_serialize_acl_field(meta, attr.value.aclfield, countOnly);
 
             // ACL ACTION DATA
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             return sai_serialize_acl_action(meta, attr.value.aclaction, countOnly);
 
         default:
@@ -1230,14 +1228,6 @@ std::string sai_serialize_port_oper_status(
     return sai_serialize_enum(status, &metadata_enum_sai_port_oper_status_t);
 }
 
-std::string sai_serialize_port_event(
-        _In_ sai_port_event_t event)
-{
-    SWSS_LOG_ENTER();
-
-    return sai_serialize_enum(event, &metadata_enum_sai_port_event_t);
-}
-
 std::string sai_serialize_fdb_event(
         _In_ sai_fdb_event_t event)
 {
@@ -1260,11 +1250,14 @@ json sai_serialize_json_fdb_event_notification_data(
 
     for (uint32_t i = 0; i < fdb_event.attr_count; ++i)
     {
-        auto meta = get_attribute_metadata(SAI_OBJECT_TYPE_FDB, fdb_event.attr[i].id);
+        auto meta = sai_metadata_get_attr_metadata(SAI_OBJECT_TYPE_FDB_ENTRY, fdb_event.attr[i].id);
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %x, attribute %x", SAI_OBJECT_TYPE_FDB, fdb_event.attr[i].id);
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
+                    sai_serialize_object_type(SAI_OBJECT_TYPE_FDB_ENTRY).c_str(),
+                    fdb_event.attr[i].id);
+
             throw std::runtime_error("unable to get metadata");
         }
 
@@ -1335,32 +1328,49 @@ std::string sai_serialize_port_oper_status_ntf(
     return j.dump();
 }
 
-std::string sai_serialize_port_event_ntf(
-        _In_ uint32_t count,
-        _In_ const sai_port_event_notification_t* port_event)
+std::string sai_serialize_object_meta_key(
+        _In_ const sai_object_meta_key_t& meta_key)
 {
     SWSS_LOG_ENTER();
 
-    if (port_event == NULL)
+    std::string key;
+
+    // NOTE: object type should be serialized since
+    // it will not be possible to desrialize
+
+    const auto& meta = sai_all_object_type_infos[meta_key.objecttype];
+
+    switch (meta_key.objecttype)
     {
-        SWSS_LOG_ERROR("port_event pointer is null");
-        throw std::runtime_error("port_event pointer is null");
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
+            key = sai_serialize_fdb_entry(meta_key.objectkey.key.fdb_entry);
+            break;
+
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+            key = sai_serialize_route_entry(meta_key.objectkey.key.route_entry);
+            break;
+
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            key = sai_serialize_neighbor_entry(meta_key.objectkey.key.neighbor_entry);
+            break;
+
+        default:
+
+            if (meta->isnonobjectid)
+            {
+                SWSS_LOG_ERROR("object %s is non object id, not supported yet, FIXME", 
+                        sai_serialize_object_type(meta->objecttype).c_str());
+
+                throw std::runtime_error("non object id object type is not supported yet, FIXME");
+            }
+
+            key = sai_serialize_object_id(meta_key.objectkey.key.object_id);
+            break;
     }
 
-    json j = json::array();
+    SWSS_LOG_DEBUG("%s", key.c_str());
 
-    for (uint32_t i = 0; i < count; ++i)
-    {
-        json item;
-
-        item["port_id"] = sai_serialize_object_id(port_event[i].port_id);
-        item["port_event"] = sai_serialize_port_event(port_event[i].port_event);
-
-        j.push_back(item);
-    }
-
-    // we don't need count since it can be deduced
-    return j.dump();
+    return key;
 }
 
 // deserialize
@@ -1873,67 +1883,67 @@ void sai_deserialize_acl_field(
         smask = s.substr(pos + 6); // 6 = "&mask:" length
     }
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
             return sai_deserialize_bool(sfield, field.data.booldata);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
             sai_deserialize_number(sfield, field.data.u8);
             sai_deserialize_number(smask, field.mask.u8, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
             sai_deserialize_number(sfield, field.data.s8);
             sai_deserialize_number(smask, field.mask.s8, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
             sai_deserialize_number(sfield, field.data.u16);
             sai_deserialize_number(smask, field.mask.u16, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
             sai_deserialize_number(sfield, field.data.s16);
             sai_deserialize_number(smask, field.mask.s16, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
             sai_deserialize_number(sfield, field.data.u32);
             sai_deserialize_number(smask, field.mask.u32, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
             sai_deserialize_enum(sfield, meta.enummetadata, field.data.s32);
             sai_deserialize_number(smask, field.mask.s32, true);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
             sai_deserialize_mac(sfield, field.data.mac);
             sai_deserialize_mac(smask, field.mask.mac);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
             sai_deserialize_ipv4(sfield, field.data.ip4);
             sai_deserialize_ipv4(smask, field.mask.ip4);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
             sai_deserialize_ipv6(sfield, field.data.ip6);
             sai_deserialize_ipv6(smask, field.mask.ip6);
             return;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
             return sai_deserialize_object_id(sfield, field.data.oid);
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
             return sai_deserialize_oid_list(sfield, field.data.objlist, countOnly);
             /*
-               case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+               case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
                return sai_deserialize_number_list(field.data.u8list, countOnly) + "&mask:" + sai_deserialize_uint8_hex_list(field.mask.u8list, countOnly);
                */
         default:
-            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.serializationtype);
+            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.attrvaluetype);
             throw std::runtime_error("serialization type is not supported");
     }
 }
@@ -1954,43 +1964,43 @@ void sai_deserialize_acl_action(
 
     action.enable = true;
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
             return sai_deserialize_number(s, action.parameter.u8);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
             return sai_deserialize_number(s, action.parameter.s8);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
             return sai_deserialize_number(s, action.parameter.u16);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
             return sai_deserialize_number(s, action.parameter.s16);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
             return sai_deserialize_number(s, action.parameter.u32);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
             return sai_deserialize_enum(s, meta.enummetadata, action.parameter.s32);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
             return sai_deserialize_mac(s, action.parameter.mac);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
             return sai_deserialize_ipv4(s, action.parameter.ip4);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
             return sai_deserialize_ipv6(s, action.parameter.ip6);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
             return sai_deserialize_object_id(s, action.parameter.oid);
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             return sai_deserialize_oid_list(s, action.parameter.objlist, countOnly);
 
         default:
-            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.serializationtype);
+            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.attrvaluetype);
             throw std::runtime_error("serialization type is not supported");
     }
 }
@@ -2005,123 +2015,123 @@ void sai_deserialize_attr_value(
 
     memset(&attr.value, 0, sizeof(attr.value));
 
-    switch (meta.serializationtype)
+    switch (meta.attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_BOOL:
+        case SAI_ATTR_VALUE_TYPE_BOOL:
             return sai_deserialize_bool(s, attr.value.booldata);
 
-        case SAI_SERIALIZATION_TYPE_CHARDATA:
+        case SAI_ATTR_VALUE_TYPE_CHARDATA:
             return sai_deserialize_chardata(s, attr.value.chardata);
 
-        case SAI_SERIALIZATION_TYPE_UINT8:
+        case SAI_ATTR_VALUE_TYPE_UINT8:
             return sai_deserialize_number(s, attr.value.u8);
 
-        case SAI_SERIALIZATION_TYPE_INT8:
+        case SAI_ATTR_VALUE_TYPE_INT8:
             return sai_deserialize_number(s, attr.value.s8);
 
-        case SAI_SERIALIZATION_TYPE_UINT16:
+        case SAI_ATTR_VALUE_TYPE_UINT16:
             return sai_deserialize_number(s, attr.value.u16);
 
-        case SAI_SERIALIZATION_TYPE_INT16:
+        case SAI_ATTR_VALUE_TYPE_INT16:
             return sai_deserialize_number(s, attr.value.s16);
 
-        case SAI_SERIALIZATION_TYPE_UINT32:
+        case SAI_ATTR_VALUE_TYPE_UINT32:
             return sai_deserialize_number(s, attr.value.u32);
 
-        case SAI_SERIALIZATION_TYPE_INT32:
+        case SAI_ATTR_VALUE_TYPE_INT32:
             return sai_deserialize_enum(s, meta.enummetadata, attr.value.s32);
 
-        case SAI_SERIALIZATION_TYPE_UINT64:
+        case SAI_ATTR_VALUE_TYPE_UINT64:
             return sai_deserialize_number(s, attr.value.u64);
 
-        case SAI_SERIALIZATION_TYPE_INT64:
+        case SAI_ATTR_VALUE_TYPE_INT64:
             return sai_deserialize_number(s, attr.value.s64);
 
-        case SAI_SERIALIZATION_TYPE_MAC:
+        case SAI_ATTR_VALUE_TYPE_MAC:
             return sai_deserialize_mac(s, attr.value.mac);
 
-        case SAI_SERIALIZATION_TYPE_IP4:
+        case SAI_ATTR_VALUE_TYPE_IPV4:
             return sai_deserialize_ipv4(s, attr.value.ip4);
 
-        case SAI_SERIALIZATION_TYPE_IP6:
+        case SAI_ATTR_VALUE_TYPE_IPV6:
             return sai_deserialize_ipv6(s, attr.value.ip6);
 
-        case SAI_SERIALIZATION_TYPE_IP_ADDRESS:
+        case SAI_ATTR_VALUE_TYPE_IP_ADDRESS:
             return sai_deserialize_ip_address(s, attr.value.ipaddr);
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
             return sai_deserialize_object_id(s, attr.value.oid);
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
             return sai_deserialize_oid_list(s, attr.value.objlist, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT8_LIST:
             return sai_deserialize_number_list(s, attr.value.u8list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT8_LIST:
             return sai_deserialize_number_list(s, attr.value.s8list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT16_LIST:
             return sai_deserialize_number_list(s, attr.value.u16list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT16_LIST:
             return sai_deserialize_number_list(s, attr.value.s16list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT32_LIST:
             return sai_deserialize_number_list(s, attr.value.u32list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_INT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT32_LIST:
             return sai_deserialize_enum_list(s, meta.enummetadata, attr.value.s32list, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_UINT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_UINT32_RANGE:
             return sai_deserialize_range(s, attr.value.u32range);
 
-        case SAI_SERIALIZATION_TYPE_INT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_INT32_RANGE:
             return sai_deserialize_range(s, attr.value.s32range);
 
-        case SAI_SERIALIZATION_TYPE_VLAN_LIST:
+        case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
             return sai_deserialize_number_list(s, attr.value.vlanlist, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_QOS_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_QOS_MAP_LIST:
             return sai_deserialize_qos_map_list(s, attr.value.qosmap, countOnly);
 
-        case SAI_SERIALIZATION_TYPE_TUNNEL_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_TUNNEL_MAP_LIST:
             return sai_deserialize_tunnel_map_list(s, attr.value.tunnelmap, countOnly);
 
             // ACL FIELD DATA
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
             return sai_deserialize_acl_field(s, meta, attr.value.aclfield, countOnly);
 
             // ACL ACTION DATA
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             return sai_deserialize_acl_action(s, meta, attr.value.aclaction, countOnly);
 
         default:
-            SWSS_LOG_ERROR("deserialize type %d is not supportd yet FIXME", meta.serializationtype);
+            SWSS_LOG_ERROR("deserialize type %d is not supportd yet FIXME", meta.attrvaluetype);
             throw std::runtime_error("deserialize type is not supported yet FIXME");
     }
 }
@@ -2200,24 +2210,6 @@ void sai_deserialize_switch_oper_status(
     sai_deserialize_enum(s, &metadata_enum_sai_switch_oper_status_t, (int32_t&)status);
 }
 
-void sai_deserialize_port_event(
-        _In_ const std::string& s,
-        _Out_ sai_port_event_t& port_event)
-{
-    SWSS_LOG_ENTER();
-
-    sai_deserialize_enum(s, &metadata_enum_sai_port_event_t, (int32_t&)port_event);
-}
-
-void sai_deserialize_hostif_trap_id(
-        _In_ const std::string& s,
-        _In_ sai_hostif_trap_id_t& hostif_trap_id)
-{
-    SWSS_LOG_ENTER();
-
-    sai_deserialize_enum(s, &metadata_enum_sai_hostif_trap_type_t, (int32_t&)hostif_trap_id);
-}
-
 void sai_deserialize_object_type(
         _In_ const std::string& s,
         _Out_ sai_object_type_t& object_type)
@@ -2242,6 +2234,7 @@ void sai_deserialize_fdb_entry(
 
     json j = json::parse(s);
 
+    sai_deserialize_object_id(j["switch_id"], fdb_entry.switch_id);
     sai_deserialize_mac(j["mac"], fdb_entry.mac_address);
     sai_deserialize_vlan_id(j["vlan"], fdb_entry.vlan_id);
 }
@@ -2254,18 +2247,20 @@ void sai_deserialize_neighbor_entry(
 
     json j = json::parse(s);
 
+    sai_deserialize_object_id(j["switch_id"], ne.switch_id);
     sai_deserialize_object_id(j["rif"], ne.rif_id);
     sai_deserialize_ip_address(j["ip"], ne.ip_address);
 }
 
 void sai_deserialize_route_entry(
         _In_ const std::string &s,
-        _Out_ sai_unicast_route_entry_t& route_entry)
+        _Out_ sai_route_entry_t& route_entry)
 {
     SWSS_LOG_ENTER();
 
     json j = json::parse(s);
 
+    sai_deserialize_object_id(j["switch_id"], route_entry.switch_id);
     sai_deserialize_object_id(j["vr"], route_entry.vr_id);
     sai_deserialize_ip_prefix(j["dest"], route_entry.destination);
 }
@@ -2281,21 +2276,16 @@ void sai_deserialize_attr_id(
         SWSS_LOG_ERROR("meta pointer is null");
         throw std::runtime_error("meta pointer is null");
     }
+    
+    auto m = sai_metadata_get_attr_metadata_by_attr_id_name(s.c_str());
 
-    auto it = AttributesIdMetadata.find(s);
-
-    if (it == AttributesIdMetadata.end())
+    if (m == NULL)
     {
-        if (AttributesIdMetadata.size() == 0)
-        {
-            SWSS_LOG_ERROR("metadata is not initialized");
-        }
-
         SWSS_LOG_ERROR("invalid attr id: %s", s.c_str());
         throw std::runtime_error("invalid attr id");
     }
 
-    *meta = it->second;
+    *meta = m;
 }
 
 void sai_deserialize_attr_id(
@@ -2384,32 +2374,10 @@ void sai_deserialize_port_oper_status_ntf(
     *port_oper_status = data;
 }
 
-void sai_deserialize_port_event_ntf(
-        _In_ const std::string& s,
-        _Out_ uint32_t &count,
-        _Out_ sai_port_event_notification_t** port_event)
-{
-    SWSS_LOG_ENTER();
-
-    json j = json::parse(s);
-
-    count = (uint32_t)j.size();
-
-    auto data = new sai_port_event_notification_t[count];
-
-    for (uint32_t i = 0; i < count; ++i)
-    {
-        sai_deserialize_object_id(j[i]["port_id"], data[i].port_id);
-        sai_deserialize_port_event(j[i]["port_event"], data[i].port_event);
-    }
-
-    *port_event = data;
-}
-
 // deserialize free
 
 void sai_deserialize_free_attribute_value(
-        _In_ const sai_attr_serialization_type_t type,
+        _In_ const sai_attr_value_type_t type,
         _In_ sai_attribute_t &attr)
 {
     SWSS_LOG_ENTER();
@@ -2418,105 +2386,105 @@ void sai_deserialize_free_attribute_value(
 
     switch (type)
     {
-        case SAI_SERIALIZATION_TYPE_BOOL:
-        case SAI_SERIALIZATION_TYPE_CHARDATA:
-        case SAI_SERIALIZATION_TYPE_UINT8:
-        case SAI_SERIALIZATION_TYPE_INT8:
-        case SAI_SERIALIZATION_TYPE_UINT16:
-        case SAI_SERIALIZATION_TYPE_INT16:
-        case SAI_SERIALIZATION_TYPE_UINT32:
-        case SAI_SERIALIZATION_TYPE_INT32:
-        case SAI_SERIALIZATION_TYPE_UINT64:
-        case SAI_SERIALIZATION_TYPE_INT64:
-        case SAI_SERIALIZATION_TYPE_MAC:
-        case SAI_SERIALIZATION_TYPE_IP4:
-        case SAI_SERIALIZATION_TYPE_IP6:
-        case SAI_SERIALIZATION_TYPE_IP_ADDRESS:
-        case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_BOOL:
+        case SAI_ATTR_VALUE_TYPE_CHARDATA:
+        case SAI_ATTR_VALUE_TYPE_UINT8:
+        case SAI_ATTR_VALUE_TYPE_INT8:
+        case SAI_ATTR_VALUE_TYPE_UINT16:
+        case SAI_ATTR_VALUE_TYPE_INT16:
+        case SAI_ATTR_VALUE_TYPE_UINT32:
+        case SAI_ATTR_VALUE_TYPE_INT32:
+        case SAI_ATTR_VALUE_TYPE_UINT64:
+        case SAI_ATTR_VALUE_TYPE_INT64:
+        case SAI_ATTR_VALUE_TYPE_MAC:
+        case SAI_ATTR_VALUE_TYPE_IPV4:
+        case SAI_ATTR_VALUE_TYPE_IPV6:
+        case SAI_ATTR_VALUE_TYPE_IP_ADDRESS:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
             break;
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
             sai_free_list(attr.value.objlist);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT8_LIST:
             sai_free_list(attr.value.u8list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT8_LIST:
             sai_free_list(attr.value.s8list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT16_LIST:
             sai_free_list(attr.value.u16list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT16_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT16_LIST:
             sai_free_list(attr.value.s16list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_UINT32_LIST:
             sai_free_list(attr.value.u32list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_INT32_LIST:
+        case SAI_ATTR_VALUE_TYPE_INT32_LIST:
             sai_free_list(attr.value.s32list);
             break;
 
-        case SAI_SERIALIZATION_TYPE_UINT32_RANGE:
-        case SAI_SERIALIZATION_TYPE_INT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_UINT32_RANGE:
+        case SAI_ATTR_VALUE_TYPE_INT32_RANGE:
             break;
 
-        case SAI_SERIALIZATION_TYPE_VLAN_LIST:
+        case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
             sai_free_list(attr.value.vlanlist);
             break;
 
-        case SAI_SERIALIZATION_TYPE_QOS_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_QOS_MAP_LIST:
             sai_free_list(attr.value.qosmap);
             break;
 
-        case SAI_SERIALIZATION_TYPE_TUNNEL_MAP_LIST:
+        case SAI_ATTR_VALUE_TYPE_TUNNEL_MAP_LIST:
             sai_free_list(attr.value.tunnelmap);
             break;
 
             /* ACL FIELD DATA */
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_BOOL:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP4:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_IP6:
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
             break;
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
             sai_free_list(attr.value.aclfield.data.objlist);
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
             sai_free_list(attr.value.aclfield.mask.u8list);
             sai_free_list(attr.value.aclfield.data.u8list);
             break;
 
             /* ACL ACTION DATA */
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT8:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT16:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_UINT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_INT32:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_MAC:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV4:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_IPV6:
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT8:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT16:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_UINT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_INT32:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_MAC:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV4:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_IPV6:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
             sai_free_list(attr.value.aclaction.parameter.objlist);
             break;
 
@@ -2535,15 +2503,18 @@ void sai_deserialize_free_fdb_event(
 
     for (uint32_t i = 0; i < fdb_event.attr_count; ++i)
     {
-        auto meta = get_attribute_metadata(SAI_OBJECT_TYPE_FDB, fdb_event.attr[i].id);
+        auto meta = sai_metadata_get_attr_metadata(SAI_OBJECT_TYPE_FDB_ENTRY, fdb_event.attr[i].id);
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %x, attribute %x", SAI_OBJECT_TYPE_FDB, fdb_event.attr[i].id);
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
+                    sai_serialize_object_type(SAI_OBJECT_TYPE_FDB_ENTRY).c_str(),
+                    fdb_event.attr[i].id);
+
             throw std::runtime_error("unable to get metadata");
         }
 
-        sai_deserialize_free_attribute_value(meta->serializationtype, fdb_event.attr[i]);
+        sai_deserialize_free_attribute_value(meta->attrvaluetype, fdb_event.attr[i]);
     }
 
     delete fdb_event.attr;
@@ -2570,13 +2541,4 @@ void sai_deserialize_free_port_oper_status_ntf(
     SWSS_LOG_ENTER();
 
     delete port_oper_status;
-}
-
-void sai_deserialize_free_port_event_ntf(
-        _In_ uint32_t count,
-        _In_ sai_port_event_notification_t* port_event)
-{
-    SWSS_LOG_ENTER();
-
-    delete port_event;
 }
