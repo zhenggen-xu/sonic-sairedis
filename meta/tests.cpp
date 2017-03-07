@@ -1,12 +1,14 @@
+#include "sai_meta.h"
+#include "sai_extra.h"
+#include "saiserialize.h"
+
 #include <string.h>
 #include <arpa/inet.h>
 
 #include <map>
 #include <iterator>
-
-#include "sai_meta.h"
-#include "sai_extra.h"
-#include "saiserialize.h"
+#include <unordered_map>
+#include <memory>
 
 class SaiAttrWrapper;
 extern std::unordered_map<std::string,std::unordered_map<sai_attr_id_t,std::shared_ptr<SaiAttrWrapper>>> ObjectAttrHash;
@@ -329,7 +331,7 @@ sai_status_t dummy_failure_sai_remove_vlan_id_entry(
 // ROUTE ENTRY DUMMY FUNCTIONS
 
 sai_status_t dummy_success_sai_set_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ const sai_attribute_t *attr)
 {
     SWSS_LOG_ENTER();
@@ -338,7 +340,7 @@ sai_status_t dummy_success_sai_set_route_entry(
 }
 
 sai_status_t dummy_failure_sai_set_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ const sai_attribute_t *attr)
 {
     SWSS_LOG_ENTER();
@@ -347,7 +349,7 @@ sai_status_t dummy_failure_sai_set_route_entry(
 }
 
 sai_status_t dummy_success_sai_get_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list)
 {
@@ -357,7 +359,7 @@ sai_status_t dummy_success_sai_get_route_entry(
 }
 
 sai_status_t dummy_failure_sai_get_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list)
 {
@@ -367,7 +369,7 @@ sai_status_t dummy_failure_sai_get_route_entry(
 }
 
 sai_status_t dummy_success_sai_create_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -377,7 +379,7 @@ sai_status_t dummy_success_sai_create_route_entry(
 }
 
 sai_status_t dummy_failure_sai_create_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* unicast_route_entry,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -387,7 +389,7 @@ sai_status_t dummy_failure_sai_create_route_entry(
 }
 
 sai_status_t dummy_success_sai_remove_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry)
+        _In_ const sai_route_entry_t* unicast_route_entry)
 {
     SWSS_LOG_ENTER();
 
@@ -395,47 +397,7 @@ sai_status_t dummy_success_sai_remove_route_entry(
 }
 
 sai_status_t dummy_failure_sai_remove_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry)
-{
-    SWSS_LOG_ENTER();
-
-    return SAI_STATUS_FAILURE;
-}
-
-// TRAP DUMMY FUNCTIONS
-
-sai_status_t dummy_success_sai_set_trap(
-        _In_ sai_hostif_trap_id_t hostif_trapid,
-        _In_ const sai_attribute_t *attr)
-{
-    SWSS_LOG_ENTER();
-
-    return SAI_STATUS_SUCCESS;
-}
-
-sai_status_t dummy_failure_sai_set_trap(
-        _In_ sai_hostif_trap_id_t hostif_trapid,
-        _In_ const sai_attribute_t *attr)
-{
-    SWSS_LOG_ENTER();
-
-    return SAI_STATUS_FAILURE;
-}
-
-sai_status_t dummy_success_sai_get_trap(
-        _In_ sai_hostif_trap_id_t hostif_trapid,
-        _In_ uint32_t attr_count,
-        _Inout_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    return SAI_STATUS_SUCCESS;
-}
-
-sai_status_t dummy_failure_sai_get_trap(
-        _In_ sai_hostif_trap_id_t hostif_trapid,
-        _In_ uint32_t attr_count,
-        _Inout_ sai_attribute_t *attr_list)
+        _In_ const sai_route_entry_t* unicast_route_entry)
 {
     SWSS_LOG_ENTER();
 
@@ -1983,7 +1945,7 @@ void test_route_entry_create()
     sai_status_t    status;
     sai_attribute_t attr;
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
 
     // TODO we should use create
     sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);
@@ -2112,7 +2074,7 @@ void test_route_entry_remove()
 
     sai_status_t    status;
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
 
     // TODO we should use create
     sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);
@@ -2217,7 +2179,7 @@ void test_route_entry_set()
     sai_status_t    status;
     sai_attribute_t attr;
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
 
     // TODO we should use create
     sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);
@@ -2321,7 +2283,7 @@ void test_route_entry_get()
     sai_status_t    status;
     sai_attribute_t attr;
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
 
     // TODO we should use create
     sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);
@@ -2422,7 +2384,7 @@ void test_route_entry_flow()
     sai_status_t    status;
     sai_attribute_t attr;
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
 
     // TODO we should use create
     sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);

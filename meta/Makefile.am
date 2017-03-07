@@ -1,4 +1,5 @@
-AM_CPPFLAGS = -I/usr/include/sai
+# since we have SAI sumbodule we will use submodule headers
+AM_CPPFLAGS = -I$(top_srcdir)/SAI/inc -I$(top_srcdir)/SAI/meta
 
 if DEBUG
 DBGFLAGS = -ggdb -D_DEBUG_
@@ -6,7 +7,48 @@ else
 DBGFLAGS = -g
 endif
 
-lib_LTLIBRARIES = libmeta.la libsaimetadata.la
+lib_LTLIBRARIES = libsaimeta.la libsaimetadata.la
+
+WARN = \
+	-ansi \
+	-Wall \
+	-Wcast-align \
+	-Wcast-qual \
+	-Wconversion \
+	-Wdisabled-optimization \
+	-Werror \
+	-Wextra \
+	-Wextra \
+	-Wfloat-equal \
+	-Wformat=2 \
+	-Wformat-nonliteral \
+	-Wformat-security \
+	-Wformat-y2k \
+	-Wimport \
+	-Winit-self \
+	-Winline \
+	-Winvalid-pch \
+	-Wlong-long \
+	-Wmissing-field-initializers \
+	-Wmissing-format-attribute \
+	-Wmissing-include-dirs \
+	-Wmissing-noreturn \
+	-Wno-aggregate-return \
+	-Wno-padded \
+	-Wno-switch-enum \
+	-Wno-unused-parameter \
+	-Wpacked \
+	-Wpointer-arith \
+	-Wredundant-decls \
+	-Wshadow \
+	-Wstack-protector \
+	-Wstrict-aliasing=3 \
+	-Wswitch \
+	-Wswitch-default \
+	-Wunreachable-code \
+	-Wunused \
+	-Wvariadic-macros \
+	-Wwrite-strings
 
 # we are not adding CPPFLAGS since they are added
 # automatic to each C preprocessor, and currently
@@ -17,11 +59,11 @@ lib_LTLIBRARIES = libmeta.la libsaimetadata.la
 #
 # NOTE: this compilation could be moved to configure.ac
 
-libmeta_la_SOURCES =  \
+libsaimeta_la_SOURCES =  \
 					  ../SAI/meta/saimetadata.c \
 					  ../SAI/meta/saimetadatautils.c
 
-libmeta_la_CFLAGS = $(DBGFLAGS)
+libsaimeta_la_CFLAGS = $(DBGFLAGS) $(WARN)
 
 ../SAI/meta/saimetadata.h ../SAI/meta/saimetadata.c:
 	make -C ../SAI/meta
@@ -30,28 +72,17 @@ clean-local:
 	make -C ../SAI/meta clean
 
 libsaimetadata_la_SOURCES = \
-							sai_extra_acl.cpp \
-							sai_extra_buffer.cpp \
-							sai_extra_mirror.cpp \
-							sai_extra_qosmaps.cpp \
-							sai_extra_queue.cpp \
-							sai_extra_schedulergroup.cpp \
-							sai_extra_scheduler.cpp \
-							sai_extra_tunnel.cpp \
-							sai_extra_udf.cpp \
-							sai_extra_wred.cpp \
 							sai_meta.cpp \
-							sai_meta_sanity.cpp \
 							saiattributelist.cpp \
 							saiserialize.cpp
 
 libsaimetadata_la_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
-libsaimetadata_la_LIBADD = -lhiredis -lswsscommon libmeta.la
+libsaimetadata_la_LIBADD = -lhiredis -lswsscommon libsaimeta.la
 
 bin_PROGRAMS = tests
 
 tests_SOURCES = tests.cpp
 tests_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
-tests_LDADD = -lhiredis -lswsscommon -lpthread -L$(top_dir)/meta/.libs -lsaimetadata
+tests_LDADD = -lhiredis -lswsscommon -lpthread -L$(top_dir)/meta/.libs -lsaimetadata -lsaimeta
 
 TESTS = tests
