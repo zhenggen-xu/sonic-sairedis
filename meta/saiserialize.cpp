@@ -391,8 +391,8 @@ sai_status_t transfer_attributes(
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
-                    sai_serialize_object_type(object_type).c_str(), 
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d",
+                    sai_serialize_object_type(object_type).c_str(),
                     src_attr.id);
 
             throw std::runtime_error("unable to get metadata");
@@ -620,6 +620,12 @@ std::string sai_serialize_object_type(
         _In_ const sai_object_type_t object_type)
 {
     return sai_serialize_enum(object_type, &metadata_enum_sai_object_type_t);
+}
+
+std::string sai_serialize_attr_value_type(
+        _In_ const sai_attr_value_type_t attr_value_type)
+{
+    return sai_serialize_enum(attr_value_type, &metadata_enum_sai_attr_value_type_t);
 }
 
 std::string sai_serialize_packet_color(
@@ -1254,7 +1260,7 @@ json sai_serialize_json_fdb_event_notification_data(
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d",
                     sai_serialize_object_type(SAI_OBJECT_TYPE_FDB_ENTRY).c_str(),
                     fdb_event.attr[i].id);
 
@@ -1358,7 +1364,7 @@ std::string sai_serialize_object_meta_key(
 
             if (meta->isnonobjectid)
             {
-                SWSS_LOG_ERROR("object %s is non object id, not supported yet, FIXME", 
+                SWSS_LOG_ERROR("object %s is non object id, not supported yet, FIXME",
                         sai_serialize_object_type(meta->objecttype).c_str());
 
                 throw std::runtime_error("non object id object type is not supported yet, FIXME");
@@ -2276,7 +2282,7 @@ void sai_deserialize_attr_id(
         SWSS_LOG_ERROR("meta pointer is null");
         throw std::runtime_error("meta pointer is null");
     }
-    
+
     auto m = sai_metadata_get_attr_metadata_by_attr_id_name(s.c_str());
 
     if (m == NULL)
@@ -2507,7 +2513,7 @@ void sai_deserialize_free_fdb_event(
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d", 
+            SWSS_LOG_ERROR("unable to get metadata for object type %s, attribute %d",
                     sai_serialize_object_type(SAI_OBJECT_TYPE_FDB_ENTRY).c_str(),
                     fdb_event.attr[i].id);
 

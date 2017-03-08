@@ -56,7 +56,6 @@ extern "C" {
 //        _In_ const sai_attr_metadata_t& md);
 
 extern sai_status_t meta_init_db();
-extern void meta_init();
 
 // GENERIC FUNCTION POINTERS
 
@@ -156,14 +155,14 @@ extern sai_status_t meta_sai_get_neighbor_entry(
 
 // META SWITCH
 
-extern sai_status_t meta_sai_set_switch(
-        _In_ const sai_attribute_t *attr,
-        _In_ sai_set_switch_attribute_fn set);
-
-extern sai_status_t meta_sai_get_switch(
-        _In_ uint32_t attr_count,
-        _Inout_ sai_attribute_t *attr_list,
-        _In_ sai_get_switch_attribute_fn get);
+//extern sai_status_t meta_sai_set_switch(
+//        _In_ const sai_attribute_t *attr,
+//        _In_ sai_set_switch_attribute_fn set);
+//
+//extern sai_status_t meta_sai_get_switch(
+//        _In_ uint32_t attr_count,
+//        _Inout_ sai_attribute_t *attr_list,
+//        _In_ sai_get_switch_attribute_fn get);
 
 // META ROUTE
 
