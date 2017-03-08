@@ -241,9 +241,7 @@ class SaiAttrWrapper
 
 std::string get_attr_info(const sai_attr_metadata_t& md)
 {
-    return sai_serialize_object_type(md.objecttype) + ":" +
-        md.attridname + ":" +
-        sai_serialize_attr_value_type(md.attrvaluetype);
+    return std::string(md.attridname) + ":" + sai_serialize_attr_value_type(md.attrvaluetype);
 }
 
 #define META_LOG_ERROR(md, format, ...) SWSS_LOG_ERROR("%s " format, get_attr_info(md).c_str(), ##__VA_ARGS__)
@@ -425,8 +423,6 @@ sai_status_t meta_init_db()
     SWSS_LOG_ENTER();
 
     // TODO this init should be done after creating first switch !
-
-    meta_init();
 
     // we need local db to keep track if
     // we are performing "get" or set on
