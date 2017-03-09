@@ -16,6 +16,7 @@
  */
 sai_status_t redis_create_udf(
         _Out_ sai_object_id_t* udf_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -26,6 +27,7 @@ sai_status_t redis_create_udf(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_UDF,
             udf_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -128,6 +130,7 @@ sai_status_t redis_get_udf_attribute(
  */
 sai_status_t redis_create_udf_match(
         _Out_ sai_object_id_t* udf_match_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -138,6 +141,7 @@ sai_status_t redis_create_udf_match(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_UDF_MATCH,
             udf_match_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -240,6 +244,7 @@ sai_status_t redis_get_udf_match_attribute(
  */
 sai_status_t redis_create_udf_group(
         _Out_ sai_object_id_t* udf_group_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -250,6 +255,7 @@ sai_status_t redis_create_udf_group(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_UDF_GROUP,
             udf_group_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);

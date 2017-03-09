@@ -112,19 +112,17 @@ sai_status_t redis_get_neighbor_attribute(
 }
 
 /**
- * Routine Description:
- *    @brief Remove all neighbor entries
+ * @brief Remove all neighbor entries
  *
- * Arguments:
- *    None
- *
- * Return Values:
- *    @return SAI_STATUS_SUCCESS on success
- *            Failure status code on error
+ * @param[in] switch_id Switch id
+ * @return #SAI_STATUS_SUCCESS on success Failure status code on error
  */
-sai_status_t redis_remove_all_neighbor_entries(void)
+sai_status_t redis_remove_all_neighbor_entries(
+        _In_ sai_object_id_t switch_id)
 {
     SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
 
     return SAI_STATUS_NOT_IMPLEMENTED;
 }

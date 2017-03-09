@@ -2,6 +2,8 @@
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
 
+// TODO fix notifications
+
 void handle_switch_state_change(
         _In_ const std::string &data)
 {
@@ -13,12 +15,12 @@ void handle_switch_state_change(
 
     sai_deserialize_switch_oper_status(data, switch_oper_status);
 
-    auto on_switch_state_change = redis_switch_notifications.on_switch_state_change;
+    //auto on_switch_state_change = redis_switch_notifications.on_switch_state_change;
 
-    if (on_switch_state_change != NULL)
-    {
-        on_switch_state_change(switch_oper_status);
-    }
+    //if (on_switch_state_change != NULL)
+    //{
+    //    on_switch_state_change(switch_oper_status);
+    //}
 }
 
 void handle_fdb_event(
@@ -43,12 +45,12 @@ void handle_fdb_event(
         meta_sai_on_fdb_event(count, fdbevent);
     }
 
-    auto on_fdb_event = redis_switch_notifications.on_fdb_event;
+    //auto on_fdb_event = redis_switch_notifications.on_fdb_event;
 
-    if (on_fdb_event != NULL)
-    {
-        on_fdb_event(count, fdbevent);
-    }
+    //if (on_fdb_event != NULL)
+    //{
+    //    on_fdb_event(count, fdbevent);
+    //}
 
     sai_deserialize_free_fdb_event_ntf(count, fdbevent);
 }
@@ -65,36 +67,14 @@ void handle_port_state_change(
 
     sai_deserialize_port_oper_status_ntf(data, count, &portoperstatus);
 
-    auto on_port_state_change = redis_switch_notifications.on_port_state_change;
+    //auto on_port_state_change = redis_switch_notifications.on_port_state_change;
 
-    if (on_port_state_change != NULL)
-    {
-        on_port_state_change(count, portoperstatus);
-    }
+    //if (on_port_state_change != NULL)
+    //{
+    //    on_port_state_change(count, portoperstatus);
+    //}
 
     sai_deserialize_free_port_oper_status_ntf(count, portoperstatus);
-}
-
-void handle_port_event(
-        _In_ const std::string &data)
-{
-    SWSS_LOG_ENTER();
-
-    SWSS_LOG_DEBUG("data: %s", data.c_str());
-
-    uint32_t count;
-    sai_port_event_notification_t *portevent = NULL;
-
-    sai_deserialize_port_event_ntf(data, count, &portevent);
-
-    auto on_port_event = redis_switch_notifications.on_port_event;
-
-    if (on_port_event != NULL)
-    {
-        on_port_event(count, portevent);
-    }
-
-    sai_deserialize_free_port_event_ntf(count, portevent);
 }
 
 void handle_switch_shutdown_request(
@@ -104,12 +84,12 @@ void handle_switch_shutdown_request(
 
     SWSS_LOG_NOTICE("switch shutdown request");
 
-    auto on_switch_shutdown_request = redis_switch_notifications.on_switch_shutdown_request;
+    //auto on_switch_shutdown_request = redis_switch_notifications.on_switch_shutdown_request;
 
-    if (on_switch_shutdown_request != NULL)
-    {
-        on_switch_shutdown_request();
-    }
+    //if (on_switch_shutdown_request != NULL)
+    //{
+    //    on_switch_shutdown_request();
+    //}
 }
 
 void handle_packet_event(
@@ -155,10 +135,10 @@ void handle_notification(
     {
         handle_port_state_change(data);
     }
-    else if (notification == "port_event")
-    {
-        handle_port_event(data);
-    }
+    //else if (notification == "port_event")
+    //{
+    //    handle_port_event(data);
+    //}
     else if (notification == "switch_shutdown_request")
     {
         handle_switch_shutdown_request(data);

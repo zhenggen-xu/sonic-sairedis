@@ -62,6 +62,7 @@ extern sai_status_t meta_init_db();
 typedef sai_status_t (*sai_create_generic_fn)(
         _In_ sai_object_type_t object_type,
         _Out_ sai_object_id_t* object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list);
 
@@ -85,6 +86,7 @@ typedef sai_status_t (*sai_get_generic_attribute_fn)(
 extern sai_status_t meta_sai_create_oid(
         _In_ sai_object_type_t object_type,
         _Out_ sai_object_id_t* object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list,
         _In_ sai_create_generic_fn create);

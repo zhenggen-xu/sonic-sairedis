@@ -12,6 +12,7 @@
  */
 sai_status_t redis_create_qos_map(
         _Out_ sai_object_id_t* qos_map_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -20,8 +21,9 @@ sai_status_t redis_create_qos_map(
     SWSS_LOG_ENTER();
 
     return meta_sai_create_oid(
-            SAI_OBJECT_TYPE_QOS_MAPS,
+            SAI_OBJECT_TYPE_QOS_MAP,
             qos_map_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -43,7 +45,7 @@ sai_status_t redis_remove_qos_map (
     SWSS_LOG_ENTER();
 
     return meta_sai_remove_oid(
-            SAI_OBJECT_TYPE_QOS_MAPS,
+            SAI_OBJECT_TYPE_QOS_MAP,
             qos_map_id,
             &redis_generic_remove);
 }
@@ -66,7 +68,7 @@ sai_status_t redis_set_qos_map_attribute(
     SWSS_LOG_ENTER();
 
     return meta_sai_set_oid(
-            SAI_OBJECT_TYPE_QOS_MAPS,
+            SAI_OBJECT_TYPE_QOS_MAP,
             qos_map_id,
             attr,
             &redis_generic_set);
@@ -92,7 +94,7 @@ sai_status_t redis_get_qos_map_attribute(
     SWSS_LOG_ENTER();
 
     return meta_sai_get_oid(
-            SAI_OBJECT_TYPE_QOS_MAPS,
+            SAI_OBJECT_TYPE_QOS_MAP,
             qos_map_id,
             attr_count,
             attr_list,

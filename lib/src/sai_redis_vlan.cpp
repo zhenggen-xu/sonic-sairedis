@@ -12,15 +12,22 @@
  *            Failure status code on error
  */
 sai_status_t redis_create_vlan(
-        _In_ sai_vlan_id_t vlan_id)
+        _Out_ sai_object_id_t *vlan_id,
+        _In_ sai_object_id_t switch_id,
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t *attr_list)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_create_vlan(
+    return meta_sai_create_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
-            &redis_generic_create_vlan);
+            switch_id,
+            attr_count,
+            attr_list,
+            &redis_generic_create);
 }
 
 /**
@@ -35,15 +42,16 @@ sai_status_t redis_create_vlan(
  *            Failure status code on error
  */
 sai_status_t redis_remove_vlan(
-        _In_ sai_vlan_id_t vlan_id)
+        _In_ sai_object_id_t vlan_id)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_remove_vlan(
+    return meta_sai_remove_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
-            &redis_generic_remove_vlan);
+            &redis_generic_remove);
 }
 
 /**
@@ -59,17 +67,18 @@ sai_status_t redis_remove_vlan(
  *            Failure status code on error
  */
 sai_status_t redis_set_vlan_attribute(
-        _In_ sai_vlan_id_t vlan_id,
+        _In_ sai_object_id_t vlan_id,
         _In_ const sai_attribute_t *attr)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_set_vlan(
+    return meta_sai_set_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
             attr,
-            &redis_generic_set_vlan);
+            &redis_generic_set);
 }
 
 /**
@@ -86,7 +95,7 @@ sai_status_t redis_set_vlan_attribute(
  *            Failure status code on error
  */
 sai_status_t redis_get_vlan_attribute(
-        _In_ sai_vlan_id_t vlan_id,
+        _In_ sai_object_id_t vlan_id,
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list)
 {
@@ -94,11 +103,12 @@ sai_status_t redis_get_vlan_attribute(
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_get_vlan(
+    return meta_sai_get_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
             attr_count,
             attr_list,
-            &redis_generic_get_vlan);
+            &redis_generic_get);
 }
 
 /**
@@ -116,6 +126,7 @@ sai_status_t redis_get_vlan_attribute(
  */
 sai_status_t redis_create_vlan_member(
         _Out_ sai_object_id_t* vlan_member_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -126,6 +137,7 @@ sai_status_t redis_create_vlan_member(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_VLAN_MEMBER,
             vlan_member_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -213,6 +225,70 @@ sai_status_t redis_get_vlan_member_attribute(
 }
 
 /**
+ * @brief Bulk objects creation.
+ *
+ * @param[in] switch_id SAI Switch object id
+ * @param[in] object_count Number of objects to create
+ * @param[in] attr_count List of attr_count. Caller passes the number
+ *    of attribute for each object to create.
+ * @param[in] attrs List of attributes for every object.
+ * @param[in] type bulk operation type.
+ *
+ * @param[out] object_id List of object ids returned
+ * @param[out] object_statuses List of status for every object. Caller needs to allocate the buffer.
+ *
+ * @return #SAI_STATUS_SUCCESS on success when all objects are created or #SAI_STATUS_FAILURE when
+ * any of the objects fails to create. When there is failure, Caller is expected to go through the
+ * list of returned statuses to find out which fails and which succeeds.
+ */
+
+sai_status_t redis_create_vlan_members(
+        _In_ sai_object_id_t switch_id,
+        _In_ uint32_t object_count,
+        _In_ const uint32_t *attr_count,
+        _In_ const sai_attribute_t **attrs,
+        _In_ sai_bulk_op_type_t type,
+        _Out_ sai_object_id_t *object_id,
+        _Out_ sai_status_t *object_statuses)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
+
+    return SAI_STATUS_NOT_IMPLEMENTED;
+}
+
+/**
+ * @brief Bulk objects removal.
+ *
+ * @param[in] object_count Number of objects to create
+ * @param[in] object_id List of object ids
+ * @param[in] type bulk operation type.
+ * @param[out] object_statuses List of status for every object. Caller needs to allocate the buffer.
+ *
+ * @return #SAI_STATUS_SUCCESS on success when all objects are removed or #SAI_STATUS_FAILURE when
+ * any of the objects fails to remove. When there is failure, Caller is expected to go through the
+ * list of returned statuses to find out which fails and which succeeds.
+ */
+
+sai_status_t redis_remove_vlan_members(
+        _In_ uint32_t object_count,
+        _In_ const sai_object_id_t *object_id,
+        _In_ sai_bulk_op_type_t type,
+        _Out_ sai_status_t *object_statuses)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
+
+    return SAI_STATUS_NOT_IMPLEMENTED;
+}
+
+/**
  * Routine Description:
  *   @brief Get vlan statistics counters.
  *
@@ -227,10 +303,10 @@ sai_status_t redis_get_vlan_member_attribute(
  *            Failure status code on error
  */
 sai_status_t redis_get_vlan_stats(
-        _In_ sai_vlan_id_t vlan_id,
-        _In_ const sai_vlan_stat_counter_t *counter_ids,
+        _In_ sai_object_id_t vlan_id,
+        _In_ const sai_vlan_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
-        _Out_ uint64_t* counters)
+        _Out_ uint64_t *counters)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
@@ -255,8 +331,8 @@ sai_status_t redis_get_vlan_stats(
  *            Failure status code on error
  */
 sai_status_t redis_clear_vlan_stats(
-        _In_ sai_vlan_id_t vlan_id,
-        _In_ const sai_vlan_stat_counter_t *counter_ids,
+        _In_ sai_object_id_t vlan_id,
+        _In_ const sai_vlan_stat_t *counter_ids,
         _In_ uint32_t number_of_counters)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
@@ -280,6 +356,8 @@ const sai_vlan_api_t redis_vlan_api = {
     redis_remove_vlan_member,
     redis_set_vlan_member_attribute,
     redis_get_vlan_member_attribute,
+    redis_create_vlan_members,
+    redis_remove_vlan_members,
     redis_get_vlan_stats,
     redis_clear_vlan_stats,
 };

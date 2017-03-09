@@ -12,6 +12,7 @@
  */
 sai_status_t redis_create_policer(
         _Out_ sai_object_id_t *policer_id,
+        _Out_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -22,6 +23,7 @@ sai_status_t redis_create_policer(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_POLICER,
             policer_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -112,9 +114,33 @@ sai_status_t redis_get_policer_attribute(
  */
 sai_status_t redis_get_policer_stats(
         _In_ sai_object_id_t policer_id,
-        _In_ const sai_policer_stat_counter_t *counter_ids,
+        _In_ const sai_policer_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
         _Out_ uint64_t* counters)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
+
+    return SAI_STATUS_NOT_IMPLEMENTED;
+}
+
+/**
+ * @brief Clear Policer statistics counters.
+ *
+ * @param[in] policer_id Policer id
+ * @param[in] number_of_counters number of counters in the array
+ * @param[in] counter_ids specifies the array of counter ids
+ *
+ * @return SAI_STATUS_SUCCESS on success
+ *    Failure status code on error
+ */
+sai_status_t redis_clear_policer_stats(
+        _In_ sai_object_id_t policer_id,
+        _In_ uint32_t number_of_counters,
+        _In_ const sai_policer_stat_t *counter_ids)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
@@ -134,4 +160,5 @@ const sai_policer_api_t redis_policer_api = {
     redis_set_policer_attribute,
     redis_get_policer_attribute,
     redis_get_policer_stats,
+    redis_clear_policer_stats,
 };

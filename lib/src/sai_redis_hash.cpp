@@ -16,6 +16,7 @@
  */
 sai_status_t redis_create_hash(
         _Out_ sai_object_id_t* hash_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -26,6 +27,7 @@ sai_status_t redis_create_hash(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_HASH,
             hash_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);

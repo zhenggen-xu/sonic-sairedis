@@ -342,6 +342,7 @@ sai_status_t dummy_failure_sai_get_oid(
 sai_status_t dummy_success_sai_create_oid(
         _In_ sai_object_type_t object_type,
         _Out_ sai_object_id_t* oid,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -435,7 +436,7 @@ void test_switch_set()
 
     sai_object_id_t switchid;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_SWITCH, &switchid, 0, NULL, dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_SWITCH, &switchid, SAI_NULL_OBJECT_ID, 0, NULL, dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     status = meta_sai_set_oid(SAI_OBJECT_TYPE_SWITCH, switchid, NULL, &dummy_success_sai_set_oid);
@@ -563,7 +564,7 @@ void test_switch_get()
 
     sai_object_id_t switchid;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_SWITCH, &switchid, 0, NULL, dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_SWITCH, &switchid, SAI_NULL_OBJECT_ID, 0, NULL, dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
@@ -1436,7 +1437,9 @@ void test_vlan_create()
 
     sai_object_id_t vlan1_id;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
+
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, switch_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     sai_attribute_t vlan;
@@ -1455,27 +1458,27 @@ void test_vlan_create()
     SWSS_LOG_NOTICE("create tests");
 
     SWSS_LOG_NOTICE("existing vlan");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 
     vlan.value.u16 = MAXIMUM_VLAN_NUMBER + 1;
 
     SWSS_LOG_NOTICE("vlan outside range");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 
     vlan.value.u16 = 2;
 
     SWSS_LOG_NOTICE("create is null");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, NULL);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, NULL);
     META_ASSERT_FAIL(status);
 
     SWSS_LOG_NOTICE("correct");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("existing");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 }
 
@@ -1492,6 +1495,7 @@ void test_vlan_remove()
     vlan1_att.value.u16 = 1;
 
     sai_object_id_t vlan1_id;
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     // TODO we should use create
     sai_object_id_t stp = create_dummy_object_id(SAI_OBJECT_TYPE_STP);
@@ -1502,7 +1506,7 @@ void test_vlan_remove()
 
     SWSS_LOG_NOTICE("create");
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, switch_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     sai_attribute_t vlan;
@@ -1512,7 +1516,7 @@ void test_vlan_remove()
     sai_object_id_t vlan_id;
 
     SWSS_LOG_NOTICE("correct");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("remove tests");
@@ -1553,6 +1557,7 @@ void test_vlan_set()
     vlan1_att.value.u16 = 1;
 
     sai_object_id_t vlan1_id;
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     // TODO we should use create
     sai_object_id_t stp = create_dummy_object_id(SAI_OBJECT_TYPE_STP);
@@ -1563,7 +1568,7 @@ void test_vlan_set()
 
     SWSS_LOG_NOTICE("create");
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, switch_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     sai_attribute_t vlan;
@@ -1573,7 +1578,7 @@ void test_vlan_set()
     sai_object_id_t vlan_id;
 
     SWSS_LOG_NOTICE("correct");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("set tests");
@@ -1660,6 +1665,7 @@ void test_vlan_get()
     vlan1_att.value.u16 = 1;
 
     sai_object_id_t vlan1_id;
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     // TODO we should use create
     sai_object_id_t stp = create_dummy_object_id(SAI_OBJECT_TYPE_STP);
@@ -1670,7 +1676,7 @@ void test_vlan_get()
 
     SWSS_LOG_NOTICE("create");
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan1_id, switch_id, 1, &vlan1_att, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     sai_attribute_t vlan;
@@ -1680,7 +1686,7 @@ void test_vlan_get()
     sai_object_id_t vlan_id;
 
     SWSS_LOG_NOTICE("correct");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &vlan, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &vlan, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("get tests");
@@ -1784,8 +1790,9 @@ void test_vlan_flow()
     sai_attribute_t at;
     at.id = SAI_VLAN_ATTR_VLAN_ID;
     at.value.u16 = 2;
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 1, &at, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 1, &at, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     // TODO we should use create
@@ -1798,11 +1805,11 @@ void test_vlan_flow()
     SWSS_LOG_NOTICE("create");
 
     SWSS_LOG_NOTICE("correct");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 0, NULL, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 0, NULL, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("existing");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, 0, NULL, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VLAN, &vlan_id, switch_id, 0, NULL, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 
     SWSS_LOG_NOTICE("set");
@@ -2499,8 +2506,9 @@ void test_serialization_type_vlan_list()
     sai_object_id_t stp;
 
     SWSS_LOG_NOTICE("create stp");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_STP, &stp, 0, NULL, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_STP, &stp, switch_id, 0, NULL, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     sai_vlan_id_t list[2] = { 1, 2 };
@@ -2538,13 +2546,14 @@ void test_serialization_type_bool()
     sai_object_id_t vr;
 
     SWSS_LOG_NOTICE("create stp");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     sai_attribute_t attr;
 
     attr.id = SAI_VIRTUAL_ROUTER_ATTR_ADMIN_V4_STATE;
     attr.value.booldata = true;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VIRTUAL_ROUTER, &vr, 1, &attr, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_VIRTUAL_ROUTER, &vr, switch_id, 1, &attr, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("set bool");
@@ -2574,6 +2583,7 @@ void test_serialization_type_char()
     sai_object_id_t hostif;
 
     SWSS_LOG_NOTICE("create rif");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     // TODO we should use create
     sai_object_id_t rif = create_dummy_object_id(SAI_OBJECT_TYPE_ROUTER_INTERFACE);
@@ -2600,7 +2610,7 @@ void test_serialization_type_char()
 
     SWSS_LOG_NOTICE("create hostif");
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, 3, list, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, switch_id, 3, list, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("set char");
@@ -2624,7 +2634,7 @@ void test_serialization_type_char()
     sai_attribute_t list2[1] = { attr };
 
     SWSS_LOG_NOTICE("create hostif with non mandatory");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, 1, list2, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, switch_id, 1, list2, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("get char");
@@ -2638,7 +2648,7 @@ void test_serialization_type_char()
     sai_attribute_t list3[1] = { attr };
 
     SWSS_LOG_NOTICE("create hostif with mandatory missing");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, 1, list3, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HOSTIF, &hostif, switch_id, 1, list3, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 }
 
@@ -2655,6 +2665,7 @@ void test_serialization_type_int32_list()
     sai_attribute_t attr;
 
     SWSS_LOG_NOTICE("create hash");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     int32_t list[2] =  { SAI_NATIVE_HASH_FIELD_SRC_IP, SAI_NATIVE_HASH_FIELD_VLAN_ID };
 
@@ -2662,7 +2673,7 @@ void test_serialization_type_int32_list()
     attr.value.s32list.count = 2;
     attr.value.s32list.list = list;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, 1, &attr, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, switch_id, 1, &attr, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("set hash");
@@ -2694,6 +2705,7 @@ void test_serialization_type_uint32_list()
     sai_attribute_t attr;
 
     SWSS_LOG_NOTICE("create hash");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     int32_t list[2] =  { SAI_NATIVE_HASH_FIELD_SRC_IP, SAI_NATIVE_HASH_FIELD_VLAN_ID };
 
@@ -2701,7 +2713,7 @@ void test_serialization_type_uint32_list()
     attr.value.s32list.count = 2;
     attr.value.s32list.list = list;
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, 1, &attr, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, switch_id, 1, &attr, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("set hash");
@@ -2899,8 +2911,9 @@ void test_acl_entry_field_and_action()
     }
 
     SWSS_LOG_NOTICE("create acl entry");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_ACL_ENTRY, &aclentry, (uint32_t)vattrs.size(), vattrs.data(), &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_ACL_ENTRY, &aclentry, switch_id, (uint32_t)vattrs.size(), vattrs.data(), &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     for (uint32_t i = 0; i < sizeof(ids)/sizeof(int32_t); ++i)
@@ -2972,13 +2985,14 @@ void test_queue_create()
 
     sai_attribute_t list[2] = { attr1, attr2 };
     SWSS_LOG_NOTICE("create tests");
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     SWSS_LOG_NOTICE("create queue");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, 2, list, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, switch_id, 2, list, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("create queue but key exists");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, 2, list, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, switch_id, 2, list, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 
     SWSS_LOG_NOTICE("remove queue");
@@ -2986,7 +3000,7 @@ void test_queue_create()
     META_ASSERT_SUCCESS(status);
 
     SWSS_LOG_NOTICE("create queue");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, 2, list, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_QUEUE, &queue, switch_id, 2, list, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 }
 
@@ -3007,15 +3021,16 @@ void test_null_list()
     attr.id = SAI_HASH_ATTR_NATIVE_HASH_FIELD_LIST;
     attr.value.s32list.count = 0;
     attr.value.s32list.list = list;
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO create
 
     SWSS_LOG_NOTICE("0 count, not null list");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, 1, &attr, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, switch_id, 1, &attr, &dummy_success_sai_create_oid);
     META_ASSERT_FAIL(status);
 
     attr.value.s32list.list = NULL;
 
     SWSS_LOG_NOTICE("0 count, null list");
-    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, 1, &attr, &dummy_success_sai_create_oid);
+    status = meta_sai_create_oid(SAI_OBJECT_TYPE_HASH, &hash, switch_id, 1, &attr, &dummy_success_sai_create_oid);
     META_ASSERT_SUCCESS(status);
 }
 

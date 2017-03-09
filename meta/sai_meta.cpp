@@ -3865,11 +3865,14 @@ sai_status_t meta_sai_validate_oid(
 sai_status_t meta_sai_create_oid(
         _In_ sai_object_type_t object_type,
         _Out_ sai_object_id_t* object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list,
         _In_ sai_create_generic_fn create)
 {
     SWSS_LOG_ENTER();
+
+    // TODO handle switch_id
 
     sai_status_t status = meta_sai_validate_oid(object_type, object_id, true);
 
@@ -3894,7 +3897,7 @@ sai_status_t meta_sai_create_oid(
         return SAI_STATUS_FAILURE;
     }
 
-    status = create(object_type, object_id, attr_count, attr_list);
+    status = create(object_type, object_id, switch_id, attr_count, attr_list);
 
     if (status == SAI_STATUS_SUCCESS)
     {

@@ -16,6 +16,7 @@
  */
 sai_status_t redis_create_queue(
         _Out_ sai_object_id_t* queue_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -26,6 +27,7 @@ sai_status_t redis_create_queue(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_QUEUE,
             queue_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -117,7 +119,7 @@ sai_status_t redis_get_queue_attribute(
  */
 sai_status_t redis_get_queue_stats(
         _In_ sai_object_id_t queue_id,
-        _In_ const sai_queue_stat_counter_t *counter_ids,
+        _In_ const sai_queue_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
         _Out_ uint64_t* counters)
 {
@@ -142,7 +144,7 @@ sai_status_t redis_get_queue_stats(
  */
 sai_status_t redis_clear_queue_stats(
         _In_ sai_object_id_t queue_id,
-        _In_ const sai_queue_stat_counter_t *counter_ids,
+        _In_ const sai_queue_stat_t *counter_ids,
         _In_ uint32_t number_of_counters)
 {
     SWSS_LOG_ENTER();
@@ -156,6 +158,8 @@ sai_status_t redis_clear_queue_stats(
  * @brief Qos methods table retrieved with sai_api_query()
  */
 const sai_queue_api_t redis_queue_api = {
+    redis_create_queue,
+    redis_remove_queue,
     redis_set_queue_attribute,
     redis_get_queue_attribute,
     redis_get_queue_stats,
