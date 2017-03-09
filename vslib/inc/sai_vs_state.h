@@ -1,12 +1,13 @@
 #ifndef __SAI_VS_STATE__
 #define __SAI_VS_STATE__
 
-#include <unordered_map>
-#include <string>
-
 #include "meta/sai_meta.h"
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
+
+#include <unordered_map>
+#include <string>
+#include <set>
 
 typedef std::unordered_map<std::string, std::string> AttrHash;
 typedef std::unordered_map<std::string, AttrHash> ObjectHash;

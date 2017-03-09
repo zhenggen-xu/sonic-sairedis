@@ -1,37 +1,47 @@
 #include "sai_vs.h"
 #include <map>
+#include <set>
+#include <vector>
 
-std::map<sai_vlan_id_t, std::set<sai_object_id_t>> vlan_members_map;
+std::map<sai_object_id_t, std::set<sai_object_id_t>> vlan_members_map;
 
 sai_status_t vs_create_vlan(
-        _In_ sai_vlan_id_t vlan_id)
+        _Out_ sai_object_id_t *vlan_id,
+        _In_ sai_object_id_t switch_id,
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t *attr_list)
 {
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_create_vlan(
+    sai_status_t status = meta_sai_create_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
-            &vs_generic_create_vlan);
+            switch_id,
+            attr_count,
+            attr_list,
+            &vs_generic_create);
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        vlan_members_map[vlan_id] = {};
+        vlan_members_map[*vlan_id] = {};
     }
 
     return status;
 }
 
 sai_status_t vs_remove_vlan(
-        _In_ sai_vlan_id_t vlan_id)
+        _In_ sai_object_id_t vlan_id)
 {
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_remove_vlan(
+    sai_status_t status = meta_sai_remove_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
-            &vs_generic_remove_vlan);
+            &vs_generic_remove);
 
     if (status == SAI_STATUS_SUCCESS)
     {
@@ -51,21 +61,22 @@ sai_status_t vs_remove_vlan(
 }
 
 sai_status_t vs_set_vlan_attribute(
-        _In_ sai_vlan_id_t vlan_id,
+        _In_ sai_object_id_t vlan_id,
         _In_ const sai_attribute_t *attr)
 {
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_set_vlan(
+    return meta_sai_set_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
             attr,
-            &vs_generic_set_vlan);
+            &vs_generic_set);
 }
 
 sai_status_t vs_get_vlan_attribute(
-        _In_ sai_vlan_id_t vlan_id,
+        _In_ sai_object_id_t vlan_id,
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list)
 {
@@ -73,11 +84,12 @@ sai_status_t vs_get_vlan_attribute(
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_get_vlan(
+    return meta_sai_get_oid(
+            SAI_OBJECT_TYPE_VLAN,
             vlan_id,
             attr_count,
             attr_list,
-            &vs_generic_get_vlan);
+            &vs_generic_get);
 }
 
 void update_vlan_member_list_on_vlan(
@@ -97,7 +109,7 @@ void update_vlan_member_list_on_vlan(
     attr.value.objlist.count = members_count;
     attr.value.objlist.list = vlan_member_list.data();
 
-    sai_status_t status = vs_generic_set_vlan(vlan_id, &attr);
+    sai_status_t status = vs_generic_set(SAI_OBJECT_TYPE_VLAN, vlan_id, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -136,6 +148,7 @@ sai_vlan_id_t get_vlan_id_from_member(
 
 sai_status_t vs_create_vlan_member(
         _Out_ sai_object_id_t* vlan_member_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -146,6 +159,7 @@ sai_status_t vs_create_vlan_member(
     sai_status_t status = meta_sai_create_oid(
             SAI_OBJECT_TYPE_VLAN_MEMBER,
             vlan_member_id,
+            switch_id,
             attr_count,
             attr_list,
             &vs_generic_create);
@@ -227,11 +241,44 @@ sai_status_t vs_get_vlan_member_attribute(
             &vs_generic_get);
 }
 
+sai_status_t vs_create_vlan_members(
+        _In_ sai_object_id_t switch_id,
+        _In_ uint32_t object_count,
+        _In_ const uint32_t *attr_count,
+        _In_ const sai_attribute_t **attrs,
+        _In_ sai_bulk_op_type_t type,
+        _Out_ sai_object_id_t *object_id,
+        _Out_ sai_status_t *object_statuses)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
+
+    return SAI_STATUS_NOT_IMPLEMENTED;
+}
+
+sai_status_t vs_remove_vlan_members(
+        _In_ uint32_t object_count,
+        _In_ const sai_object_id_t *object_id,
+        _In_ sai_bulk_op_type_t type,
+        _Out_ sai_status_t *object_statuses)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_ERROR("not implemented");
+
+    return SAI_STATUS_NOT_IMPLEMENTED;
+}
+
 sai_status_t vs_get_vlan_stats(
-        _In_ sai_vlan_id_t vlan_id,
-        _In_ const sai_vlan_stat_counter_t *counter_ids,
+        _In_ sai_object_id_t vlan_id,
+        _In_ const sai_vlan_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
-        _Out_ uint64_t* counters)
+        _Out_ uint64_t *counters)
 {
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
@@ -243,8 +290,8 @@ sai_status_t vs_get_vlan_stats(
 }
 
 sai_status_t vs_clear_vlan_stats(
-        _In_ sai_vlan_id_t vlan_id,
-        _In_ const sai_vlan_stat_counter_t *counter_ids,
+        _In_ sai_object_id_t vlan_id,
+        _In_ const sai_vlan_stat_t *counter_ids,
         _In_ uint32_t number_of_counters)
 {
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
@@ -265,6 +312,8 @@ const sai_vlan_api_t vs_vlan_api = {
     vs_remove_vlan_member,
     vs_set_vlan_member_attribute,
     vs_get_vlan_member_attribute,
+    vs_create_vlan_members,
+    vs_remove_vlan_members,
     vs_get_vlan_stats,
     vs_clear_vlan_stats,
 };
