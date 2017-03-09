@@ -12,6 +12,8 @@ void reset_id_counter()
     memset(real_ids, 0, sizeof(real_ids));
 }
 
+// TODO support switch_id 
+
 sai_object_id_t vs_create_real_object_id(
         _In_ sai_object_type_t object_type)
 {
@@ -97,10 +99,13 @@ sai_status_t internal_vs_generic_create(
 sai_status_t vs_generic_create(
         _In_ sai_object_type_t object_type,
         _Out_ sai_object_id_t* object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
+
+    // TODO support switch_id
 
     // create new real object ID
     *object_id = vs_create_real_object_id(object_type);
@@ -124,7 +129,7 @@ sai_status_t vs_generic_create_fdb_entry(
     std::string str_fdb_entry = sai_serialize_fdb_entry(*fdb_entry);
 
     return internal_vs_generic_create(
-            SAI_OBJECT_TYPE_FDB,
+            SAI_OBJECT_TYPE_FDB_ENTRY,
             str_fdb_entry,
             attr_count,
             attr_list);
@@ -140,54 +145,24 @@ sai_status_t vs_generic_create_neighbor_entry(
     std::string str_neighbor_entry = sai_serialize_neighbor_entry(*neighbor_entry);
 
     return internal_vs_generic_create(
-            SAI_OBJECT_TYPE_NEIGHBOR,
+            SAI_OBJECT_TYPE_NEIGHBOR_ENTRY,
             str_neighbor_entry,
             attr_count,
             attr_list);
 }
 
 sai_status_t vs_generic_create_route_entry(
-        _In_ const sai_unicast_route_entry_t* unicast_route_entry,
+        _In_ const sai_route_entry_t* route_entry,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
 
-    std::string str_route_entry = sai_serialize_route_entry(*unicast_route_entry);
+    std::string str_route_entry = sai_serialize_route_entry(*route_entry);
 
     return internal_vs_generic_create(
-            SAI_OBJECT_TYPE_ROUTE,
+            SAI_OBJECT_TYPE_ROUTE_ENTRY,
             str_route_entry,
             attr_count,
             attr_list);
-}
-
-sai_status_t vs_generic_create_trap(
-        _In_ sai_hostif_trap_id_t hostif_trap_id,
-        _In_ uint32_t attr_count,
-        _In_ const sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    std::string str_hostif_trap_id = sai_serialize_hostif_trap_id(hostif_trap_id);
-
-    return internal_vs_generic_create(
-            SAI_OBJECT_TYPE_TRAP,
-            str_hostif_trap_id,
-            attr_count,
-            attr_list);
-}
-
-sai_status_t vs_generic_create_vlan(
-        _In_ sai_vlan_id_t vlan_id)
-{
-    SWSS_LOG_ENTER();
-
-    std::string str_vlan_id = sai_serialize_vlan_id(vlan_id);
-
-    return internal_vs_generic_create(
-            SAI_OBJECT_TYPE_VLAN,
-            str_vlan_id,
-            0,
-            NULL);
 }

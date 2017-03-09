@@ -23,6 +23,7 @@ sai_status_t create_default_switch()
     return vs_generic_create(
             SAI_OBJECT_TYPE_SWITCH,
             &switch_object_id,
+            SAI_NULL_OBJECT_ID, // no id for switch
             0,
             NULL);
 }

@@ -65,8 +65,9 @@ sai_status_t sai_api_query(
         return SAI_STATUS_UNINITIALIZED;
     }
 
-    switch (sai_api_id) {
-        case SAI_API_BUFFERS:
+    switch (sai_api_id)
+    {
+        case SAI_API_BUFFER:
             *(const sai_buffer_api_t**)api_method_table = &vs_buffer_api;
             return SAI_STATUS_SUCCESS;
 
@@ -122,15 +123,15 @@ sai_status_t sai_api_query(
             *(const sai_acl_api_t**)api_method_table = &vs_acl_api;
             return SAI_STATUS_SUCCESS;
 
-        case SAI_API_HOST_INTERFACE:
-            *(const sai_hostif_api_t**)api_method_table = &vs_host_interface_api;
+        case SAI_API_HOSTIF:
+            *(const sai_hostif_api_t**)api_method_table = &vs_hostif_api;
             return SAI_STATUS_SUCCESS;
 
         case SAI_API_POLICER:
             *(const sai_policer_api_t**)api_method_table = &vs_policer_api;
             return SAI_STATUS_SUCCESS;
 
-        case SAI_API_QOS_MAPS:
+        case SAI_API_QOS_MAP:
             *(const sai_qos_map_api_t**)api_method_table = &vs_qos_map_api;
             return SAI_STATUS_SUCCESS;
 
