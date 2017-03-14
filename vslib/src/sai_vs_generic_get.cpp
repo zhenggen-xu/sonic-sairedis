@@ -118,7 +118,7 @@ sai_status_t vs_generic_get(
 {
     SWSS_LOG_ENTER();
 
-    if (object_id == SAI_NULL_OBJECT_ID && object_type != SAI_OBJECT_TYPE_SWITCH)
+    if (object_id == SAI_NULL_OBJECT_ID)
     {
         SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
 
