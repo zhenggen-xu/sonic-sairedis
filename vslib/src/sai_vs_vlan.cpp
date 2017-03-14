@@ -93,7 +93,7 @@ sai_status_t vs_get_vlan_attribute(
 }
 
 void update_vlan_member_list_on_vlan(
-        _In_ sai_vlan_id_t vlan_id)
+        _In_ sai_object_id_t vlan_id)
 {
     SWSS_LOG_ENTER();
 
@@ -121,7 +121,7 @@ void update_vlan_member_list_on_vlan(
     SWSS_LOG_INFO("updated vlan %d member list to %zu", vlan_id, vlan_member_list.size());
 }
 
-sai_vlan_id_t get_vlan_id_from_member(
+sai_object_id_t get_vlan_id_from_member(
         _In_ sai_object_id_t vlan_member_id)
 {
     SWSS_LOG_ENTER();
@@ -138,7 +138,7 @@ sai_vlan_id_t get_vlan_id_from_member(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        return (sai_vlan_id_t)attr.value.u16;
+        return attr.value.oid;
     }
 
     SWSS_LOG_ERROR("failed to get vlan id from vlan member 0x%lx, status: %d", vlan_member_id, status);
@@ -166,7 +166,7 @@ sai_status_t vs_create_vlan_member(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        sai_vlan_id_t vlan_id = get_vlan_id_from_member(*vlan_member_id);
+        sai_object_id_t vlan_id = get_vlan_id_from_member(*vlan_member_id);
 
         vlan_members_map[vlan_id].insert(*vlan_member_id);
 
@@ -183,7 +183,7 @@ sai_status_t vs_remove_vlan_member(
 
     SWSS_LOG_ENTER();
 
-    sai_vlan_id_t vlan_id = get_vlan_id_from_member(vlan_member_id);
+    sai_object_id_t vlan_id = get_vlan_id_from_member(vlan_member_id);
 
     sai_status_t status = meta_sai_remove_oid(
             SAI_OBJECT_TYPE_VLAN_MEMBER,

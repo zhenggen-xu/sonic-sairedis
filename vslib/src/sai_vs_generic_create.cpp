@@ -12,7 +12,7 @@ void reset_id_counter()
     memset(real_ids, 0, sizeof(real_ids));
 }
 
-// TODO support switch_id 
+// TODO support switch_id
 
 sai_object_id_t vs_create_real_object_id(
         _In_ sai_object_type_t object_type)
