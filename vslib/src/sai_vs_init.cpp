@@ -115,7 +115,7 @@ sai_status_t create_default_1q_bridge(const std::vector<sai_object_id_t>& port_l
     CHECK_STATUS(vs_generic_set(SAI_OBJECT_TYPE_SWITCH, switch_object_id, &attr));
 
     // Create bridge ports
-    
+
     for (const auto &port: port_list)
     {
         sai_object_id_t bp;
@@ -123,7 +123,7 @@ sai_status_t create_default_1q_bridge(const std::vector<sai_object_id_t>& port_l
         // create bridge port
         // TODO not sure if this is the right way
         // TODO where tu pass bridge id to assiociate ?
-        
+
         sai_attribute_t attrs[2];
 
         attrs[0].id = SAI_BRIDGE_PORT_ATTR_TYPE;
@@ -324,10 +324,10 @@ sai_status_t create_vlan_members_for_default_vlan(
         attrs.push_back(attr_port_id);
 
         CHECK_STATUS(vs_generic_create(
-                    SAI_OBJECT_TYPE_VLAN_MEMBER, 
-                    &vlan_member_id, 
-                    switch_object_id, 
-                    (uint32_t)attrs.size(), 
+                    SAI_OBJECT_TYPE_VLAN_MEMBER,
+                    &vlan_member_id,
+                    switch_object_id,
+                    (uint32_t)attrs.size(),
                     attrs.data()));
 
         vlan_member_list.push_back(vlan_member_id);

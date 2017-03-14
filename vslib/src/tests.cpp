@@ -108,13 +108,6 @@ void on_port_state_change(
     SWSS_LOG_ENTER();
 }
 
-void on_port_event(
-        _In_ uint32_t count,
-        _In_ sai_port_event_notification_t *data)
-{
-    SWSS_LOG_ENTER();
-}
-
 void on_switch_shutdown_request()
 {
     SWSS_LOG_ENTER();
@@ -129,25 +122,15 @@ void on_packet_event(
     SWSS_LOG_ENTER();
 }
 
-sai_switch_notification_t switch_notifications
-{
-    on_switch_state_change,
-        on_fdb_event,
-        on_port_state_change,
-        on_port_event,
-        on_switch_shutdown_request,
-        on_packet_event
-};
-
 void init()
 {
     SWSS_LOG_ENTER();
 
     sai_api_query(SAI_API_ACL, (void**)&sai_acl_api);
-    sai_api_query(SAI_API_BUFFERS, (void**)&sai_buffer_api);
+    sai_api_query(SAI_API_BUFFER, (void**)&sai_buffer_api);
     sai_api_query(SAI_API_FDB, (void**)&sai_fdb_api);
     sai_api_query(SAI_API_HASH, (void**)&sai_hash_api);
-    sai_api_query(SAI_API_HOST_INTERFACE, (void**)&sai_hostif_api);
+    sai_api_query(SAI_API_HOSTIF, (void**)&sai_hostif_api);
     sai_api_query(SAI_API_LAG, (void**)&sai_lag_api);
     sai_api_query(SAI_API_MIRROR, (void**)&sai_mirror_api);
     sai_api_query(SAI_API_NEIGHBOR, (void**)&sai_neighbor_api);
@@ -155,7 +138,7 @@ void init()
     sai_api_query(SAI_API_NEXT_HOP_GROUP, (void**)&sai_next_hop_group_api);
     sai_api_query(SAI_API_POLICER, (void**)&sai_policer_api);
     sai_api_query(SAI_API_PORT, (void**)&sai_port_api);
-    sai_api_query(SAI_API_QOS_MAPS, (void**)&sai_qos_map_api);
+    sai_api_query(SAI_API_QOS_MAP, (void**)&sai_qos_map_api);
     sai_api_query(SAI_API_QUEUE, (void**)&sai_queue_api);
     sai_api_query(SAI_API_ROUTE, (void**)&sai_route_api);
     sai_api_query(SAI_API_ROUTER_INTERFACE, (void**)&sai_router_interface_api);
@@ -181,7 +164,13 @@ void test_ports()
 
     attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
 
-    SUCCESS(sai_switch_api->get_switch_attribute(1, &attr));
+    sai_object_id_t switch_id;
+
+    // TODO we need mandatoryattributes 
+
+    SUCCESS(sai_switch_api->create_switch(&switch_id, 0, NULL));
+
+    SUCCESS(sai_switch_api->get_switch_attribute(switch_id, 1, &attr));
 
     ASSERT_TRUE(attr.value.u32 == expected_ports);
 
@@ -193,7 +182,7 @@ void test_ports()
     attr.value.objlist.count = expected_ports;
     attr.value.objlist.list = ports.data();
 
-    SUCCESS(sai_switch_api->get_switch_attribute(1, &attr));
+    SUCCESS(sai_switch_api->get_switch_attribute(switch_id, 1, &attr));
 
     ASSERT_TRUE(attr.value.objlist.count == expected_ports);
 }
@@ -209,8 +198,6 @@ int main()
     SUCCESS(sai_api_initialize(0, (service_method_table_t*)&test_services));
 
     init();
-
-    SUCCESS(sai_switch_api->initialize_switch(0, "", "", &switch_notifications));
 
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_DEBUG);
 
