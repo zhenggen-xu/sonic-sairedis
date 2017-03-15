@@ -18,6 +18,10 @@ extern "C" {
 #include "swss/tokenize.h"
 #include "sairedis.h"
 
+// TODO special case is needed for switch if it contains oids
+// first it need to be created and then set
+// TODO handle pointers
+
 std::map<std::string, std::string> profile_map;
 
 const char *test_profile_get_value (
@@ -105,108 +109,8 @@ void initialize_common_api_pointers()
     SWSS_LOG_ENTER();
 
     common_create[SAI_OBJECT_TYPE_PORT] = NULL;
-    common_create[SAI_OBJECT_TYPE_LAG] = (sai_lag_api) ? sai_lag_api->create_lag : NULL;
-    common_create[SAI_OBJECT_TYPE_VIRTUAL_ROUTER] = (sai_router_api) ? sai_router_api->create_virtual_router : NULL;
-    common_create[SAI_OBJECT_TYPE_NEXT_HOP] = (sai_next_hop_api) ? sai_next_hop_api->create_next_hop : NULL;
-    common_create[SAI_OBJECT_TYPE_NEXT_HOP_GROUP] = (sai_next_hop_group_api) ? sai_next_hop_group_api->create_next_hop_group : NULL;
-    common_create[SAI_OBJECT_TYPE_ROUTER_INTERFACE] = (sai_router_interface_api) ? sai_router_interface_api->create_router_interface : NULL;
-    common_create[SAI_OBJECT_TYPE_ACL_TABLE] = (sai_acl_api) ? sai_acl_api->create_acl_table : NULL;
-    common_create[SAI_OBJECT_TYPE_ACL_ENTRY] = (sai_acl_api) ? sai_acl_api->create_acl_entry : NULL;
-    common_create[SAI_OBJECT_TYPE_ACL_COUNTER] = (sai_acl_api) ? sai_acl_api->create_acl_counter : NULL;
-    common_create[SAI_OBJECT_TYPE_HOST_INTERFACE] = (sai_hostif_api) ? sai_hostif_api->create_hostif : NULL;
-    common_create[SAI_OBJECT_TYPE_TRAP_GROUP] = (sai_hostif_api) ? sai_hostif_api->create_hostif_trap_group : NULL;
-    common_create[SAI_OBJECT_TYPE_ACL_TABLE_GROUP] = NULL;
-    common_create[SAI_OBJECT_TYPE_POLICER] = (sai_policer_api) ? sai_policer_api->create_policer : NULL;
-    common_create[SAI_OBJECT_TYPE_WRED] = (sai_wred_api) ? sai_wred_api->create_wred_profile : NULL;
-    common_create[SAI_OBJECT_TYPE_QOS_MAPS] = (sai_qos_map_api) ? sai_qos_map_api->create_qos_map : NULL;
-    common_create[SAI_OBJECT_TYPE_QUEUE] = NULL;
-    common_create[SAI_OBJECT_TYPE_SCHEDULER] = (sai_scheduler_api) ? sai_scheduler_api->create_scheduler_profile : NULL;
-    common_create[SAI_OBJECT_TYPE_SCHEDULER_GROUP] = (sai_scheduler_group_api) ? sai_scheduler_group_api->create_scheduler_group : NULL;
-    common_create[SAI_OBJECT_TYPE_BUFFER_POOL] = (sai_buffer_api) ? sai_buffer_api->create_buffer_pool : NULL;
-    common_create[SAI_OBJECT_TYPE_BUFFER_PROFILE] = (sai_buffer_api) ? sai_buffer_api->create_buffer_profile : NULL;
-    common_create[SAI_OBJECT_TYPE_PRIORITY_GROUP] = NULL;
-    common_create[SAI_OBJECT_TYPE_LAG_MEMBER] = (sai_lag_api) ? sai_lag_api->create_lag_member : NULL;
-    common_create[SAI_OBJECT_TYPE_VLAN_MEMBER] = (sai_vlan_api) ? sai_vlan_api->create_vlan_member : NULL;
-    common_create[SAI_OBJECT_TYPE_TUNNEL] = (sai_tunnel_api) ? sai_tunnel_api->create_tunnel : NULL;
-    common_create[SAI_OBJECT_TYPE_TUNNEL_TABLE_ENTRY] = (sai_tunnel_api) ? sai_tunnel_api->create_tunnel_term_table_entry : NULL;
 
-    common_remove[SAI_OBJECT_TYPE_PORT] = NULL;
-    common_remove[SAI_OBJECT_TYPE_LAG] = (sai_lag_api) ? sai_lag_api->remove_lag : NULL;
-    common_remove[SAI_OBJECT_TYPE_VIRTUAL_ROUTER] = (sai_router_api) ? sai_router_api->remove_virtual_router : NULL;
-    common_remove[SAI_OBJECT_TYPE_NEXT_HOP] = (sai_next_hop_api) ? sai_next_hop_api->remove_next_hop : NULL;
-    common_remove[SAI_OBJECT_TYPE_NEXT_HOP_GROUP] = (sai_next_hop_group_api) ? sai_next_hop_group_api->remove_next_hop_group : NULL;
-    common_remove[SAI_OBJECT_TYPE_ROUTER_INTERFACE] = (sai_router_interface_api) ? sai_router_interface_api->remove_router_interface : NULL;
-    common_remove[SAI_OBJECT_TYPE_ACL_TABLE] = (sai_acl_api) ? sai_acl_api->delete_acl_table : NULL;
-    common_remove[SAI_OBJECT_TYPE_ACL_ENTRY] = (sai_acl_api) ? sai_acl_api->delete_acl_entry : NULL;
-    common_remove[SAI_OBJECT_TYPE_ACL_COUNTER] = (sai_acl_api) ? sai_acl_api->delete_acl_counter : NULL;
-    common_remove[SAI_OBJECT_TYPE_HOST_INTERFACE] = (sai_hostif_api) ? sai_hostif_api->remove_hostif : NULL;
-    common_remove[SAI_OBJECT_TYPE_TRAP_GROUP] = (sai_hostif_api) ? sai_hostif_api->remove_hostif_trap_group : NULL;
-    common_remove[SAI_OBJECT_TYPE_ACL_TABLE_GROUP] = NULL;
-    common_remove[SAI_OBJECT_TYPE_POLICER] = (sai_policer_api) ? sai_policer_api->remove_policer : NULL;
-    common_remove[SAI_OBJECT_TYPE_WRED] = (sai_wred_api) ? sai_wred_api->remove_wred_profile : NULL;
-    common_remove[SAI_OBJECT_TYPE_QOS_MAPS] = (sai_qos_map_api) ? sai_qos_map_api->remove_qos_map : NULL;
-    common_remove[SAI_OBJECT_TYPE_QUEUE] = NULL;
-    common_remove[SAI_OBJECT_TYPE_SCHEDULER] = (sai_scheduler_api) ? sai_scheduler_api->remove_scheduler_profile : NULL;
-    common_remove[SAI_OBJECT_TYPE_SCHEDULER_GROUP] = (sai_scheduler_group_api) ? sai_scheduler_group_api->remove_scheduler_group : NULL;
-    common_remove[SAI_OBJECT_TYPE_BUFFER_POOL] = (sai_buffer_api) ? sai_buffer_api->remove_buffer_pool : NULL;
-    common_remove[SAI_OBJECT_TYPE_BUFFER_PROFILE] = (sai_buffer_api) ? sai_buffer_api->remove_buffer_profile : NULL;
-    common_remove[SAI_OBJECT_TYPE_PRIORITY_GROUP] = NULL;
-    common_remove[SAI_OBJECT_TYPE_LAG_MEMBER] = (sai_lag_api) ? sai_lag_api->remove_lag_member : NULL;
-    common_remove[SAI_OBJECT_TYPE_VLAN_MEMBER] = (sai_vlan_api) ? sai_vlan_api->remove_vlan_member : NULL;
-    common_remove[SAI_OBJECT_TYPE_TUNNEL] = (sai_tunnel_api) ? sai_tunnel_api->remove_tunnel : NULL;
-    common_remove[SAI_OBJECT_TYPE_TUNNEL_TABLE_ENTRY] = (sai_tunnel_api) ? sai_tunnel_api->remove_tunnel_term_table_entry : NULL;
-
-    common_set_attribute[SAI_OBJECT_TYPE_PORT] = (sai_port_api) ? sai_port_api->set_port_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_LAG] = (sai_lag_api) ? sai_lag_api->set_lag_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_VIRTUAL_ROUTER] = (sai_router_api) ? sai_router_api->set_virtual_router_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_NEXT_HOP] = (sai_next_hop_api) ? sai_next_hop_api->set_next_hop_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_NEXT_HOP_GROUP] = (sai_next_hop_group_api) ? sai_next_hop_group_api->set_next_hop_group_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_ROUTER_INTERFACE] = (sai_router_interface_api) ? sai_router_interface_api->set_router_interface_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_ACL_TABLE] = (sai_acl_api) ? sai_acl_api->set_acl_table_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_ACL_ENTRY] = (sai_acl_api) ? sai_acl_api->set_acl_entry_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_ACL_COUNTER] = (sai_acl_api) ? sai_acl_api->set_acl_counter_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_HOST_INTERFACE] = (sai_hostif_api) ? sai_hostif_api->set_hostif_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_TRAP_GROUP] = (sai_hostif_api) ? sai_hostif_api->set_trap_group_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_ACL_TABLE_GROUP] = NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_POLICER] = (sai_policer_api) ? sai_policer_api->set_policer_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_WRED] = (sai_wred_api) ? sai_wred_api->set_wred_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_QOS_MAPS] = (sai_qos_map_api) ? sai_qos_map_api->set_qos_map_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_QUEUE] = (sai_queue_api) ? sai_queue_api->set_queue_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_SCHEDULER] = (sai_scheduler_api) ? sai_scheduler_api->set_scheduler_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_SCHEDULER_GROUP] = (sai_scheduler_group_api) ? sai_scheduler_group_api->set_scheduler_group_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_BUFFER_POOL] = (sai_buffer_api) ? sai_buffer_api->set_buffer_pool_attr : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_BUFFER_PROFILE] = (sai_buffer_api) ? sai_buffer_api->set_buffer_profile_attr : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_PRIORITY_GROUP] = (sai_buffer_api) ? sai_buffer_api->set_ingress_priority_group_attr : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_LAG_MEMBER] = (sai_lag_api) ? sai_lag_api->set_lag_member_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_VLAN_MEMBER] = (sai_vlan_api) ? sai_vlan_api->set_vlan_member_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_TUNNEL] = (sai_tunnel_api) ? sai_tunnel_api->set_tunnel_attribute : NULL;
-    common_set_attribute[SAI_OBJECT_TYPE_TUNNEL_TABLE_ENTRY] = (sai_tunnel_api) ? sai_tunnel_api->set_tunnel_term_table_entry_attribute : NULL;
-
-    common_get_attribute[SAI_OBJECT_TYPE_PORT] = (sai_port_api) ? sai_port_api->get_port_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_LAG] = (sai_lag_api) ? sai_lag_api->get_lag_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_VIRTUAL_ROUTER] = (sai_router_api) ? sai_router_api->get_virtual_router_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_NEXT_HOP] = (sai_next_hop_api) ? sai_next_hop_api->get_next_hop_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_NEXT_HOP_GROUP] = (sai_next_hop_group_api) ? sai_next_hop_group_api->get_next_hop_group_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_ROUTER_INTERFACE] = (sai_router_interface_api) ? sai_router_interface_api->get_router_interface_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_ACL_TABLE] = (sai_acl_api) ? sai_acl_api->get_acl_table_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_ACL_ENTRY] = (sai_acl_api) ? sai_acl_api->get_acl_entry_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_ACL_COUNTER] = (sai_acl_api) ? sai_acl_api->get_acl_counter_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_HOST_INTERFACE] = (sai_hostif_api) ? sai_hostif_api->get_hostif_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_TRAP_GROUP] = (sai_hostif_api) ? sai_hostif_api->get_trap_group_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_ACL_TABLE_GROUP] = NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_POLICER] = (sai_policer_api) ? sai_policer_api->get_policer_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_WRED] = (sai_wred_api) ? sai_wred_api->get_wred_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_QOS_MAPS] = (sai_qos_map_api) ? sai_qos_map_api->get_qos_map_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_QUEUE] = (sai_queue_api) ? sai_queue_api->get_queue_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_SCHEDULER] = (sai_scheduler_api) ? sai_scheduler_api->get_scheduler_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_SCHEDULER_GROUP] = (sai_scheduler_group_api) ? sai_scheduler_group_api->get_scheduler_group_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_BUFFER_POOL] = (sai_buffer_api) ? sai_buffer_api->get_buffer_pool_attr : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_BUFFER_PROFILE] = (sai_buffer_api) ? sai_buffer_api->get_buffer_profile_attr : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_PRIORITY_GROUP] = (sai_buffer_api) ? sai_buffer_api->get_ingress_priority_group_attr : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_LAG_MEMBER] = (sai_lag_api) ? sai_lag_api->get_lag_member_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_VLAN_MEMBER] = (sai_vlan_api) ? sai_vlan_api->get_vlan_member_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_TUNNEL] = (sai_tunnel_api) ? sai_tunnel_api->get_tunnel_attribute : NULL;
-    common_get_attribute[SAI_OBJECT_TYPE_TUNNEL_TABLE_ENTRY] = (sai_tunnel_api) ? sai_tunnel_api->get_tunnel_term_table_entry_attribute : NULL;
+    // TODO use meta pointers
 }
 
 void init_sai_api()
@@ -214,31 +118,8 @@ void init_sai_api()
     SWSS_LOG_ENTER();
 
     sai_api_query(SAI_API_ACL,                  (void**)&sai_acl_api);
-    sai_api_query(SAI_API_BUFFERS,              (void**)&sai_buffer_api);
-    sai_api_query(SAI_API_FDB,                  (void**)&sai_fdb_api);
-    sai_api_query(SAI_API_HASH,                 (void**)&sai_hash_api);
-    sai_api_query(SAI_API_HOST_INTERFACE,       (void**)&sai_hostif_api);
-    sai_api_query(SAI_API_LAG,                  (void**)&sai_lag_api);
-    sai_api_query(SAI_API_MIRROR,               (void**)&sai_mirror_api);
-    sai_api_query(SAI_API_NEIGHBOR,             (void**)&sai_neighbor_api);
-    sai_api_query(SAI_API_NEXT_HOP,             (void**)&sai_next_hop_api);
-    sai_api_query(SAI_API_NEXT_HOP_GROUP,       (void**)&sai_next_hop_group_api);
-    sai_api_query(SAI_API_POLICER,              (void**)&sai_policer_api);
-    sai_api_query(SAI_API_PORT,                 (void**)&sai_port_api);
-    sai_api_query(SAI_API_QOS_MAPS,             (void**)&sai_qos_map_api);
-    sai_api_query(SAI_API_QUEUE,                (void**)&sai_queue_api);
-    sai_api_query(SAI_API_ROUTE,                (void**)&sai_route_api);
-    sai_api_query(SAI_API_ROUTER_INTERFACE,     (void**)&sai_router_interface_api);
-    sai_api_query(SAI_API_SAMPLEPACKET,         (void**)&sai_samplepacket_api);
-    sai_api_query(SAI_API_SCHEDULER,            (void**)&sai_scheduler_api);
-    sai_api_query(SAI_API_SCHEDULER_GROUP,      (void**)&sai_scheduler_group_api);
-    sai_api_query(SAI_API_STP,                  (void**)&sai_stp_api);
-    sai_api_query(SAI_API_SWITCH,               (void**)&sai_switch_api);
-    sai_api_query(SAI_API_TUNNEL,               (void**)&sai_tunnel_api);
-    sai_api_query(SAI_API_UDF,                  (void**)&sai_udf_api);
-    sai_api_query(SAI_API_VIRTUAL_ROUTER,       (void**)&sai_router_api);
-    sai_api_query(SAI_API_VLAN,                 (void**)&sai_vlan_api);
-    sai_api_query(SAI_API_WRED,                 (void**)&sai_wred_api);
+
+    // TODO use meta pointers
 }
 
 void on_switch_state_change(
@@ -261,13 +142,6 @@ void on_port_state_change(
     SWSS_LOG_ENTER();
 }
 
-void on_port_event(
-        _In_ uint32_t count,
-        _In_ sai_port_event_notification_t *data)
-{
-    SWSS_LOG_ENTER();
-}
-
 void on_switch_shutdown_request() __attribute__ ((noreturn));
 void on_switch_shutdown_request()
 {
@@ -285,16 +159,6 @@ void on_packet_event(
 {
     SWSS_LOG_ENTER();
 }
-
-sai_switch_notification_t switch_notifications
-{
-    on_switch_state_change,
-        on_fdb_event,
-        on_port_state_change,
-        on_port_event,
-        on_switch_shutdown_request,
-        on_packet_event
-};
 
 #define EXIT_ON_ERROR(x)\
 {\
@@ -351,7 +215,7 @@ void translate_local_to_redis(
     {
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -359,29 +223,29 @@ void translate_local_to_redis(
             exit(EXIT_FAILURE);
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 attr.value.oid = translate_local_to_redis(attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 translate_local_to_redis(attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 attr.value.aclfield.data.oid = translate_local_to_redis(attr.value.aclfield.data.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 translate_local_to_redis(attr.value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 attr.value.aclaction.parameter.oid = translate_local_to_redis(attr.value.aclaction.parameter.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 translate_local_to_redis(attr.value.aclaction.parameter.objlist);
                 break;
 
@@ -446,7 +310,7 @@ void match_list_lengths(
         sai_attribute_t &get_attr = get_attr_list[i];
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -454,58 +318,58 @@ void match_list_lengths(
             exit(EXIT_FAILURE);
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 CHECK_LIST(value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_UINT8_LIST:
+            case SAI_ATTR_VALUE_TYPE_UINT8_LIST:
                 CHECK_LIST(value.u8list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_INT8_LIST:
+            case SAI_ATTR_VALUE_TYPE_INT8_LIST:
                 CHECK_LIST(value.s8list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_UINT16_LIST:
+            case SAI_ATTR_VALUE_TYPE_UINT16_LIST:
                 CHECK_LIST(value.u16list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_INT16_LIST:
+            case SAI_ATTR_VALUE_TYPE_INT16_LIST:
                 CHECK_LIST(value.s16list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_UINT32_LIST:
+            case SAI_ATTR_VALUE_TYPE_UINT32_LIST:
                 CHECK_LIST(value.u32list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_INT32_LIST:
+            case SAI_ATTR_VALUE_TYPE_INT32_LIST:
                 CHECK_LIST(value.s32list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_VLAN_LIST:
+            case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
                 CHECK_LIST(value.vlanlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_QOS_MAP_LIST:
+            case SAI_ATTR_VALUE_TYPE_QOS_MAP_LIST:
                 CHECK_LIST(value.qosmap);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_TUNNEL_MAP_LIST:
+            case SAI_ATTR_VALUE_TYPE_TUNNEL_MAP_LIST:
                 CHECK_LIST(value.tunnelmap);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 CHECK_LIST(value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_UINT8_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
                 CHECK_LIST(value.aclfield.data.u8list);
                 CHECK_LIST(value.aclfield.mask.u8list);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 CHECK_LIST(value.aclaction.parameter.objlist);
                 break;
 
@@ -574,7 +438,7 @@ void match_redis_with_rec(
         sai_attribute_t &get_attr = get_attr_list[i];
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -582,29 +446,29 @@ void match_redis_with_rec(
             exit(EXIT_FAILURE);
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 match_redis_with_rec(get_attr.value.oid, attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 match_redis_with_rec(get_attr.value.objlist, attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 match_redis_with_rec(get_attr.value.aclfield.data.oid, attr.value.aclfield.data.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 match_redis_with_rec(get_attr.value.aclfield.data.objlist, attr.value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 match_redis_with_rec(get_attr.value.aclaction.parameter.oid, attr.value.aclaction.parameter.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 match_redis_with_rec(get_attr.value.aclaction.parameter.objlist, attr.value.aclaction.parameter.objlist);
                 break;
 
@@ -669,10 +533,10 @@ sai_status_t handle_neighbor(
             return sai_neighbor_api->remove_neighbor_entry(&neighbor_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_neighbor_api->set_neighbor_attribute(&neighbor_entry, attr_list);
+            return sai_neighbor_api->set_neighbor_entry_attribute(&neighbor_entry, attr_list);
 
         case SAI_COMMON_API_GET:
-            return sai_neighbor_api->get_neighbor_attribute(&neighbor_entry, attr_count, attr_list);
+            return sai_neighbor_api->get_neighbor_entry_attribute(&neighbor_entry, attr_count, attr_list);
 
         default:
             SWSS_LOG_ERROR("neighbor other apis not implemented");
@@ -688,7 +552,7 @@ sai_status_t handle_route(
 {
     SWSS_LOG_ENTER();
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
     sai_deserialize_route_entry(str_object_id, route_entry);
 
     route_entry.vr_id = translate_local_to_redis(route_entry.vr_id);
@@ -698,109 +562,19 @@ sai_status_t handle_route(
     switch(api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_route_api->create_route(&route_entry, attr_count, attr_list);
+            return sai_route_api->create_route_entry(&route_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_route_api->remove_route(&route_entry);
+            return sai_route_api->remove_route_entry(&route_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_route_api->set_route_attribute(&route_entry, attr_list);
+            return sai_route_api->set_route_entry_attribute(&route_entry, attr_list);
 
         case SAI_COMMON_API_GET:
-            return sai_route_api->get_route_attribute(&route_entry, attr_count, attr_list);
+            return sai_route_api->get_route_entry_attribute(&route_entry, attr_count, attr_list);
 
         default:
             SWSS_LOG_ERROR("route other apis not implemented");
-            exit(EXIT_FAILURE);
-    }
-}
-
-sai_status_t handle_switch(
-        _In_ const std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    switch(api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_REMOVE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_SET:
-            return sai_switch_api->set_switch_attribute(attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_switch_api->get_switch_attribute(attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("switch other apis not implemented");
-            exit(EXIT_FAILURE);
-    }
-}
-
-sai_status_t handle_vlan(
-        _In_ const std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_vlan_id_t vlan_id;
-    sai_deserialize_vlan_id(str_object_id, vlan_id);
-
-    switch(api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return sai_vlan_api->create_vlan(vlan_id);
-
-        case SAI_COMMON_API_REMOVE:
-            return sai_vlan_api->remove_vlan(vlan_id);
-
-        case SAI_COMMON_API_SET:
-            return sai_vlan_api->set_vlan_attribute(vlan_id, attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_vlan_api->get_vlan_attribute(vlan_id, attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("vlan other apis not implemented");
-            exit(EXIT_FAILURE);
-    }
-}
-
-sai_status_t handle_trap(
-        _In_ const std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_hostif_trap_id_t trap_id;
-    sai_deserialize_hostif_trap_id(str_object_id, trap_id);
-
-    switch(api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_REMOVE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_SET:
-            return sai_hostif_api->set_trap_attribute(trap_id, attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_hostif_api->get_trap_attribute(trap_id, attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("trap other apis not implemented");
             exit(EXIT_FAILURE);
     }
 }
@@ -1003,7 +777,11 @@ void performNotifySyncd(const std::string& request, const std::string response)
         exit(EXIT_FAILURE);
     }
 
-    sai_status_t status = sai_switch_api->set_switch_attribute(&attr);
+    // TODO we need to create switch first to set recordings
+
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID;
+
+    sai_status_t status = sai_switch_api->set_switch_attribute(switch_id, &attr);
 
     const std::string& responseStatus = R[2];
 
@@ -1364,31 +1142,21 @@ int replay(int argc, char **argv)
 
         switch (object_type)
         {
-            case SAI_OBJECT_TYPE_FDB:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
                 status = handle_fdb(str_object_id, api, attr_count, attr_list);
                 break;
 
-            case SAI_OBJECT_TYPE_SWITCH:
-                status = handle_switch(str_object_id, api, attr_count, attr_list);
-                break;
-
-            case SAI_OBJECT_TYPE_NEIGHBOR:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
                 status = handle_neighbor(str_object_id, api, attr_count, attr_list);
                 break;
 
-            case SAI_OBJECT_TYPE_ROUTE:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
                 status = handle_route(str_object_id, api, attr_count, attr_list);
                 break;
 
-            case SAI_OBJECT_TYPE_VLAN:
-                status = handle_vlan(str_object_id, api, attr_count, attr_list);
-                break;
-
-            case SAI_OBJECT_TYPE_TRAP:
-                status = handle_trap(str_object_id, api, attr_count, attr_list);
-                break;
-
             default:
+
+                // TODO check non id
                 status = handle_generic(object_type, str_object_id, api, attr_count, attr_list);
                 break;
         }
@@ -1505,18 +1273,19 @@ int main(int argc, char **argv)
 
     initialize_common_api_pointers();
 
-    EXIT_ON_ERROR(sai_switch_api->initialize_switch(0, "", "", &switch_notifications));
-
     sai_attribute_t attr;
 
     attr.id = SAI_REDIS_SWITCH_ATTR_USE_TEMP_VIEW;
     attr.value.booldata = g_useTempView;
 
-    EXIT_ON_ERROR(sai_switch_api->set_switch_attribute(&attr));
+    // TODO we need to create switch first
+    // or those attributes can be applied without switch
+    
+    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID;
+
+    EXIT_ON_ERROR(sai_switch_api->set_switch_attribute(switch_id, &attr));
 
     int exitcode = replay(argc, argv);
-
-    sai_switch_api->shutdown_switch(false);
 
     sai_api_uninitialize();
 
