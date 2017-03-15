@@ -66,12 +66,12 @@ void redisPutFdbEntryToAsicView(
     std::vector<swss::FieldValueTuple> entry;
 
     entry = SaiAttributeList::serialize_attr_list(
-            SAI_OBJECT_TYPE_FDB,
+            SAI_OBJECT_TYPE_FDB_ENTRY,
             fdb->attr_count,
             fdb->attr,
             false);
 
-    sai_object_type_t objectType = SAI_OBJECT_TYPE_FDB;
+    sai_object_type_t objectType = SAI_OBJECT_TYPE_FDB_ENTRY;
 
     std::string strObjectType = sai_serialize_object_type(objectType);
 
@@ -91,9 +91,9 @@ void redisPutFdbEntryToAsicView(
     sai_attribute_t attr;
 
     attr.id = SAI_FDB_ENTRY_ATTR_TYPE;
-    attr.value.s32 = SAI_FDB_ENTRY_DYNAMIC;
+    attr.value.s32 = SAI_FDB_ENTRY_TYPE_DYNAMIC;
 
-    auto meta = get_attribute_metadata(objectType, attr.id);
+    auto meta = sai_metadata_get_attr_metadata(objectType, attr.id);
 
     if (meta == NULL)
     {
@@ -123,7 +123,7 @@ void on_fdb_event(
 
         SWSS_LOG_DEBUG("fdb %u: type: %d", i, fdb->event_type);
 
-        translate_rid_to_vid_list(SAI_OBJECT_TYPE_FDB, fdb->attr_count, fdb->attr);
+        translate_rid_to_vid_list(SAI_OBJECT_TYPE_FDB_ENTRY, fdb->attr_count, fdb->attr);
 
         // currently because of bcrm bug, we need to install fdb entries in asic view
         // and currently this event don't have fdb type which is required on creation
@@ -156,26 +156,6 @@ void on_port_state_change(
     std::string s = sai_serialize_port_oper_status_ntf(count, data);
 
     send_notification("port_state_change", s);
-}
-
-void on_port_event(
-        _In_ uint32_t count,
-        _In_ sai_port_event_notification_t *data)
-{
-    std::lock_guard<std::mutex> lock(g_mutex);
-
-    SWSS_LOG_ENTER();
-
-    for (uint32_t i = 0; i < count; i++)
-    {
-        sai_port_event_notification_t *port_event = &data[i];
-
-        port_event->port_id = translate_rid_to_vid(port_event->port_id);
-    }
-
-    std::string s = sai_serialize_port_event_ntf(count, data);
-
-    send_notification("port_event", s);
 }
 
 void on_switch_shutdown_request()
@@ -229,14 +209,4 @@ void on_packet_event(
     send_notification("packet_event", s, entry);
     */
 }
-
-sai_switch_notification_t switch_notifications
-{
-    on_switch_state_change,
-        on_fdb_event,
-        on_port_state_change,
-        on_port_event,
-        on_switch_shutdown_request,
-        on_packet_event
-};
 

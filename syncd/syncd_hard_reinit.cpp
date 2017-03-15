@@ -4,6 +4,15 @@
 
 #include "syncd.h"
 
+// TODO we need to handle switch first
+//
+// TODO there will be needed extra care about switch
+// since if we set switch attributes with oids then we need to process
+// them first, but we need switch id to create them first, so we need
+// to first create switch with mandatory or all non object id's and then
+// DO "set" and process all
+// also pointers
+
 typedef std::unordered_map<std::string, std::string> StringHash;
 typedef std::unordered_map<sai_object_id_t, sai_object_id_t> ObjectIdMap;
 
@@ -14,22 +23,16 @@ ObjectIdMap g_translated;
 ObjectIdMap g_vidToRidMap;
 ObjectIdMap g_ridToVidMap;
 
-StringHash g_switches;
-StringHash g_vlans;
 StringHash g_neighbors;
 StringHash g_oids;
 StringHash g_fdbs;
 StringHash g_routes;
-StringHash g_traps;
 
 void processAttributesForOids(sai_object_type_t objectType, std::shared_ptr<SaiAttributeList> list);
-void processSwitch();
-void processVlans();
 void processNeighbors();
 void processOids();
 void processFdbs();
 void processRoutes(bool defaultOnly);
-void processTraps();
 
 sai_object_type_t getObjectTypeFromAsicKey(const std::string &key);
 
@@ -231,28 +234,16 @@ void hardReinit()
 
         switch (objectType)
         {
-            case SAI_OBJECT_TYPE_ROUTE:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
                 g_routes[strObjectId] = key;
                 break;
 
-            case SAI_OBJECT_TYPE_VLAN:
-                g_vlans[strObjectId] = key;
-                break;
-
-            case SAI_OBJECT_TYPE_FDB:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
                 g_fdbs[strObjectId] = key;
                 break;
 
-            case SAI_OBJECT_TYPE_NEIGHBOR:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
                 g_neighbors[strObjectId] = key;
-                break;
-
-            case SAI_OBJECT_TYPE_TRAP:
-                g_traps[strObjectId] = key;
-                break;
-
-            case SAI_OBJECT_TYPE_SWITCH:
-                g_switches[strObjectId] = key;
                 break;
 
             default:
@@ -263,12 +254,9 @@ void hardReinit()
         g_attributesLists[key] = redisGetAttributesFromAsicKey(key);
     }
 
-    processSwitch();
-    processVlans();
     processFdbs();
     processNeighbors();
     processOids();
-    processTraps();
     processRoutes(true);
     processRoutes(false);
 
@@ -303,6 +291,29 @@ bool shouldSkipCreateion(
     return false;
 }
 
+const sai_attribute_t* get_attribute_by_id(
+        _In_ sai_object_id_t id,
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t* attr_list)
+{
+    SWSS_LOG_ENTER();
+
+    if (attr_list == NULL)
+    {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < attr_count; ++i)
+    {
+        if (attr_list[i].id == id)
+        {
+            return &attr_list[i];
+        }
+    }
+
+    return NULL;
+}
+
 void trapGroupWorkaround(
         sai_object_id_t vid,
         sai_object_id_t& rid,
@@ -322,10 +333,11 @@ void trapGroupWorkaround(
         return;
     }
 
-    sai_object_type_t objectType = SAI_OBJECT_TYPE_TRAP_GROUP;
+    sai_object_type_t objectType = SAI_OBJECT_TYPE_HOSTIF_TRAP_GROUP;
 
     SWSS_LOG_INFO("creating trap group and setting attributes 1 by 1 as workaround");
 
+    // TODO move this to metadata utils
     const sai_attribute_t* queue_attr = get_attribute_by_id(SAI_HOSTIF_TRAP_GROUP_ATTR_QUEUE, attrCount, attrList);
 
     if (queue_attr == NULL)
@@ -367,7 +379,7 @@ void listFailedAttributes(
     {
         const sai_attribute_t *attr = &attrList[idx];
 
-        auto meta = get_attribute_metadata(objectType, attr->id);
+        auto meta = sai_metadata_get_attr_metadata(objectType, attr->id);
 
         if (meta == NULL)
         {
@@ -435,7 +447,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
             SWSS_LOG_INFO("default virtual router will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
-    else if (objectType == SAI_OBJECT_TYPE_STP_INSTANCE)
+    else if (objectType == SAI_OBJECT_TYPE_STP)
     {
         if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultStpInstanceId(); }))
         {
@@ -449,7 +461,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
             SWSS_LOG_DEBUG("default queue will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
-    else if (objectType == SAI_OBJECT_TYPE_PRIORITY_GROUP)
+    else if (objectType == SAI_OBJECT_TYPE_INGRESS_PRIORITY_GROUP)
     {
         if (shouldSkipCreateion(vid, rid, createObject, [&](sai_object_id_t pgId) { return g_defaultPriorityGroupsRids.find(pgId) != g_defaultPriorityGroupsRids.end(); }))
         {
@@ -463,7 +475,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
             SWSS_LOG_DEBUG("default scheduler group will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
-    else if (objectType == SAI_OBJECT_TYPE_TRAP_GROUP)
+    else if (objectType == SAI_OBJECT_TYPE_HOSTIF_TRAP_GROUP)
     {
         if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultTrapGroupId(); }))
         {
@@ -518,7 +530,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
             if (status != SAI_STATUS_SUCCESS)
             {
-                auto meta = get_attribute_metadata(objectType, attr->id);
+                auto meta = sai_metadata_get_attr_metadata(objectType, attr->id);
 
                 if (meta == NULL)
                 {
@@ -556,7 +568,7 @@ void processAttributesForOids(sai_object_type_t objectType, std::shared_ptr<SaiA
     {
         sai_attribute_t &attr = attrList[idx];
 
-        auto meta = get_attribute_metadata(objectType, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(objectType, attr.id);
 
         if (meta == NULL)
         {
@@ -567,34 +579,34 @@ void processAttributesForOids(sai_object_type_t objectType, std::shared_ptr<SaiA
         uint32_t count = 0;
         sai_object_id_t *objectIdList;
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 count = 1;
                 objectIdList = &attr.value.oid;
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 count = attr.value.objlist.count;
                 objectIdList = attr.value.objlist.list;
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 count = 1;
                 objectIdList = &attr.value.aclfield.data.oid;
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 count = attr.value.aclfield.data.objlist.count;
                 objectIdList = attr.value.aclfield.data.objlist.list;
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 count = 1;
                 objectIdList = &attr.value.aclaction.parameter.oid;
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 count = attr.value.aclaction.parameter.objlist.count;
                 objectIdList = attr.value.aclaction.parameter.objlist.list;
                 break;
@@ -639,96 +651,6 @@ void processOids()
     }
 }
 
-void processSwitch()
-{
-    SWSS_LOG_ENTER();
-
-    for (auto &kv: g_switches)
-    {
-        const std::string &asicKey = kv.second;
-
-        std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
-
-        processAttributesForOids(SAI_OBJECT_TYPE_SWITCH, list);
-
-        sai_attribute_t *attrList = list->get_attr_list();
-
-        uint32_t attrCount = list->get_attr_count();
-
-        for (uint32_t idx = 0; idx < attrCount; idx++)
-        {
-            sai_attribute_t *attr = &attrList[idx];
-
-            sai_status_t status = sai_switch_api->set_switch_attribute(attr);
-
-            if (status != SAI_STATUS_SUCCESS)
-            {
-                SWSS_LOG_ERROR("failed to set_switch_attribute %d: %d", attr->id, status);
-
-                exit_and_notify(EXIT_FAILURE);
-            }
-        }
-    }
-}
-
-sai_vlan_id_t getVlanIdFromString(const std::string &strVlanId)
-{
-    SWSS_LOG_ENTER();
-
-    sai_vlan_id_t vlanId;
-    sai_deserialize_vlan_id(strVlanId, vlanId);
-
-    return vlanId;
-}
-
-void processVlans()
-{
-    SWSS_LOG_ENTER();
-
-    for (auto &kv: g_vlans)
-    {
-        const std::string &strVlanId = kv.first;
-        const std::string &asicKey = kv.second;
-
-        sai_vlan_id_t vlanId = getVlanIdFromString(strVlanId);
-
-        if (vlanId != 1)
-        {
-            // don't create vlan 1, we assume it exists
-            sai_status_t status = sai_vlan_api->create_vlan(vlanId);
-
-            if (status != SAI_STATUS_SUCCESS)
-            {
-                SWSS_LOG_ERROR("failed to create_vlan %d: %d", vlanId, status);
-
-                exit_and_notify(EXIT_FAILURE);
-            }
-        }
-
-        std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
-
-        processAttributesForOids(SAI_OBJECT_TYPE_VLAN, list);
-
-        sai_attribute_t *attrList = list->get_attr_list();
-
-        uint32_t count = list->get_attr_count();
-
-        for (uint32_t idx = 0; idx < count; idx++)
-        {
-            sai_attribute_t *attr = &attrList[idx];
-
-            sai_status_t status = sai_vlan_api->set_vlan_attribute(vlanId, attr);
-
-            if (status != SAI_STATUS_SUCCESS)
-            {
-                SWSS_LOG_ERROR("failed to set_vlan_attribute %d: %d", attr->id, status);
-
-                exit_and_notify(EXIT_FAILURE);
-            }
-        }
-    }
-}
-
 sai_fdb_entry_t getFdbEntryFromString(const std::string &strFdbEntry)
 {
     SWSS_LOG_ENTER();
@@ -752,7 +674,7 @@ void processFdbs()
 
         std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
 
-        processAttributesForOids(SAI_OBJECT_TYPE_FDB, list);
+        processAttributesForOids(SAI_OBJECT_TYPE_FDB_ENTRY, list);
 
         sai_attribute_t *attrList = list->get_attr_list();
 
@@ -794,7 +716,7 @@ void processNeighbors()
 
         std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
 
-        processAttributesForOids(SAI_OBJECT_TYPE_NEIGHBOR, list);
+        processAttributesForOids(SAI_OBJECT_TYPE_NEIGHBOR_ENTRY, list);
 
         sai_attribute_t *attrList = list->get_attr_list();
 
@@ -811,11 +733,11 @@ void processNeighbors()
     }
 }
 
-sai_unicast_route_entry_t getRouteEntryFromString(const std::string &strRouteEntry)
+sai_route_entry_t getRouteEntryFromString(const std::string &strRouteEntry)
 {
     SWSS_LOG_ENTER();
 
-    sai_unicast_route_entry_t routeEntry;
+    sai_route_entry_t routeEntry;
     sai_deserialize_route_entry(strRouteEntry, routeEntry);
 
     return routeEntry;
@@ -839,19 +761,19 @@ void processRoutes(bool defaultOnly)
             continue;
         }
 
-        sai_unicast_route_entry_t routeEntry = getRouteEntryFromString(strRouteEntry);
+        sai_route_entry_t routeEntry = getRouteEntryFromString(strRouteEntry);
 
         routeEntry.vr_id = processSingleVid(routeEntry.vr_id);
 
         std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
 
-        processAttributesForOids(SAI_OBJECT_TYPE_ROUTE, list);
+        processAttributesForOids(SAI_OBJECT_TYPE_ROUTE_ENTRY, list);
 
         sai_attribute_t *attrList = list->get_attr_list();
 
         uint32_t attrCount = list->get_attr_count();
 
-        sai_status_t status = sai_route_api->create_route(&routeEntry, attrCount, attrList);
+        sai_status_t status = sai_route_api->create_route_entry(&routeEntry, attrCount, attrList);
 
         if (status != SAI_STATUS_SUCCESS)
         {
@@ -860,54 +782,9 @@ void processRoutes(bool defaultOnly)
                     sai_serialize_route_entry(routeEntry).c_str(),
                     sai_serialize_status(status).c_str());
 
-            listFailedAttributes(SAI_OBJECT_TYPE_ROUTE, attrCount, attrList);
+            listFailedAttributes(SAI_OBJECT_TYPE_ROUTE_ENTRY, attrCount, attrList);
 
             exit_and_notify(EXIT_FAILURE);
-        }
-    }
-}
-
-sai_hostif_trap_id_t getTrapIdFromString(const std::string &strTrapId)
-{
-    SWSS_LOG_ENTER();
-
-    sai_hostif_trap_id_t trapId;
-    sai_deserialize_hostif_trap_id(strTrapId, trapId);
-
-    return trapId;
-}
-
-void processTraps()
-{
-    SWSS_LOG_ENTER();
-
-    for (auto &kv: g_traps)
-    {
-        const std::string &strTrapId = kv.first;
-        const std::string &asicKey = kv.second;
-
-        sai_hostif_trap_id_t trapId = getTrapIdFromString(strTrapId);
-
-        std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
-
-        processAttributesForOids(SAI_OBJECT_TYPE_TRAP, list);
-
-        sai_attribute_t *attrList = list->get_attr_list();
-
-        uint32_t attrCount = list->get_attr_count();
-
-        for (uint32_t idx = 0; idx < attrCount; idx++)
-        {
-            sai_attribute_t *attr = &attrList[idx];
-
-            sai_status_t status = sai_hostif_api->set_trap_attribute(trapId, attr);
-
-            if (status != SAI_STATUS_SUCCESS)
-            {
-                SWSS_LOG_ERROR("failed to set_trap_attribute %d: %d", trapId, status);
-
-                exit_and_notify(EXIT_FAILURE);
-            }
         }
     }
 }

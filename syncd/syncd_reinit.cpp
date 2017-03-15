@@ -6,6 +6,11 @@
 #include "syncd.h"
 #include "sairedis.h"
 
+// TODO we need switch id for all that
+// TODO put this in class ?
+
+sai_object_id_t switch_id;
+
 sai_uint32_t saiGetPortCount()
 {
     SWSS_LOG_ENTER();
@@ -14,7 +19,7 @@ sai_uint32_t saiGetPortCount()
 
     attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -36,7 +41,7 @@ sai_object_id_t saiGetCpuId()
 
     attr.id = SAI_SWITCH_ATTR_CPU_PORT;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -67,7 +72,7 @@ std::vector<sai_object_id_t> saiGetPortList()
     attr.value.objlist.list = portList.data();
 
     // we assube port list is always returned in the same order
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -129,7 +134,7 @@ sai_object_id_t saiGetDefaultTrapGroup()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_TRAP_GROUP;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -149,7 +154,7 @@ sai_object_id_t saiGetDefaultStpInstance()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_STP_INST_ID;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -169,7 +174,7 @@ sai_object_id_t saiGetDefaultVirtualRouter()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_VIRTUAL_ROUTER_ID;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -749,7 +754,7 @@ sai_uint32_t saiGetPortNumberOfPriorityGroups(sai_object_id_t portId)
 
     sai_attribute_t attr;
 
-    attr.id = SAI_PORT_ATTR_NUMBER_OF_PRIORITY_GROUPS;
+    attr.id = SAI_PORT_ATTR_NUMBER_OF_INGRESS_PRIORITY_GROUPS;
 
     sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
 
@@ -782,7 +787,7 @@ std::vector<sai_object_id_t> saiGetPortPriorityGroups(sai_object_id_t portId)
 
     sai_attribute_t attr;
 
-    attr.id = SAI_PORT_ATTR_PRIORITY_GROUP_LIST;
+    attr.id = SAI_PORT_ATTR_INGRESS_PRIORITY_GROUP_LIST;
     attr.value.objlist.count = pgCount;
     attr.value.objlist.list = pgList.data();
 
@@ -834,7 +839,7 @@ uint32_t saiGetMaxNumberOfChildsPerSchedulerGroup()
 
     attr.id = SAI_SWITCH_ATTR_QOS_MAX_NUMBER_OF_CHILDS_PER_SCHEDULER_GROUP;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(1, &attr);
+    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
