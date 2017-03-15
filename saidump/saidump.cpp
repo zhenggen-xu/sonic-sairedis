@@ -185,7 +185,8 @@ int main(int argc, char ** argv)
 
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_NOTICE);
 
-    meta_init();
+    // TODO init meta
+    //meta_init();
 
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
 
@@ -217,12 +218,9 @@ int main(int argc, char ** argv)
 
         switch (object_type)
         {
-            case SAI_OBJECT_TYPE_FDB:
-            case SAI_OBJECT_TYPE_SWITCH:
-            case SAI_OBJECT_TYPE_NEIGHBOR:
-            case SAI_OBJECT_TYPE_ROUTE:
-            case SAI_OBJECT_TYPE_VLAN:
-            case SAI_OBJECT_TYPE_TRAP:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
                 break;
 
             default:
@@ -254,45 +252,30 @@ int main(int argc, char ** argv)
 
         switch (object_type)
         {
-            case SAI_OBJECT_TYPE_FDB:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
                 {
                     sai_fdb_entry_t fdb_entry;
                     sai_deserialize_fdb_entry(str_object_id, fdb_entry);
                 }
                 break;
 
-            case SAI_OBJECT_TYPE_SWITCH:
-                break;
-
-            case SAI_OBJECT_TYPE_NEIGHBOR:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
                 {
                     sai_neighbor_entry_t neighbor_entry;
                     sai_deserialize_neighbor_entry(str_object_id, neighbor_entry);
                 }
                 break;
 
-            case SAI_OBJECT_TYPE_ROUTE:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
                 {
-                    sai_unicast_route_entry_t route_entry;
+                    sai_route_entry_t route_entry;
                     sai_deserialize_route_entry(str_object_id, route_entry);
                 }
                 break;
 
-            case SAI_OBJECT_TYPE_VLAN:
-                {
-                    sai_vlan_id_t vlan_id;
-                    sai_deserialize_vlan_id(str_object_id, vlan_id);
-                }
-                break;
-
-            case SAI_OBJECT_TYPE_TRAP:
-                {
-                    sai_hostif_trap_id_t trap_id;
-                    sai_deserialize_hostif_trap_id(str_object_id, trap_id);
-                }
-                break;
-
             default:
+
+                // TODO check non object id
                 {
                     sai_object_id_t object_id;
                     sai_deserialize_object_id(str_object_id, object_id);
