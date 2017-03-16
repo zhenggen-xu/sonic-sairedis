@@ -1195,7 +1195,7 @@ std::string sai_serialize_attr_value(
             return sai_serialize_acl_action(meta, attr.value.aclaction, countOnly);
 
         default:
-            SWSS_LOG_ERROR("FATAIL: invalid serialization type %d", meta.serializationtype);
+            SWSS_LOG_ERROR("FATAL: invalid serialization type %d", meta.serializationtype);
             throw std::runtime_error("serialization type is not supported");
     }
 }
