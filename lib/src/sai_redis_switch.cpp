@@ -67,6 +67,7 @@ void clear_local_state()
     redis_clear_switch_ids();
 }
 
+// TODO move after api initialize
 sai_status_t redis_initialize_switch()
 {
     // TODO move after switch create or api init
@@ -100,6 +101,7 @@ sai_status_t redis_initialize_switch()
     return SAI_STATUS_SUCCESS;
 }
 
+// TODO move to uninitialize api
 void redis_shutdown_switch(
         _In_ bool warm_restart_hint)
 {
@@ -252,19 +254,6 @@ sai_status_t sai_redis_notify_syncd(
     return SAI_STATUS_SUCCESS;
 }
 
-/**
- * @brief Create switch
- *
- * SDK initialization/connect to SDK. After the call the capability attributes should be
- * ready for retrieval via sai_get_switch_attribute(). Same Switch Object id should be
- * given for create/connect for each NPU.
- *
- * @param[out] switch_id The Switch Object ID
- * @param[in] attr_count number of attributes
- * @param[in] attr_list Array of attributes
- *
- * @return #SAI_STATUS_SUCCESS on success Failure status code on error
- */
 sai_status_t redis_create_switch(
         _Out_ sai_object_id_t* switch_id,
         _In_ uint32_t attr_count,
@@ -274,24 +263,29 @@ sai_status_t redis_create_switch(
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_create_oid(
+    sai_status_t status = meta_sai_create_oid(
             SAI_OBJECT_TYPE_SWITCH,
             switch_id,
             SAI_NULL_OBJECT_ID, // no switch id since we create switch
             attr_count,
             attr_list,
             &redis_generic_create);
+
+    if (status == SAI_STATUS_SUCCESS)
+    {
+        /*
+         * When doing CREATE operation user may want to update notification
+         * pointers. TODO this be per switch.
+         *
+         * Currently we will have same notifications for all switches.
+         */
+
+        check_notifications_pointers(attr_count, attr_list);
+    }
+
+    return status;
 }
 
-/**
- * @brief Remove/disconnect Switch
- *
- * Release all resources associated with currently opened switch
- *
- * @param[in] switch_id The Switch id
- *
- * @return #SAI_STATUS_SUCCESS on success Failure status code on error
- */
 sai_status_t redis_remove_switch(
         _In_ sai_object_id_t switch_id)
 {
@@ -305,17 +299,6 @@ sai_status_t redis_remove_switch(
             &redis_generic_remove);
 }
 
-/**
- * Routine Description:
- *    @brief Set switch attribute value
- *
- * Arguments:
- *    @param[in] attr - switch attribute
- *
- * Return Values:
- *    @return SAI_STATUS_SUCCESS on success
- *            Failure status code on error
- */
 sai_status_t redis_set_switch_attribute(
         _In_ sai_object_id_t switch_id,
         _In_ const sai_attribute_t *attr)
@@ -357,25 +340,27 @@ sai_status_t redis_set_switch_attribute(
         }
     }
 
-    return meta_sai_set_oid(
+    sai_status_t status = meta_sai_set_oid(
             SAI_OBJECT_TYPE_SWITCH,
             switch_id,
             attr,
             &redis_generic_set);
+
+    if (status == SAI_STATUS_SUCCESS)
+    {
+        /*
+         * When doint SET operation user may want to update notification
+         * pointers. TODO this be per switch.
+         *
+         * Currently we will have same notifications for all switches.
+         */
+
+        check_notifications_pointers(1, attr);
+    }
+
+    return status;
 }
 
-/**
- * Routine Description:
- *    @brief Get switch attribute value
- *
- * Arguments:
- *    @param[in] attr_count - number of switch attributes
- *    @param[inout] attr_list - array of switch attributes
- *
- * Return Values:
- *    @return SAI_STATUS_SUCCESS on success
- *            Failure status code on error
- */
 sai_status_t redis_get_switch_attribute(
         _In_ sai_object_id_t switch_id,
         _In_ sai_uint32_t attr_count,

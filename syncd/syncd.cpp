@@ -1009,7 +1009,7 @@ sai_status_t processEventInInitViewMode(
 
     if (api == SAI_COMMON_API_CREATE)
     {
-        // TODO id non id 
+        // TODO id non id
 
         switch (object_type)
         {
@@ -1158,6 +1158,11 @@ sai_status_t processEvent(swss::ConsumerTable &consumer)
 
     sai_attribute_t *attr_list = list.get_attr_list();
     uint32_t attr_count = list.get_attr_count();
+
+    if (object_type == SAI_OBJECT_TYPE_SWITCH && (api == SAI_COMMON_API_CREATE || api == SAI_COMMON_API_SET))
+    {
+        check_notifications_pointers(attr_count, attr_list);
+    }
 
     if (isInitViewMode())
     {

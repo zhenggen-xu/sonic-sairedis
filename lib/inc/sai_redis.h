@@ -29,9 +29,13 @@ extern "C" {
  */
 #define MAX_SWITCHES 0x100
 
-void redis_free_switch_id_index(int index);
-int redis_get_switch_id_index(sai_object_id_t object_id);
 void redis_clear_switch_ids();
+void redis_free_virtual_object_id(
+        _In_ sai_object_id_t object_id);
+
+void check_notifications_pointers(
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t *attr_list);
 
 // if we don't receive response from syncd in 60 seconds
 // there is something wrong and we should fail

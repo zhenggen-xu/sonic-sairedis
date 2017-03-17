@@ -165,4 +165,8 @@ void stop_cli();
 sai_status_t applyViewTransition();
 sai_status_t syncdApplyView();
 
+void check_notifications_pointers(
+        _In_ uint32_t attr_count,
+        _In_ sai_attribute_t *attr_list);
+
 #endif // __SYNCD_H__

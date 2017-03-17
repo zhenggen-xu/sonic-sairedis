@@ -22,6 +22,13 @@ sai_status_t sai_api_initialize(
 
     SWSS_LOG_ENTER();
 
+    if (g_apiInitialized)
+    {
+        SWSS_LOG_ERROR("api already initialized");
+
+        return SAI_STATUS_FAILURE;
+    }
+
     if ((NULL == services) || (NULL == services->profile_get_next_value) || (NULL == services->profile_get_value))
     {
         SWSS_LOG_ERROR("Invalid services handle passed to SAI API initialize");
@@ -30,12 +37,6 @@ sai_status_t sai_api_initialize(
     }
 
     memcpy(&g_services, services, sizeof(g_services));
-
-    if (0 != flags)
-    {
-        SWSS_LOG_ERROR("Invalid flags passed to SAI API initialize");
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
 
     g_db                 = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
     g_dbNtf              = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
@@ -66,6 +67,13 @@ sai_status_t sai_api_uninitialize(void)
     std::lock_guard<std::mutex> lock(g_apimutex);
 
     SWSS_LOG_ENTER();
+
+    if (!g_apiInitialized)
+    {
+        SWSS_LOG_ERROR("api not initialized");
+
+        return SAI_STATUS_FAILURE;
+    }
 
     g_apiInitialized = false;
 
