@@ -166,7 +166,7 @@ void test_ports()
 
     sai_object_id_t switch_id;
 
-    // TODO we need mandatoryattributes 
+    // TODO we need mandatoryattributes
 
     SUCCESS(sai_switch_api->create_switch(&switch_id, 0, NULL));
 

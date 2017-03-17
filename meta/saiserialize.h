@@ -70,7 +70,11 @@ std::string sai_serialize_port_stat(
         _In_ const sai_port_stat_t counter);
 
 std::string sai_serialize_switch_oper_status(
+        _In_ sai_object_id_t switch_id,
         _In_ sai_switch_oper_status_t status);
+
+std::string sai_serialize_switch_shutdown_request(
+        _In_ sai_object_id_t switch_id);
 
 std::string sai_serialize_enum(
         _In_ const int32_t value,
@@ -109,7 +113,12 @@ void sai_deserialize_status(
 
 void sai_deserialize_switch_oper_status(
         _In_ const std::string& s,
+        _Out_ sai_object_id_t &switch_id,
         _Out_ sai_switch_oper_status_t& status);
+
+void sai_deserialize_switch_shutdown_request(
+        _In_ const std::string& s,
+        _Out_ sai_object_id_t &switch_id);
 
 void sai_deserialize_object_type(
         _In_ const std::string& s,

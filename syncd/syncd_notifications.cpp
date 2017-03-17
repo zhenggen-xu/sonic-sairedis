@@ -1,6 +1,9 @@
 #include "syncd.h"
 #include "sairedis.h"
 
+// TODO support those notifications on SET and CREATE on switch
+// so that pointers need to be redefined (same on player)
+
 void send_notification(
         _In_ std::string op,
         _In_ std::string data,
@@ -27,13 +30,16 @@ void send_notification(
 }
 
 void on_switch_state_change(
+        _In_ sai_object_id_t switch_id,
         _In_ sai_switch_oper_status_t switch_oper_status)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
-    std::string s = sai_serialize_switch_oper_status(switch_oper_status);
+    switch_id = translate_rid_to_vid(switch_id);
+
+    std::string s = sai_serialize_switch_oper_status(switch_id, switch_oper_status);
 
     send_notification("switch_state_change", s);
 }
@@ -158,16 +164,22 @@ void on_port_state_change(
     send_notification("port_state_change", s);
 }
 
-void on_switch_shutdown_request()
+void on_switch_shutdown_request(
+        _In_ sai_object_id_t switch_id)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
-    send_notification("switch_shutdown_request", "");
+    switch_id = translate_rid_to_vid(switch_id);
+
+    std::string s = sai_serialize_switch_shutdown_request(switch_id);
+
+    send_notification("switch_shutdown_request", s);
 }
 
 void on_packet_event(
+        _In_ sai_object_id_t switch_id,
         _In_ const void *buffer,
         _In_ sai_size_t buffer_size,
         _In_ uint32_t attr_count,
@@ -180,6 +192,7 @@ void on_packet_event(
     SWSS_LOG_ERROR("not implemented");
 
     /*
+       TODO translate switch id
        std::string s;
        sai_serialize_primitive(buffer_size, s);
 
@@ -210,3 +223,55 @@ void on_packet_event(
     */
 }
 
+sai_switch_state_change_notification_fn on_switch_state_change_ntf = on_switch_state_change;
+sai_switch_shutdown_request_fn          on_switch_shutdown_request_ntf = on_switch_shutdown_request;
+sai_fdb_event_notification_fn           on_fdb_event_ntf = on_fdb_event_ntf;
+sai_port_state_change_notification_fn   on_port_state_change_ntf = on_port_state_change;
+sai_packet_event_notification_fn        on_packet_event_ntf = on_packet_event;
+
+void check_notifications_pointers(
+        _In_ uint32_t attr_count,
+        _In_ sai_attribute_t *attr_list)
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * This function should only be called on CREATE/SET
+     * api when object is SWITCH.
+     *
+     * Notifications pointers needs to be corrected since
+     * those we receive from sairedis are in sairedis
+     * memory space.
+     */
+
+    for (uint32_t index = 0; index < attr_count; ++index)
+    {
+        sai_attribute_t &attr = attr_list[index];
+
+        switch (attr.id)
+        {
+            case SAI_SWITCH_ATTR_SWITCH_STATE_CHANGE_NOTIFY:
+                attr.value.ptr = (void*)on_switch_state_change_ntf;
+                break;
+
+            case SAI_SWITCH_ATTR_SHUTDOWN_REQUEST_NOTIFY:
+                attr.value.ptr = (void*)on_switch_shutdown_request_ntf;
+                break;
+
+            case SAI_SWITCH_ATTR_FDB_EVENT_NOTIFY:
+                attr.value.ptr = (void*)on_fdb_event_ntf;
+                break;
+
+            case SAI_SWITCH_ATTR_PORT_STATE_CHANGE_NOTIFY:
+                attr.value.ptr = (void*)on_port_state_change_ntf;
+                break;
+
+            case SAI_SWITCH_ATTR_PACKET_EVENT_NOTIFY:
+                attr.value.ptr = (void*)on_packet_event_ntf;
+                break;
+
+            default:
+                break;
+        }
+    }
+}

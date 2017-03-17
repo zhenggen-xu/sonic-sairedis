@@ -695,11 +695,29 @@ std::string sai_serialize_port_stat(
 }
 
 std::string sai_serialize_switch_oper_status(
+        _In_ sai_object_id_t switch_id,
         _In_ sai_switch_oper_status_t status)
 {
     SWSS_LOG_ENTER();
 
-    return sai_serialize_enum(status, &metadata_enum_sai_switch_oper_status_t);
+    json j;
+
+    j["switch_id"] = sai_serialize_object_id(switch_id);
+    j["status"] = sai_serialize_enum(status, &metadata_enum_sai_switch_oper_status_t);
+
+    return j.dump();
+}
+
+std::string sai_serialize_switch_shutdown_request(
+        _In_ sai_object_id_t switch_id)
+{
+    SWSS_LOG_ENTER();
+
+    json j;
+
+    j["switch_id"] = sai_serialize_object_id(switch_id);
+
+    return j.dump();
 }
 
 std::string sai_serialize_ipv4(
@@ -2209,11 +2227,26 @@ void sai_deserialize_fdb_event(
 
 void sai_deserialize_switch_oper_status(
         _In_ const std::string& s,
+        _Out_ sai_object_id_t &switch_id,
         _Out_ sai_switch_oper_status_t& status)
 {
     SWSS_LOG_ENTER();
 
-    sai_deserialize_enum(s, &metadata_enum_sai_switch_oper_status_t, (int32_t&)status);
+    json j = json::parse(s);
+
+    sai_deserialize_object_id(j["switch_id"], switch_id);
+    sai_deserialize_enum(j["status"], &metadata_enum_sai_switch_oper_status_t, (int32_t&)status);
+}
+
+void sai_deserialize_switch_shutdown_request(
+        _In_ const std::string& s,
+        _Out_ sai_object_id_t &switch_id)
+{
+    SWSS_LOG_ENTER();
+
+    json j = json::parse(s);
+
+    sai_deserialize_object_id(j["switch_id"], switch_id);
 }
 
 void sai_deserialize_object_type(

@@ -1280,7 +1280,7 @@ int main(int argc, char **argv)
 
     // TODO we need to create switch first
     // or those attributes can be applied without switch
-    
+
     sai_object_id_t switch_id = SAI_NULL_OBJECT_ID;
 
     EXIT_ON_ERROR(sai_switch_api->set_switch_attribute(switch_id, &attr));
