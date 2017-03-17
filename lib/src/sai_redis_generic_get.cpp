@@ -101,7 +101,7 @@ sai_status_t internal_redis_generic_get(
 
     swss::Select s;
 
-    s.addSelectable(g_redisGetConsumer);
+    s.addSelectable(g_redisGetConsumer.get());
 
     while (true)
     {

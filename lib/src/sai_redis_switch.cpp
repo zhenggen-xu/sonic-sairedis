@@ -24,7 +24,7 @@ void ntf_thread()
 
     swss::Select s;
 
-    s.addSelectable(g_redisNotifications);
+    s.addSelectable(g_redisNotifications.get());
     s.addSelectable(&g_redisNotificationTrheadEvent);
 
     while (g_run)
@@ -62,13 +62,9 @@ void clear_local_state()
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_init_db();
+    meta_init_db();
 
-    if (status != SAI_STATUS_SUCCESS)
-    {
-        SWSS_LOG_ERROR("failed to init meta db FIXME");
-        throw std::runtime_error("failed to init meta db");
-    }
+    redis_clear_switch_ids();
 }
 
 sai_status_t redis_initialize_switch()
@@ -147,7 +143,7 @@ sai_status_t sai_redis_internal_notify_syncd(
 
     swss::Select s;
 
-    s.addSelectable(g_redisGetConsumer);
+    s.addSelectable(g_redisGetConsumer.get());
 
     while (true)
     {

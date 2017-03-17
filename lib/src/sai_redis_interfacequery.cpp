@@ -7,23 +7,18 @@ std::mutex g_apimutex;
 service_method_table_t g_services;
 bool                   g_apiInitialized = false;
 
-swss::DBConnector     *g_db = NULL;
-swss::DBConnector     *g_dbNtf = NULL;
-swss::ProducerTable   *g_asicState = NULL;
-
-// we probably don't need those to tables to access GET requests
-swss::ConsumerTable          *g_redisGetConsumer = NULL;
-swss::NotificationConsumer   *g_redisNotifications = NULL;
-
-swss::RedisClient     *g_redisClient = NULL;
+std::shared_ptr<swss::DBConnector>          g_db;
+std::shared_ptr<swss::DBConnector>          g_dbNtf;
+std::shared_ptr<swss::ProducerTable>        g_asicState;
+std::shared_ptr<swss::ConsumerTable>        g_redisGetConsumer;
+std::shared_ptr<swss::NotificationConsumer> g_redisNotifications;
+std::shared_ptr<swss::RedisClient>          g_redisClient;
 
 sai_status_t sai_api_initialize(
         _In_ uint64_t flags,
         _In_ const service_method_table_t* services)
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
-
-    // TODO reset switch init cound, initialize meta 
 
     SWSS_LOG_ENTER();
 
@@ -42,37 +37,12 @@ sai_status_t sai_api_initialize(
         return SAI_STATUS_INVALID_PARAMETER;
     }
 
-    if (g_db != NULL)
-        delete g_db;
-
-    g_db = new swss::DBConnector(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-
-    if (g_dbNtf != NULL)
-        delete g_dbNtf;
-
-    g_dbNtf = new swss::DBConnector(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-
-    if (g_asicState != NULL)
-        delete g_asicState;
-
-    g_asicState = new swss::ProducerTable(g_db, ASIC_STATE_TABLE);
-
-    if (g_redisGetConsumer != NULL)
-        delete g_redisGetConsumer;
-
-    g_redisGetConsumer = new swss::ConsumerTable(g_db, "GETRESPONSE");
-
-    if (g_redisNotifications != NULL)
-        delete g_redisNotifications;
-
-    g_redisNotifications = new swss::NotificationConsumer(g_dbNtf, "NOTIFICATIONS");
-
-    if (g_redisClient != NULL)
-        delete g_redisClient;
-
-    g_redisClient = new swss::RedisClient(g_db);
-
-    g_apiInitialized = true;
+    g_db                 = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    g_dbNtf              = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    g_asicState          = std::make_shared<swss::ProducerTable>(g_db.get(), ASIC_STATE_TABLE);
+    g_redisGetConsumer   = std::make_shared<swss::ConsumerTable>(g_db.get(), "GETRESPONSE");
+    g_redisNotifications = std::make_shared<swss::NotificationConsumer>(g_dbNtf.get(), "NOTIFICATIONS");
+    g_redisClient        = std::make_shared<swss::RedisClient>(g_db.get());
 
     /*
      * Initialize metatada database.
@@ -85,6 +55,19 @@ sai_status_t sai_api_initialize(
      */
 
     redis_clear_switch_ids();
+
+    g_apiInitialized = true;
+
+    return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t sai_api_uninitialize(void)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    g_apiInitialized = false;
 
     return SAI_STATUS_SUCCESS;
 }
@@ -111,7 +94,7 @@ sai_status_t sai_api_query(
 
     SWSS_LOG_ENTER();
 
-    if (NULL == api_method_table)
+    if (api_method_table == NULL)
     {
         SWSS_LOG_ERROR("NULL method table passed to SAI API initialize");
         return SAI_STATUS_INVALID_PARAMETER;
@@ -233,15 +216,4 @@ sai_status_t sai_api_query(
             SWSS_LOG_ERROR("Invalid API type %d", sai_api_id);
             return SAI_STATUS_INVALID_PARAMETER;
     }
-}
-
-sai_status_t sai_api_uninitialize(void)
-{
-    std::lock_guard<std::mutex> lock(g_apimutex);
-
-    SWSS_LOG_ENTER();
-
-    g_apiInitialized = false;
-
-    return SAI_STATUS_SUCCESS;
 }

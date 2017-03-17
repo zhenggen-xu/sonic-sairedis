@@ -2,6 +2,8 @@
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
 
+// TODO move this to metadata ? what about player when we need to retlanslate ?
+
 bool switch_ids[MAX_SWITCHES] = {};
 
 void redis_clear_switch_ids()
@@ -145,6 +147,17 @@ sai_object_id_t redis_create_virtual_object_id(
     SWSS_LOG_DEBUG("created VID 0x%lx", object_id);
 
     return object_id;
+}
+
+void redis_free_virtual_object_id(
+        _In_ sai_object_id_t object_id)
+{
+    SWSS_LOG_ENTER();
+
+    if (sai_object_type_query(object_id) == SAI_OBJECT_TYPE_SWITCH)
+    {
+        redis_free_switch_id_index(redis_get_switch_id_index(object_id));
+    }
 }
 
 sai_status_t internal_redis_generic_create(
