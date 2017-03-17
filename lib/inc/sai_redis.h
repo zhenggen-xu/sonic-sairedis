@@ -49,13 +49,10 @@ extern volatile bool                    g_useTempView;
 // other global declarations
 
 extern service_method_table_t           g_services;
-extern swss::DBConnector               *g_db;
-extern swss::ProducerTable             *g_asicState;
-
-extern swss::ConsumerTable             *g_redisGetConsumer;
-extern swss::NotificationConsumer      *g_redisNotifications;
-
-extern swss::RedisClient               *g_redisClient;
+extern std::shared_ptr<swss::ProducerTable>         g_asicState;
+extern std::shared_ptr<swss::ConsumerTable>         g_redisGetConsumer;
+extern std::shared_ptr<swss::NotificationConsumer>  g_redisNotifications;
+extern std::shared_ptr<swss::RedisClient>           g_redisClient;
 
 extern std::mutex g_apimutex;
 
