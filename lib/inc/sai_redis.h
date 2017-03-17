@@ -23,6 +23,16 @@ extern "C" {
 #include "swss/logger.h"
 #include "meta/sai_meta.h"
 
+/*
+ * Switch index is encoded on 1 byte so we can have
+ * max 0x100 switches at the same time.
+ */
+#define MAX_SWITCHES 0x100
+
+void redis_free_switch_id_index(int index);
+int redis_get_switch_id_index(sai_object_id_t object_id);
+void redis_clear_switch_ids();
+
 // if we don't receive response from syncd in 60 seconds
 // there is something wrong and we should fail
 #define GET_RESPONSE_TIMEOUT (60*1000)

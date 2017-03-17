@@ -23,11 +23,14 @@ sai_status_t sai_api_initialize(
 {
     std::lock_guard<std::mutex> lock(g_apimutex);
 
+    // TODO reset switch init cound, initialize meta 
+
     SWSS_LOG_ENTER();
 
     if ((NULL == services) || (NULL == services->profile_get_next_value) || (NULL == services->profile_get_value))
     {
         SWSS_LOG_ERROR("Invalid services handle passed to SAI API initialize");
+
         return SAI_STATUS_INVALID_PARAMETER;
     }
 
@@ -71,6 +74,18 @@ sai_status_t sai_api_initialize(
 
     g_apiInitialized = true;
 
+    /*
+     * Initialize metatada database.
+     */
+
+    meta_init_db();
+
+    /*
+     * Reset used switch ids
+     */
+
+    redis_clear_switch_ids();
+
     return SAI_STATUS_SUCCESS;
 }
 
@@ -107,7 +122,8 @@ sai_status_t sai_api_query(
         return SAI_STATUS_UNINITIALIZED;
     }
 
-    switch (sai_api_id) {
+    switch (sai_api_id)
+    {
         case SAI_API_BUFFER:
             *(const sai_buffer_api_t**)api_method_table = &redis_buffer_api;
             return SAI_STATUS_SUCCESS;
@@ -226,5 +242,5 @@ sai_status_t sai_api_uninitialize(void)
 
     g_apiInitialized = false;
 
-    return SAI_STATUS_NOT_IMPLEMENTED;
+    return SAI_STATUS_SUCCESS;
 }

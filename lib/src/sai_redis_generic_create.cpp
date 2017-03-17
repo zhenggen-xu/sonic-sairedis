@@ -2,47 +2,150 @@
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
 
-// TODO support pointers with notifications !
+bool switch_ids[MAX_SWITCHES] = {};
 
-// TODO we need second one for switch
-
-// TODO we need to reset it on initialize
-// and by default we will allow only 1 switch to be created
-uint32_t switch_index = 0;
-
-sai_object_id_t redis_create_virtual_object_id(
-        _In_ sai_object_type_t object_type)
+void redis_clear_switch_ids()
 {
     SWSS_LOG_ENTER();
 
-    // when started, we need to get current status of
-    // generated objects and pick up values from there
-    // we should also keep mapping of those values in syncd
-    //
-    // since from object_id ws should be able to get object type
-    // so set top 16 bits of object ad as object type
-    // 2^48 should be enough to have objects per object type
-    // also 2^16 should be enough to have different object types
-    // in future we could change this to find "holes" after delted
-    // objects, but can be tricky since this information would need
-    // to be stored somewhere in case of oa restart
+    for (int idx = 0; idx < MAX_SWITCHES; ++idx)
+    {
+        switch_ids[idx] = false;
+    }
+}
+
+int redis_get_free_switch_id_index()
+{
+    SWSS_LOG_ENTER();
+
+    for (int index = 0; index < MAX_SWITCHES; ++index)
+    {
+        if (!switch_ids[index])
+        {
+            switch_ids[index] = true;
+
+            SWSS_LOG_NOTICE("got new switch index 0x%x", index);
+
+            return index;
+        }
+    }
+
+    SWSS_LOG_ERROR("no more available switch id indexes");
+
+    return -1;
+}
+
+/*
+ * NOTE: Need to be executed when removing switch.
+ */
+void redis_free_switch_id_index(int index)
+{
+    SWSS_LOG_ENTER();
+
+    if (index < 0 || index >= MAX_SWITCHES)
+    {
+        SWSS_LOG_ERROR("switch index is invalid 0x%x", index);
+    }
+    else
+    {
+        switch_ids[index] = false;
+
+        SWSS_LOG_DEBUG("marked switch index 0x%x as unused", index);
+    }
+}
+
+sai_object_id_t redis_construct_object_id(
+        _In_ sai_object_type_t object_type,
+        _In_ int switch_index,
+        _In_ uint64_t virtual_id)
+{
+    SWSS_LOG_ENTER();
+
+    return (sai_object_id_t)(((uint64_t)switch_index << 56) | ((uint64_t)object_type << 48) | virtual_id);
+}
+
+sai_object_id_t redis_create_switch_virtual_object_id()
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * NOTE: Switch ids are deterministic.
+     */
+
+    int index = redis_get_free_switch_id_index();
+
+    if (index < 0)
+    {
+        return SAI_NULL_OBJECT_ID;
+    }
+
+    return redis_construct_object_id(SAI_OBJECT_TYPE_SWITCH, index, index);
+}
+
+sai_object_type_t sai_object_type_query(
+        _In_ sai_object_id_t object_id)
+{
+    sai_object_type_t ot = (sai_object_type_t)((object_id >> 48) & 0xFF);
+
+    if (ot == SAI_OBJECT_TYPE_NULL || ot >= SAI_OBJECT_TYPE_MAX)
+    {
+        SWSS_LOG_WARN("invalid object id %s", sai_serialize_object_id(object_id).c_str());
+
+        return SAI_OBJECT_TYPE_NULL;
+    }
+
+    return ot;
+}
+
+int redis_get_switch_id_index(
+        _In_ sai_object_id_t switch_id)
+{
+    SWSS_LOG_ENTER();
+
+    sai_object_type_t switch_object_type = sai_object_type_query(switch_id);
+
+    if (switch_object_type == SAI_OBJECT_TYPE_SWITCH)
+    {
+        return (int)((switch_id >> 56) & 0xFF);
+    }
+
+    SWSS_LOG_ERROR("object type of switch %s is %s, should be SWITCH",
+            sai_serialize_object_id(switch_id).c_str(),
+            sai_serialize_object_type(switch_object_type).c_str());
+
+    return -1;
+}
+
+sai_object_id_t redis_create_virtual_object_id(
+        _In_ sai_object_type_t object_type,
+        _In_ sai_object_id_t switch_id)
+{
+    SWSS_LOG_ENTER();
+
+    // object_id:
+    // bits 63..56 - switch index
+    // bits 55..48 - object type
+    // bits 47..0  - object id
+
+    if (object_type == SAI_OBJECT_TYPE_SWITCH)
+    {
+        sai_object_id_t object_id = redis_create_switch_virtual_object_id();
+
+        SWSS_LOG_DEBUG("created SWITCH VID 0x%lx", object_id);
+
+        return object_id;
+    }
+
+    int index = redis_get_switch_id_index(switch_id);
 
     uint64_t virtual_id = g_redisClient->incr("VIDCOUNTER");
 
-    sai_object_id_t objectId = (((sai_object_id_t)object_type) << 48) | virtual_id;
+    sai_object_id_t object_id = redis_construct_object_id(object_type, index, virtual_id);
 
-    SWSS_LOG_DEBUG("created VID 0x%lx", objectId);
+    SWSS_LOG_DEBUG("created VID 0x%lx", object_id);
 
-    return objectId;
+    return object_id;
 }
-
-// TODO support switch id
-sai_object_type_t sai_object_type_query(_In_ sai_object_id_t sai_object_id)
-{
-    return (sai_object_type_t)(sai_object_id >> 48);
-}
-
-// TODO we need also switch id get
 
 sai_status_t internal_redis_generic_create(
         _In_ sai_object_type_t object_type,
@@ -51,35 +154,6 @@ sai_status_t internal_redis_generic_create(
         _In_ const sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
-
-    if (attr_count > 0 && attr_list == NULL)
-    {
-        SWSS_LOG_ERROR("attribute list is NULL");
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-
-    // check for duplicated id entries on attribute list
-    // this needs to be checked only on create API
-    // since set always use one attribute, and get api
-    // is not making any changes so attributes can be
-    // duplicated
-
-    std::set<sai_attr_id_t> attr_ids;
-
-    for (uint32_t i = 0; i < attr_count; ++i)
-    {
-        sai_attr_id_t id = attr_list[i].id;
-
-        if (attr_ids.find(id) != attr_ids.end())
-        {
-            SWSS_LOG_ERROR("duplicated attribute id %d on attribute list for object type %d", id, object_type);
-
-            return SAI_STATUS_INVALID_PARAMETER;
-        }
-
-        attr_ids.insert(id);
-    }
 
     std::vector<swss::FieldValueTuple> entry = SaiAttributeList::serialize_attr_list(
             object_type,
@@ -123,25 +197,17 @@ sai_status_t redis_generic_create(
 {
     SWSS_LOG_ENTER();
 
-    // TODO support switch_id
-
-    if (object_id == NULL)
-    {
-        SWSS_LOG_ERROR("object id pointer is NULL");
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-
-    if (object_type <= SAI_OBJECT_TYPE_NULL || object_type >= SAI_OBJECT_TYPE_MAX)
-    {
-        // this is sanity check for code bugs
-        SWSS_LOG_ERROR("trying to create invalid object type: %d", object_type);
-
-        return SAI_STATUS_FAILURE;
-    }
-
     // on create vid is put in db by syncd
-    *object_id = redis_create_virtual_object_id(object_type);
+    *object_id = redis_create_virtual_object_id(object_type, switch_id);
+
+    if (*object_id == SAI_NULL_OBJECT_ID)
+    {
+        SWSS_LOG_ERROR("failed to create %s, with switch id: %s",
+                sai_serialize_object_type(object_type).c_str(),
+                sai_serialize_object_id(switch_id).c_str());
+
+        return SAI_STATUS_INSUFFICIENT_RESOURCES;
+    }
 
     std::string str_object_id = sai_serialize_object_id(*object_id);
 

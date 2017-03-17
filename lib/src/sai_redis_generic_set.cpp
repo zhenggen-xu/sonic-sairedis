@@ -38,13 +38,6 @@ sai_status_t redis_generic_set(
 {
     SWSS_LOG_ENTER();
 
-    if (object_id == SAI_NULL_OBJECT_ID && object_type != SAI_OBJECT_TYPE_SWITCH)
-    {
-        SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-
     std::string str_object_id = sai_serialize_object_id(object_id);
 
     return internal_redis_generic_set(
