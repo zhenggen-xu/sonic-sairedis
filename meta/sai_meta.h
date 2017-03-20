@@ -1,59 +1,16 @@
 #ifndef __SAI_META_H__
 #define __SAI_META_H__
 
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <iostream>
-//#include <vector>
-//#include <unordered_map>
-//#include <set>
-//#include <memory>
-
 extern "C" {
 #include "sai.h"
 #include "saimetadata.h"
 }
 
-//#include "swss/logger.h"
-
 #define MAX_LIST_COUNT 256
 
-//#define DEFAULT_LAYER2_FRAME_SIZE 1514
-//
 #define DEFAULT_VLAN_NUMBER 1
 #define MINIMUM_VLAN_NUMBER 1
 #define MAXIMUM_VLAN_NUMBER 4094
-//
-//#define MINIMUM_L4_PORT_NUMBER 0x0
-//#define MAXIMUM_L4_PORT_NUMBER 0xFFFF
-//
-//// should be 64 ?
-//#define MINIMUM_PACKET_SIZE 0
-//#define MAXIMUM_PACKET_SIZE 0x10000
-
-/*
- * Inline operator is required to not cause error when combining flags.
- * Error is raised by compiler flags: -Werror -fpermissive
- */
-
-//constexpr inline sai_attr_flags_t operator|(sai_attr_flags_t a, sai_attr_flags_t b)
-//{
-//    return static_cast<sai_attr_flags_t>(static_cast<int>(a) | static_cast<int>(b));
-//}
-
-// TODO add extra fields that maybe useful
-// bool hasMandatoryAttribytes (auto set)
-// bool hasContitionalAttributes (auto set)
-// bool hasValidOnlyAttributes (auto set)
-
-//extern const sai_attribute_t* get_attribute_by_id(
-//        _In_ sai_attr_id_t id,
-//        _In_ uint32_t attr_count,
-//        _In_ const sai_attribute_t *attr_list);
-//
-//extern const sai_attribute_t* get_object_previous_attr(
-//        _In_ const sai_object_meta_key_t meta_key,
-//        _In_ const sai_attr_metadata_t& md);
 
 extern sai_status_t meta_init_db();
 
@@ -154,17 +111,6 @@ extern sai_status_t meta_sai_get_neighbor_entry(
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list,
         _In_ sai_get_neighbor_entry_attribute_fn get);
-
-// META SWITCH
-
-//extern sai_status_t meta_sai_set_switch(
-//        _In_ const sai_attribute_t *attr,
-//        _In_ sai_set_switch_attribute_fn set);
-//
-//extern sai_status_t meta_sai_get_switch(
-//        _In_ uint32_t attr_count,
-//        _Inout_ sai_attribute_t *attr_list,
-//        _In_ sai_get_switch_attribute_fn get);
 
 // META ROUTE
 
