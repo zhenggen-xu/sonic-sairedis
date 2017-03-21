@@ -14,9 +14,6 @@
 #include <map>
 #include <iterator>
 
-// TODO add check for all objects are belong to same switch
-// also we need to add per switch references
-
 // TODO move to metadata utils
 bool is_ipv6_mask_valid(
         _In_ const uint8_t* mask)
@@ -438,7 +435,6 @@ void create_object(
     ObjectAttrHash[key] = {};
 }
 
-// TODO validate over switch id !
 sai_status_t meta_generic_validation_objlist(
         _In_ const sai_attr_metadata_t& md,
         _In_ sai_object_id_t switch_id,
@@ -536,6 +532,15 @@ sai_status_t meta_generic_validation_objlist(
 
                 return SAI_STATUS_INVALID_PARAMETER;
             }
+        }
+
+        sai_object_id_t query_switch_id = sai_switch_id_query(oid);
+
+        if (query_switch_id != switch_id)
+        {
+            SWSS_LOG_ERROR("oid 0x%lx is from switch 0x%lx but expected switch 0x%lx", oid, query_switch_id, switch_id);
+
+            return SAI_STATUS_INVALID_PARAMETER;
         }
 
         object_type = ot;
@@ -682,7 +687,7 @@ sai_object_id_t meta_extract_switch_id(
          * Since object is non object id, we are sure via sanity check that
          * struct member contains switch_id, we need to extract it here.
          *
-         * TODO we could have this in metadata predefined for all non object ids.
+         * NOTE: we could have this in metadata predefined for all non object ids.
          */
 
         for (size_t j = 0; j < info->structmemberscount; ++j)
@@ -711,7 +716,7 @@ sai_object_id_t meta_extract_switch_id(
     }
     else
     {
-        // TODO maybe we should extract switch from oid?
+        // NOTE: maybe we should extract switch from oid?
         return switch_id;
     }
 }
@@ -792,6 +797,13 @@ sai_status_t meta_generic_validation_create(
 
         // ok
     }
+
+    // TODO if it's non object id, then check other oids in non object id struct
+    // against switch query if oids are the same switch
+    //
+    // TODO for non object id check if members of stuict are allowed obejct types
+    // this should be done in each validation phase
+    // maybe move to generic validation ? also we need to check if those objects exist!
 
     std::unordered_map<sai_attr_id_t, const sai_attribute_t*> attrs;
 
@@ -2056,57 +2068,88 @@ void meta_generic_validation_post_create(
 
     create_object(meta_key);
 
-    // TODO check returned object id and if it's created on on the same switch
+    auto info = sai_all_object_type_infos[meta_key.objecttype];
 
-    // TODO convert to automatic oid check from metadata struct members
-    switch (meta_key.objecttype)
+    if (info->isnonobjectid)
     {
-        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
-            object_reference_inc(meta_key.objectkey.key.route_entry.vr_id);
-            break;
+        /*
+         * Increase object reference count for all object ids in non object id
+         * members.
+         */
 
-        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
-            object_reference_inc(meta_key.objectkey.key.neighbor_entry.rif_id);
-            break;
+        for (size_t j = 0; j < info->structmemberscount; ++j)
+        {
+            const sai_struct_member_info_t *m = info->structmembers[j];
 
-        case SAI_OBJECT_TYPE_FDB_ENTRY:
-            // NOTE: we don't increase vlan reference on FDB entries, ignored
-            // vlan_reference_inc(meta_key.key.fdb_entry.vlan_id);
-            break;
-
-        default:
-
-            // TODO check if its object id
+            if (m->membervaluetype != SAI_ATTR_VALUE_TYPE_OBJECT_ID)
             {
-                // check if object created was expected type
-                // as the type of SET function
+                continue;
+            }
 
-                sai_object_id_t oid = meta_key.objectkey.key.object_id;
+            for (size_t k = 0 ; k < m->allowedobjecttypeslength; k++)
+            {
+                sai_object_type_t ot = m->allowedobjecttypes[k];
 
-                if (oid == SAI_NULL_OBJECT_ID)
+                if (ot == SAI_OBJECT_TYPE_SWITCH)
                 {
-                    SWSS_LOG_ERROR("created oid is null object id (vendor bug?)");
-                    break;
+                    object_reference_inc(m->getoid(&meta_key));
                 }
+            }
+        }
+    }
+    else
+    {
+        /*
+         * Check if object created was expected type as the type of CRATE
+         * function.
+         */
 
-                sai_object_type_t object_type = sai_object_type_query(oid);
+        do
+        {
+            sai_object_id_t oid = meta_key.objectkey.key.object_id;
 
-                if (object_type == SAI_NULL_OBJECT_ID)
-                {
-                    SWSS_LOG_ERROR("created oid 0x%lx is not valid object type after create, returned null object id (vendor bug?)", oid);
-                    break;
-                }
-
-                if (object_type != meta_key.objecttype)
-                {
-                    SWSS_LOG_ERROR("created oid 0x%lx type %d is wrong type, expected object type %d (vendor bug?)", oid, object_type, meta_key.objecttype);
-                    break;
-                }
-
-                object_reference_insert(oid);
-
+            if (oid == SAI_NULL_OBJECT_ID)
+            {
+                SWSS_LOG_ERROR("created oid is null object id (vendor bug?)");
                 break;
             }
+
+            sai_object_type_t object_type = sai_object_type_query(oid);
+
+            if (object_type == SAI_NULL_OBJECT_ID)
+            {
+                SWSS_LOG_ERROR("created oid 0x%lx is not valid object type after create (null) (vendor bug?)", oid);
+                break;
+            }
+
+            if (object_type != meta_key.objecttype)
+            {
+                SWSS_LOG_ERROR("created oid 0x%lx type %s, expected %s (vendor bug?)",
+                        oid,
+                        sai_serialize_object_type(object_type).c_str(),
+                        sai_serialize_object_type(meta_key.objecttype).c_str());
+                break;
+            }
+
+            if (meta_key.objecttype != SAI_OBJECT_TYPE_SWITCH)
+            {
+                /*
+                 * Check if created object switch is the same as input switch.
+                 */
+
+                sai_object_id_t query_switch_id = sai_switch_id_query(meta_key.objectkey.key.object_id);
+
+                if (switch_id != query_switch_id)
+                {
+                    SWSS_LOG_ERROR("created oid 0x%lx switch id 0x%lx is different than requested 0x%lx",
+                            oid, query_switch_id, switch_id);
+                    break;
+                }
+            }
+
+            object_reference_insert(oid);
+
+        } while (false);
     }
 
     bool haskeys;
@@ -2175,11 +2218,17 @@ void meta_generic_validation_post_create(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
-                object_reference_inc(value.aclfield.data.oid);
+                if (value.aclfield.enable)
+                {
+                    object_reference_inc(value.aclfield.data.oid);
+                }
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
-                object_reference_inc(value.aclfield.data.objlist);
+                if (value.aclfield.enable)
+                {
+                    object_reference_inc(value.aclfield.data.objlist);
+                }
                 break;
 
                 // case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
@@ -2199,11 +2248,17 @@ void meta_generic_validation_post_create(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
-                object_reference_inc(value.aclaction.parameter.oid);
+                if (value.aclaction.enable)
+                {
+                    object_reference_inc(value.aclaction.parameter.oid);
+                }
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
-                object_reference_inc(value.aclaction.parameter.objlist);
+                if (value.aclaction.enable)
+                {
+                    object_reference_inc(value.aclaction.parameter.objlist);
+                }
                 break;
 
                 // ACL END
@@ -2223,12 +2278,7 @@ void meta_generic_validation_post_create(
 
             default:
 
-                META_LOG_ERROR(md, "serialization type is not supported yet FIXME");
-                throw;
-        }
-
-        if (md.isvlan)
-        {
+                META_LOG_THROW(md, "serialization type is not supported yet FIXME");
         }
 
         set_object(meta_key, md, attr);
@@ -2288,9 +2338,6 @@ void meta_generic_validation_post_remove(
                 object_reference_dec(value.objlist);
                 break;
 
-                //case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
-                // will require dec vlan references
-
                 // ACL FIELD
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_BOOL:
@@ -2306,11 +2353,17 @@ void meta_generic_validation_post_remove(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
-                object_reference_dec(value.aclfield.data.oid);
+                if (value.aclfield.enable)
+                {
+                    object_reference_dec(value.aclfield.data.oid);
+                }
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
-                object_reference_dec(value.aclfield.data.objlist);
+                if (value.aclfield.enable)
+                {
+                    object_reference_dec(value.aclfield.data.objlist);
+                }
                 break;
 
                 // case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
@@ -2329,11 +2382,17 @@ void meta_generic_validation_post_remove(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
-                object_reference_dec(value.aclaction.parameter.oid);
+                if (value.aclaction.enable)
+                {
+                    object_reference_dec(value.aclaction.parameter.oid);
+                }
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
-                object_reference_dec(value.aclaction.parameter.objlist);
+                if (value.aclaction.enable)
+                {
+                    object_reference_dec(value.aclaction.parameter.objlist);
+                }
                 break;
 
                 // ACL END
@@ -2352,38 +2411,45 @@ void meta_generic_validation_post_remove(
                 break;
 
             default:
-                META_LOG_ERROR(md, "serialization type is not supported yet FIXME");
-                throw;
-        }
-
-        if (md.isvlan)
-        {
+                META_LOG_THROW(md, "serialization type is not supported yet FIXME");
         }
     }
 
     // we don't keep track of fdb, neighbor, route since
     // those are safe to remove any time (leafs)
 
-    switch (meta_key.objecttype)
+    auto info = sai_all_object_type_infos[meta_key.objecttype];
+
+    if (info->isnonobjectid)
     {
-        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
-            object_reference_dec(meta_key.objectkey.key.route_entry.vr_id);
-            break;
+        /*
+         * Decrease object reference count for all object ids in non object id
+         * members.
+         */
 
-        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
-            object_reference_dec(meta_key.objectkey.key.neighbor_entry.rif_id);
-            break;
+        for (size_t j = 0; j < info->structmemberscount; ++j)
+        {
+            const sai_struct_member_info_t *m = info->structmembers[j];
 
-        case SAI_OBJECT_TYPE_FDB_ENTRY:
-            // NOTE: we don't decrease vlan reference on FDB entries, ignored
-            // vlan_reference_dec(meta_key.key.fdb_entry.vlan_id);
-            break;
+            if (m->membervaluetype != SAI_ATTR_VALUE_TYPE_OBJECT_ID)
+            {
+                continue;
+            }
 
-        default:
+            for (size_t k = 0 ; k < m->allowedobjecttypeslength; k++)
+            {
+                sai_object_type_t ot = m->allowedobjecttypes[k];
 
-            // TODO check if it's oid
-            object_reference_remove(meta_key.objectkey.key.object_id);
-            break;
+                if (ot == SAI_OBJECT_TYPE_SWITCH)
+                {
+                    object_reference_dec(m->getoid(&meta_key));
+                }
+            }
+        }
+    }
+    else
+    {
+        object_reference_remove(meta_key.objectkey.key.object_id);
     }
 
     remove_object(meta_key);
@@ -2486,9 +2552,11 @@ void meta_generic_validation_post_set(
                 if (previous_attr != NULL)
                 {
                     // decrease previous if it was set
+                    if (previous_attr->value.aclfield.enable)
                     object_reference_dec(previous_attr->value.aclfield.data.oid);
                 }
 
+                if (value.aclfield.enable)
                 object_reference_inc(value.aclfield.data.oid);
 
                 break;
@@ -2502,9 +2570,11 @@ void meta_generic_validation_post_set(
                 if (previous_attr != NULL)
                 {
                     // decrease previous if it was set
+                    if (previous_attr->value.aclfield.enable)
                     object_reference_dec(previous_attr->value.aclfield.data.objlist);
                 }
 
+                if (value.aclfield.enable)
                 object_reference_inc(value.aclfield.data.objlist);
 
                 break;
@@ -2534,9 +2604,11 @@ void meta_generic_validation_post_set(
                 if (previous_attr != NULL)
                 {
                     // decrease previous if it was set
+                    if (previous_attr->value.aclaction.enable)
                     object_reference_dec(previous_attr->value.aclaction.parameter.oid);
                 }
 
+                if (value.aclaction.enable)
                 object_reference_inc(value.aclaction.parameter.oid);
                 break;
             }
@@ -2549,9 +2621,11 @@ void meta_generic_validation_post_set(
                 if (previous_attr != NULL)
                 {
                     // decrease previous if it was set
+                    if (previous_attr->value.aclaction.enable)
                     object_reference_dec(previous_attr->value.aclaction.parameter.objlist);
                 }
 
+                if (value.aclaction.enable)
                 object_reference_inc(value.aclaction.parameter.objlist);
 
                 break;
@@ -2573,12 +2647,7 @@ void meta_generic_validation_post_set(
             break;
 
         default:
-            META_LOG_ERROR(md, "serialization type is not supported yet FIXME");
-            throw;
-    }
-
-    if (md.isvlan)
-    {
+            META_LOG_THROW(md, "serialization type is not supported yet FIXME");
     }
 
     // only on create we need to increase entry object types members
@@ -2590,6 +2659,7 @@ void meta_generic_validation_post_set(
 void meta_generic_validation_post_get_objlist(
         _In_ const sai_object_meta_key_t& meta_key,
         _In_ const sai_attr_metadata_t& md,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t count,
         _In_ const sai_object_id_t* list)
 {
@@ -2662,6 +2732,13 @@ void meta_generic_validation_post_get_objlist(
                 create_object(key);
             }
         }
+
+        sai_object_id_t query_switch_id = sai_switch_id_query(oid);
+
+        if (query_switch_id != switch_id)
+        {
+            SWSS_LOG_ERROR("oid 0x%lx is from switch 0x%lx but expected switch 0x%lx", oid, query_switch_id, switch_id);
+        }
     }
 }
 
@@ -2675,10 +2752,13 @@ void meta_generic_validation_post_get_objlist(
 
 void meta_generic_validation_post_get(
         _In_ const sai_object_meta_key_t& meta_key,
+        _In_ sai_object_id_t switch_id,
         _In_ const uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
+
+    switch_id = meta_extract_switch_id(meta_key, switch_id);
 
     for (uint32_t idx = 0; idx < attr_count; ++idx)
     {
@@ -2710,11 +2790,11 @@ void meta_generic_validation_post_get(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
-                meta_generic_validation_post_get_objlist(meta_key, md, 1, &value.oid);
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, 1, &value.oid);
                 break;
 
             case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
-                meta_generic_validation_post_get_objlist(meta_key, md, value.objlist.count, value.objlist.list);
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, value.objlist.count, value.objlist.list);
                 break;
 
             case SAI_ATTR_VALUE_TYPE_VLAN_LIST:
@@ -2734,9 +2814,12 @@ void meta_generic_validation_post_get(
 
                     for (uint32_t i = 0; i < count; ++i)
                     {
-                        // TODO check if vlans are in range
+                        uint16_t vlanid = value.vlanlist.list[i];
 
-                        // META_LOG_ERROR(md, "vlan id %d not exists, but returned on list [%u] (snoop?)", vlan_id, i);
+                        if (vlanid < MINIMUM_VLAN_NUMBER || vlanid > MAXIMUM_VLAN_NUMBER)
+                        {
+                            META_LOG_ERROR(md, "vlan id %u is outside range, but returned on list [%u]", vlanid, i);
+                        }
                     }
 
                     break;
@@ -2758,11 +2841,13 @@ void meta_generic_validation_post_get(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
-                meta_generic_validation_post_get_objlist(meta_key, md, 1, &value.aclfield.data.oid);
+                if (value.aclfield.enable)
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, 1, &value.aclfield.data.oid);
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
-                meta_generic_validation_post_get_objlist(meta_key, md, value.aclfield.data.objlist.count, value.aclfield.data.objlist.list);
+                if (value.aclfield.enable)
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, value.aclfield.data.objlist.count, value.aclfield.data.objlist.list);
                 break;
 
                 // case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST: (2 lists)
@@ -2782,11 +2867,13 @@ void meta_generic_validation_post_get(
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
-                meta_generic_validation_post_get_objlist(meta_key, md, 1, &value.aclaction.parameter.oid);
+                if (value.aclaction.enable)
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, 1, &value.aclaction.parameter.oid);
                 break;
 
             case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
-                meta_generic_validation_post_get_objlist(meta_key, md, value.aclaction.parameter.objlist.count, value.aclaction.parameter.objlist.list);
+                if (value.aclaction.enable)
+                meta_generic_validation_post_get_objlist(meta_key, md, switch_id, value.aclaction.parameter.objlist.count, value.aclaction.parameter.objlist.list);
                 break;
 
                 // ACL END
@@ -2836,8 +2923,7 @@ void meta_generic_validation_post_get(
 
             default:
 
-                META_LOG_ERROR(md, "serialization type is not supported yet FIXME");
-                throw;
+                META_LOG_THROW(md, "serialization type is not supported yet FIXME");
         }
 
         if (md.isenum)
@@ -2883,10 +2969,6 @@ void meta_generic_validation_post_get(
                 }
             }
         }
-
-        if (md.isvlan)
-        {
-        }
     }
 }
 
@@ -2914,22 +2996,6 @@ sai_status_t meta_sai_validate_fdb_entry(
 
         return SAI_STATUS_INVALID_PARAMETER;
     }
-
-    // check if vlan exists
-    // NOTE: this is disabled on purpose, we can create/set/get/remove fdb entris with non existing vlans
-
-    /*
-    sai_object_meta_key_t meta_key_vlan = { .object_type = SAI_OBJECT_TYPE_VLAN, .key = { .vlan_id = vlan_id } };
-
-    std::string key_vlan = sai_serialize_object_meta_key(meta_key_vlan);
-
-    if (!object_exists(key_vlan))
-    {
-        SWSS_LOG_ERROR("object key %s doesn't exist", key_vlan.c_str());
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-    */
 
     // check if fdb entry exists
 
@@ -3156,7 +3222,7 @@ sai_status_t meta_sai_get_fdb_entry(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        meta_generic_validation_post_get(meta_key, attr_count, attr_list);
+        meta_generic_validation_post_get(meta_key, fdb_entry->switch_id, attr_count, attr_list);
     }
 
     return status;
@@ -3451,7 +3517,7 @@ sai_status_t meta_sai_get_neighbor_entry(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        meta_generic_validation_post_get(meta_key, attr_count, attr_list);
+        meta_generic_validation_post_get(meta_key, neighbor_entry->switch_id, attr_count, attr_list);
     }
 
     return status;
@@ -3758,7 +3824,7 @@ sai_status_t meta_sai_get_route_entry(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        meta_generic_validation_post_get(meta_key, attr_count, attr_list);
+        meta_generic_validation_post_get(meta_key, route_entry->switch_id, attr_count, attr_list);
     }
 
     return status;
@@ -3769,6 +3835,7 @@ sai_status_t meta_sai_get_route_entry(
 sai_status_t meta_sai_validate_oid(
         _In_ sai_object_type_t object_type,
         _In_ sai_object_id_t* object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ bool create)
 {
     SWSS_LOG_ENTER();
@@ -3782,19 +3849,11 @@ sai_status_t meta_sai_validate_oid(
 
     const char* otname =  sai_metadata_get_enum_value_name(&metadata_enum_sai_object_type_t, object_type);
 
-    switch (object_type)
+    auto info = sai_all_object_type_infos[object_type];
+
+    if (info->isnonobjectid)
     {
-        case SAI_OBJECT_TYPE_FDB_ENTRY:
-        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
-        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
-
-            SWSS_LOG_ERROR("invalid object type (%s) specified as generic, FIXME", otname);
-            throw;
-
-        default:
-
-            // TODO check if is oid object type
-            break;
+        SWSS_LOG_THROW("invalid object type (%s) specified as generic, FIXME", otname);
     }
 
     SWSS_LOG_DEBUG("generic object type: %s", otname);
@@ -3865,8 +3924,9 @@ sai_status_t meta_sai_create_oid(
     SWSS_LOG_ENTER();
 
     // TODO handle switch_id
+    // check if we are creating switch
 
-    sai_status_t status = meta_sai_validate_oid(object_type, object_id, true);
+    sai_status_t status = meta_sai_validate_oid(object_type, object_id, switch_id, true);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -3924,7 +3984,7 @@ sai_status_t meta_sai_remove_oid(
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, false);
+    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, SAI_NULL_OBJECT_ID, false);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -3974,7 +4034,7 @@ sai_status_t meta_sai_set_oid(
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, false);
+    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, SAI_NULL_OBJECT_ID, false);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -4025,7 +4085,7 @@ sai_status_t meta_sai_get_oid(
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, false);
+    sai_status_t status = meta_sai_validate_oid(object_type, &object_id, SAI_NULL_OBJECT_ID, false);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -4061,7 +4121,9 @@ sai_status_t meta_sai_get_oid(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        meta_generic_validation_post_get(meta_key, attr_count, attr_list);
+        sai_object_id_t switch_id = sai_switch_id_query(object_id);
+
+        meta_generic_validation_post_get(meta_key, switch_id, attr_count, attr_list);
     }
 
     return status;
