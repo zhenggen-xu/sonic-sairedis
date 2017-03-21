@@ -27,6 +27,8 @@ std::string construct_key(
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t* attr_list);
 
+// TODO we need to fix this to generate like in the redis
+
 sai_object_id_t create_dummy_object_id(
         _In_ sai_object_type_t objecttype)
 {
@@ -54,7 +56,7 @@ sai_object_type_t sai_object_type_query(
 {
     SWSS_LOG_ENTER();
 
-    sai_object_type_t objecttype = (sai_object_type_t)(oid >> 48);
+    sai_object_type_t objecttype = (sai_object_type_t)((oid >> 48) & 0xFF);
 
     if ((objecttype <= SAI_OBJECT_TYPE_NULL) ||
             (objecttype >= SAI_OBJECT_TYPE_MAX))
@@ -65,6 +67,16 @@ sai_object_type_t sai_object_type_query(
     }
 
     return objecttype;
+}
+
+sai_object_id_t sai_switch_id_query(
+        _In_ sai_object_id_t oid)
+{
+    SWSS_LOG_ENTER();
+
+    // TODO populate
+
+    return SAI_NULL_OBJECT_ID;
 }
 
 // FDB ENTRY DUMMY FUNCTIONS
