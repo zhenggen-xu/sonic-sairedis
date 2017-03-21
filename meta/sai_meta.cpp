@@ -585,10 +585,10 @@ sai_status_t meta_genetic_validation_list(
 
 #define VALIDATION_LIST(md,vlist) \
 {\
-    auto status = meta_genetic_validation_list(md,vlist.count,vlist.list);\
-    if (status != SAI_STATUS_SUCCESS)\
+    auto status1 = meta_genetic_validation_list(md,vlist.count,vlist.list);\
+    if (status1 != SAI_STATUS_SUCCESS)\
     {\
-        return status;\
+        return status1;\
     }\
 }
 
@@ -721,6 +721,94 @@ sai_object_id_t meta_extract_switch_id(
     }
 }
 
+sai_status_t meta_generic_validate_non_object_on_create(
+        _In_ const sai_object_meta_key_t& meta_key,
+        _In_ sai_object_id_t switch_id)
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * Since non object id objects can contain several object id's inside
+     * object id strucutre, we need to check whether they all belong to the
+     * same switch (sine multiple switches can be present and whether all those
+     * objects are allowd respectivly on their members.
+     *
+     * This check is required only on creation, since on set/get/remove we
+     * check in object hash whether this object exists.
+     */
+
+    auto info = sai_all_object_type_infos[meta_key.objecttype];
+
+    if (!info->isnonobjectid)
+    {
+        return SAI_STATUS_SUCCESS;
+    }
+
+    /*
+     * This will be most utilzed for createing route entries.
+     */
+
+    for (size_t j = 0; j < info->structmemberscount; ++j)
+    {
+        const sai_struct_member_info_t *m = info->structmembers[j];
+
+        if (m->membervaluetype != SAI_ATTR_VALUE_TYPE_OBJECT_ID)
+        {
+            continue;
+        }
+
+        sai_object_id_t oid = m->getoid(&meta_key);
+
+        if (oid == SAI_NULL_OBJECT_ID)
+        {
+            SWSS_LOG_ERROR("oid on %s on struct member %s is NULL",
+                    sai_serialize_object_type(meta_key.objecttype).c_str(),
+                    m->membername);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+
+        if (oid == SAI_NULL_OBJECT_ID)
+        {
+            SWSS_LOG_ERROR("oid on %s on struct member %s is NULL",
+                    sai_serialize_object_type(meta_key.objecttype).c_str(),
+                    m->membername);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+
+        sai_object_type_t ot = sai_object_type_query(oid);
+
+        bool allowed = false;
+
+        for (size_t k = 0 ; k < m->allowedobjecttypeslength; k++)
+        {
+            if (ot == m->allowedobjecttypes[k])
+            {
+                allowed = true;
+                break;
+            }
+        }
+
+        if (!allowed)
+        {
+            SWSS_LOG_ERROR("object id 0x%lx is %s, but it's not allowed on member %s",
+                    oid, sai_serialize_object_type(ot).c_str(), m->membername);
+        }
+
+        sai_object_id_t oid_switch_id = sai_switch_id_query(oid);
+
+        if (switch_id != oid_switch_id)
+        {
+            SWSS_LOG_ERROR("oid 0x%lx is on switch 0x%lx but required switch is 0x%lx", oid, oid_switch_id, switch_id);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+    }
+
+    return SAI_STATUS_SUCCESS;
+}
+
 sai_status_t meta_generic_validation_create(
         _In_ const sai_object_meta_key_t& meta_key,
         _In_ sai_object_id_t switch_id,
@@ -798,12 +886,12 @@ sai_status_t meta_generic_validation_create(
         // ok
     }
 
-    // TODO if it's non object id, then check other oids in non object id struct
-    // against switch query if oids are the same switch
-    //
-    // TODO for non object id check if members of stuict are allowed obejct types
-    // this should be done in each validation phase
-    // maybe move to generic validation ? also we need to check if those objects exist!
+    sai_status_t status = meta_generic_validate_non_object_on_create(meta_key, switch_id);
+
+    if (status != SAI_STATUS_SUCCESS)
+    {
+        return status;
+    }
 
     std::unordered_map<sai_attr_id_t, const sai_attribute_t*> attrs;
 
@@ -933,7 +1021,7 @@ sai_status_t meta_generic_validation_create(
             case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
 
                 {
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, 1, &value.oid);
+                    status = meta_generic_validation_objlist(md, switch_id, 1, &value.oid);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
@@ -946,7 +1034,7 @@ sai_status_t meta_generic_validation_create(
             case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
 
                 {
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, value.objlist.count, value.objlist.list);
+                    status = meta_generic_validation_objlist(md, switch_id, value.objlist.count, value.objlist.list);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
@@ -979,7 +1067,7 @@ sai_status_t meta_generic_validation_create(
                         break;
                     }
 
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, 1, &value.aclfield.data.oid);
+                    status = meta_generic_validation_objlist(md, switch_id, 1, &value.aclfield.data.oid);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
@@ -997,7 +1085,7 @@ sai_status_t meta_generic_validation_create(
                         break;
                     }
 
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, value.aclfield.data.objlist.count, value.aclfield.data.objlist.list);
+                    status = meta_generic_validation_objlist(md, switch_id, value.aclfield.data.objlist.count, value.aclfield.data.objlist.list);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
@@ -1031,7 +1119,7 @@ sai_status_t meta_generic_validation_create(
                         break;
                     }
 
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, 1, &value.aclaction.parameter.oid);
+                    status = meta_generic_validation_objlist(md, switch_id, 1, &value.aclaction.parameter.oid);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
@@ -1049,7 +1137,7 @@ sai_status_t meta_generic_validation_create(
                         break;
                     }
 
-                    sai_status_t status = meta_generic_validation_objlist(md, switch_id, value.aclaction.parameter.objlist.count, value.aclaction.parameter.objlist.list);
+                    status = meta_generic_validation_objlist(md, switch_id, value.aclaction.parameter.objlist.count, value.aclaction.parameter.objlist.list);
 
                     if (status != SAI_STATUS_SUCCESS)
                     {
