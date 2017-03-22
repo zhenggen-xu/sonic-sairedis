@@ -536,6 +536,12 @@ sai_status_t meta_generic_validation_objlist(
 
         sai_object_id_t query_switch_id = sai_switch_id_query(oid);
 
+        if (!object_reference_exists(query_switch_id))
+        {
+            SWSS_LOG_ERROR("switch id 0x%lx don't exists", query_switch_id);
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+
         if (query_switch_id != switch_id)
         {
             SWSS_LOG_ERROR("oid 0x%lx is from switch 0x%lx but expected switch 0x%lx", oid, query_switch_id, switch_id);
@@ -648,6 +654,14 @@ std::string construct_key(
 
             case SAI_ATTR_VALUE_TYPE_UINT8:
                 name += std::to_string(value.u8);
+                break;
+
+            case SAI_ATTR_VALUE_TYPE_UINT16:
+                name += std::to_string(value.u16);
+                break;
+
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
+                name += sai_serialize_object_id(value.oid);
                 break;
 
             default:
@@ -777,6 +791,13 @@ sai_status_t meta_generic_validate_non_object_on_create(
             return SAI_STATUS_INVALID_PARAMETER;
         }
 
+        if (!object_reference_exists(oid))
+        {
+            SWSS_LOG_ERROR("object don't exist 0x%lx (%s)", oid, m->membername);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+
         sai_object_type_t ot = sai_object_type_query(oid);
 
         bool allowed = false;
@@ -797,6 +818,12 @@ sai_status_t meta_generic_validate_non_object_on_create(
         }
 
         sai_object_id_t oid_switch_id = sai_switch_id_query(oid);
+
+        if (!object_reference_exists(oid_switch_id))
+        {
+            SWSS_LOG_ERROR("switch id 0x%lx don't exists", oid_switch_id);
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
 
         if (switch_id != oid_switch_id)
         {
@@ -1555,6 +1582,12 @@ sai_status_t meta_generic_validation_set(
     if (!info->isnonobjectid)
     {
         switch_id = sai_switch_id_query(meta_key.objectkey.key.object_id);
+
+        if (!object_reference_exists(switch_id))
+        {
+            SWSS_LOG_ERROR("switch id 0x%lx don't exists", switch_id);
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
     }
 
     switch_id = meta_extract_switch_id(meta_key, switch_id);
@@ -2227,6 +2260,12 @@ void meta_generic_validation_post_create(
 
                 sai_object_id_t query_switch_id = sai_switch_id_query(meta_key.objectkey.key.object_id);
 
+                if (!object_reference_exists(query_switch_id))
+                {
+                    SWSS_LOG_ERROR("switch id 0x%lx don't exists", query_switch_id);
+                    break;
+                }
+
                 if (switch_id != query_switch_id)
                 {
                     SWSS_LOG_ERROR("created oid 0x%lx switch id 0x%lx is different than requested 0x%lx",
@@ -2822,6 +2861,11 @@ void meta_generic_validation_post_get_objlist(
         }
 
         sai_object_id_t query_switch_id = sai_switch_id_query(oid);
+
+        if (!object_reference_exists(query_switch_id))
+        {
+            SWSS_LOG_ERROR("switch id 0x%lx don't exists", query_switch_id);
+        }
 
         if (query_switch_id != switch_id)
         {
@@ -4011,9 +4055,6 @@ sai_status_t meta_sai_create_oid(
 {
     SWSS_LOG_ENTER();
 
-    // TODO handle switch_id
-    // check if we are creating switch
-
     sai_status_t status = meta_sai_validate_oid(object_type, object_id, switch_id, true);
 
     if (status != SAI_STATUS_SUCCESS)
@@ -4050,15 +4091,19 @@ sai_status_t meta_sai_create_oid(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        // TODO sai_object_meta_key_t meta_key = { .objecttype = SAI_OBJECT_TYPE_SWITCH, .objectkey = { .key = { } } };
-        // TODO std::string switch_key = sai_serialize_object_meta_key(meta_key);
-        // TODO ObjectAttrHash[switch_key] = { };
-
-        // new oid was created, save id and validate it
-
         meta_key.objectkey.key.object_id = *object_id;
 
-        // TODO OR object_id if we were creating switch_id
+        if (meta_key.objecttype == SAI_OBJECT_TYPE_SWITCH)
+        {
+            /*
+             * We are creating switch object, so switch id must be the same as
+             * just created object. We could use SAI_NULL_OBJECT_ID in that
+             * case and do special switch inside post_create method.
+             */
+
+            switch_id = *object_id;
+        }
+
         meta_generic_validation_post_create(meta_key, switch_id, attr_count, attr_list);
     }
 
@@ -4210,6 +4255,11 @@ sai_status_t meta_sai_get_oid(
     if (status == SAI_STATUS_SUCCESS)
     {
         sai_object_id_t switch_id = sai_switch_id_query(object_id);
+
+        if (!object_reference_exists(switch_id))
+        {
+            SWSS_LOG_ERROR("switch id 0x%lx don't exists", switch_id);
+        }
 
         meta_generic_validation_post_get(meta_key, switch_id, attr_count, attr_list);
     }
