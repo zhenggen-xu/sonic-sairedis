@@ -2,8 +2,6 @@
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
 
-// TODO move this to metadata ? what about player when we need to retlanslate ?
-
 bool switch_ids[MAX_SWITCHES] = {};
 
 void redis_clear_switch_ids()
@@ -32,21 +30,20 @@ int redis_get_free_switch_id_index()
         }
     }
 
-    SWSS_LOG_ERROR("no more available switch id indexes");
-
-    return -1;
+    SWSS_LOG_THROW("no more available switch id indexes");
 }
 
 /*
  * NOTE: Need to be executed when removing switch.
  */
+
 void redis_free_switch_id_index(int index)
 {
     SWSS_LOG_ENTER();
 
     if (index < 0 || index >= MAX_SWITCHES)
     {
-        SWSS_LOG_ERROR("switch index is invalid 0x%x", index);
+        SWSS_LOG_THROW("switch index is invalid 0x%x", index);
     }
     else
     {
@@ -76,27 +73,56 @@ sai_object_id_t redis_create_switch_virtual_object_id()
 
     int index = redis_get_free_switch_id_index();
 
-    if (index < 0)
-    {
-        return SAI_NULL_OBJECT_ID;
-    }
-
     return redis_construct_object_id(SAI_OBJECT_TYPE_SWITCH, index, index);
 }
 
 sai_object_type_t sai_object_type_query(
         _In_ sai_object_id_t object_id)
 {
+    SWSS_LOG_ENTER();
+
+    if (object_id == SAI_NULL_OBJECT_ID)
+    {
+        return SAI_OBJECT_TYPE_NULL;
+    }
+
     sai_object_type_t ot = (sai_object_type_t)((object_id >> 48) & 0xFF);
 
     if (ot == SAI_OBJECT_TYPE_NULL || ot >= SAI_OBJECT_TYPE_MAX)
     {
-        SWSS_LOG_WARN("invalid object id %s", sai_serialize_object_id(object_id).c_str());
-
-        return SAI_OBJECT_TYPE_NULL;
+        SWSS_LOG_THROW("invalid object id 0x%lx", object_id);
     }
 
     return ot;
+}
+
+sai_object_id_t sai_switch_id_query(
+        _In_ sai_object_id_t oid)
+{
+    SWSS_LOG_ENTER();
+
+    if (oid == SAI_NULL_OBJECT_ID)
+    {
+        return oid;
+    }
+
+    sai_object_type_t object_type = sai_object_type_query(oid);
+
+    if (object_type == SAI_OBJECT_TYPE_NULL)
+    {
+        SWSS_LOG_THROW("invalid object type of oid 0x%lx", oid);
+    }
+
+    if (object_type == SAI_OBJECT_TYPE_SWITCH)
+    {
+        return oid;
+    }
+
+    int sw_index = (int)((oid >> 56) & 0xFF);
+
+    sai_object_id_t sw_id = redis_construct_object_id(SAI_OBJECT_TYPE_SWITCH, sw_index, sw_index);
+
+    return sw_id;
 }
 
 int redis_get_switch_id_index(
@@ -111,11 +137,9 @@ int redis_get_switch_id_index(
         return (int)((switch_id >> 56) & 0xFF);
     }
 
-    SWSS_LOG_ERROR("object type of switch %s is %s, should be SWITCH",
+    SWSS_LOG_THROW("object type of switch %s is %s, should be SWITCH",
             sai_serialize_object_id(switch_id).c_str(),
             sai_serialize_object_type(switch_object_type).c_str());
-
-    return -1;
 }
 
 sai_object_id_t redis_create_virtual_object_id(
@@ -123,6 +147,12 @@ sai_object_id_t redis_create_virtual_object_id(
         _In_ sai_object_id_t switch_id)
 {
     SWSS_LOG_ENTER();
+
+    if ((object_type <= SAI_OBJECT_TYPE_NULL) ||
+            (object_type >= SAI_OBJECT_TYPE_MAX))
+    {
+        SWSS_LOG_THROW("invalid objct type: %d", object_type);
+    }
 
     // object_id:
     // bits 63..56 - switch index

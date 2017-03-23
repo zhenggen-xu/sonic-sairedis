@@ -20,8 +20,18 @@ typedef enum _sai_redis_notify_syncd_t
 
 typedef enum _sai_redis_switch_attr_t
 {
+    /*
+     * NOTE: those attributes will work without actual switch id being present
+     * since those attributes control internal sai redis library. Example
+     * usage:
+     *
+     * sai_switch_api->set_switch_attribute(SAI_NULL_OBJECT_ID, &attr);
+     */
+
     /**
      * @brief Will start or stop recording history file for player
+     *
+     * Flag IS NOT cleared between api initialize/uninitialize.
      *
      * @type bool
      * @flags CREATE_AND_SET
@@ -31,6 +41,8 @@ typedef enum _sai_redis_switch_attr_t
 
     /**
      * @brief Will notify syncd whether to init or apply view
+     *
+     * Flag IS cleared between api initialize/uninitialize.
      *
      * @type sai_redis_notify_syncd_t
      * @flags CREATE_AND_SET
@@ -44,6 +56,8 @@ typedef enum _sai_redis_switch_attr_t
      * not take effect. This is temporary solution until
      * comparison logic will be in place.
      *
+     * Flag IS cleared between api initialize/uninitialize.
+     *
      * @type bool
      * @flags CREATE_AND_SET
      * @default false
@@ -53,6 +67,8 @@ typedef enum _sai_redis_switch_attr_t
     /**
      * @brief Enable redis pipeline
      *
+     * Flag IS NOT cleared between api initialize/uninitialize.
+     *
      * @type bool
      * @flags CREATE_AND_SET
      * @default false
@@ -61,6 +77,8 @@ typedef enum _sai_redis_switch_attr_t
 
     /**
      * @brief Will flush redis pipeline
+     *
+     * Flag IS NOT cleared between api initialize/uninitialize.
      *
      * @type bool
      * @flags CREATE_AND_SET

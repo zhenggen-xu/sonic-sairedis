@@ -2,11 +2,27 @@
 #include "meta/saiserialize.h"
 #include "meta/saiattributelist.h"
 
+/*
+ * NOTE: currently we only support 1 set of notifications per all switches,
+ * this will need to be corrected later.
+ */
+
 sai_switch_state_change_notification_fn on_switch_state_change = NULL;
 sai_switch_shutdown_request_fn          on_switch_shutdown_request = NULL;
 sai_fdb_event_notification_fn           on_fdb_event = NULL;
 sai_port_state_change_notification_fn   on_port_state_change = NULL;
 sai_packet_event_notification_fn        on_packet_event = NULL;
+
+void clear_notifications()
+{
+    SWSS_LOG_ENTER();
+
+    on_switch_state_change = NULL;
+    on_switch_shutdown_request = NULL;
+    on_fdb_event = NULL;
+    on_port_state_change = NULL;
+    on_packet_event = NULL;
+}
 
 void check_notifications_pointers(
         _In_ uint32_t attr_count,
@@ -146,10 +162,10 @@ void handle_packet_event(
 
     SWSS_LOG_ERROR("not implemented");
 
-    //if (on_packet_event != NULL)
-    //{
-    //    on_packet_event(switch_id, buffer.data(), buffer_size, list.get_attr_count(), list.get_attr_list());
-    //}
+    if (on_packet_event != NULL)
+    {
+        //on_packet_event(switch_id, buffer.data(), buffer_size, list.get_attr_count(), list.get_attr_list());
+    }
 }
 
 void handle_notification(

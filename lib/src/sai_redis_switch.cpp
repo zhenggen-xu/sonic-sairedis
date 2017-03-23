@@ -1,130 +1,12 @@
 #include "sai_redis.h"
 #include "sairedis.h"
-#include <thread>
 
-#include "swss/selectableevent.h"
 #include "meta/saiserialize.h"
 
-bool g_switchInitialized = false;
+#include <thread>
+
 volatile bool g_asicInitViewMode = false; // default mode is apply mode
-volatile bool g_run = false;
 volatile bool g_useTempView = false;
-
-// TODO support pointers with notifications !
-// move part of this to interface query ? or create new file sai_redis.cpp
-
-std::shared_ptr<std::thread> notification_thread;
-
-// this event is used to nice end notifications thread
-swss::SelectableEvent g_redisNotificationTrheadEvent;
-
-void ntf_thread()
-{
-    SWSS_LOG_ENTER();
-
-    swss::Select s;
-
-    s.addSelectable(g_redisNotifications.get());
-    s.addSelectable(&g_redisNotificationTrheadEvent);
-
-    while (g_run)
-    {
-        swss::Selectable *sel;
-
-        int fd;
-
-        int result = s.select(&sel, &fd);
-
-        if (sel == &g_redisNotificationTrheadEvent)
-        {
-            // user requested shutdown_switch
-            break;
-        }
-
-        if (result == swss::Select::OBJECT)
-        {
-            swss::KeyOpFieldsValuesTuple kco;
-
-            std::string op;
-            std::string data;
-            std::vector<swss::FieldValueTuple> values;
-
-            g_redisNotifications->pop(op, data, values);
-
-            SWSS_LOG_DEBUG("notification: op = %s, data = %s", op.c_str(), data.c_str());
-
-            handle_notification(op, data, values);
-        }
-    }
-}
-
-void clear_local_state()
-{
-    SWSS_LOG_ENTER();
-
-    meta_init_db();
-
-    redis_clear_switch_ids();
-}
-
-// TODO move after api initialize
-sai_status_t redis_initialize_switch()
-{
-    // TODO move after switch create or api init
-    std::lock_guard<std::mutex> apilock(g_apimutex);
-
-    SWSS_LOG_ENTER();
-
-    if (g_switchInitialized)
-    {
-        SWSS_LOG_ERROR("switch is already initialized");
-
-        return SAI_STATUS_FAILURE;
-    }
-
-    g_switchInitialized = true;
-
-    clear_local_state();
-
-    g_run = true;
-
-    g_asicInitViewMode = false;
-
-    g_useTempView = false;
-
-    setRecording(g_record);
-
-    SWSS_LOG_DEBUG("creating notification thread");
-
-    notification_thread = std::make_shared<std::thread>(std::thread(ntf_thread));
-
-    return SAI_STATUS_SUCCESS;
-}
-
-// TODO move to uninitialize api
-void redis_shutdown_switch(
-        _In_ bool warm_restart_hint)
-{
-    std::lock_guard<std::mutex> apilock(g_apimutex);
-
-    SWSS_LOG_ENTER();
-
-    if (!g_switchInitialized)
-    {
-        SWSS_LOG_ERROR("not initialized");
-
-        return;
-    }
-
-    g_run = false;
-
-    // notify thread that it should end
-    g_redisNotificationTrheadEvent.notify();
-
-    notification_thread->join();
-
-    g_switchInitialized = false;
-}
 
 sai_status_t sai_redis_internal_notify_syncd(
         _In_ const std::string& key)
@@ -293,10 +175,22 @@ sai_status_t redis_remove_switch(
 
     SWSS_LOG_ENTER();
 
-    return meta_sai_remove_oid(
+    sai_status_t status = meta_sai_remove_oid(
             SAI_OBJECT_TYPE_SWITCH,
             switch_id,
             &redis_generic_remove);
+
+    if (status == SAI_STATUS_SUCCESS)
+    {
+        /*
+         * NOTE: Should we remove notifications here? Probably not since we can
+         * have multiple switches and then other switches also may send
+         * notifications and they still can be used since we have global
+         * notifications and not per switch.
+         */
+    }
+
+    return status;
 }
 
 sai_status_t redis_set_switch_attribute(
@@ -349,8 +243,10 @@ sai_status_t redis_set_switch_attribute(
     if (status == SAI_STATUS_SUCCESS)
     {
         /*
-         * When doint SET operation user may want to update notification
-         * pointers. TODO this be per switch.
+         * When doing SET operation user may want to update notification
+         * pointers.
+         *
+         * TODO this should be per switch.
          *
          * Currently we will have same notifications for all switches.
          */
