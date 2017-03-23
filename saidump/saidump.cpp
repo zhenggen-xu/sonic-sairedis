@@ -185,8 +185,7 @@ int main(int argc, char ** argv)
 
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_NOTICE);
 
-    // TODO init meta
-    //meta_init();
+    meta_init_db();
 
     swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
 
@@ -216,21 +215,14 @@ int main(int argc, char ** argv)
         sai_object_type_t object_type;
         sai_deserialize_object_type(str_object_type, object_type);
 
-        switch (object_type)
+        auto info = sai_all_object_type_infos[object_type];
+
+        if (!info->isnonobjectid)
         {
-            case SAI_OBJECT_TYPE_FDB_ENTRY:
-            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
-            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
-                break;
+            sai_object_id_t object_id;
+            sai_deserialize_object_id(str_object_id, object_id);
 
-            default:
-                {
-                    sai_object_id_t object_id;
-                    sai_deserialize_object_id(str_object_id, object_id);
-
-                    g_oid_map[object_id] = &key.second;
-                }
-                break;
+            g_oid_map[object_id] = &key.second;
         }
     }
 
@@ -249,6 +241,8 @@ int main(int argc, char ** argv)
         }
 
         std::cout << str_object_type << " " << str_object_id << " " << std::endl;
+
+        auto info = sai_all_object_type_infos[object_type];
 
         switch (object_type)
         {
@@ -275,7 +269,11 @@ int main(int argc, char ** argv)
 
             default:
 
-                // TODO check non object id
+                if (info->isnonobjectid)
+                {
+                    SWSS_LOG_THROW("object type %s is not supported yet", info->objecttypename);
+                }
+
                 {
                     sai_object_id_t object_id;
                     sai_deserialize_object_id(str_object_id, object_id);
