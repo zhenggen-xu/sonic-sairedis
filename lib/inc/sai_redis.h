@@ -26,11 +26,14 @@ extern "C" {
  * Switch index is encoded on 1 byte so we can have
  * max 0x100 switches at the same time.
  */
+
 #define MAX_SWITCHES 0x100
 
 void redis_clear_switch_ids();
 void redis_free_virtual_object_id(
         _In_ sai_object_id_t object_id);
+
+void clear_notifications();
 
 void check_notifications_pointers(
         _In_ uint32_t attr_count,
@@ -40,20 +43,21 @@ void check_notifications_pointers(
 // there is something wrong and we should fail
 #define GET_RESPONSE_TIMEOUT (6*60*1000)
 
-extern volatile bool                    g_record;
+extern void clear_local_state();
 extern void setRecording(bool record);
 extern sai_status_t setRecordingOutputDir(
         _In_ const sai_attribute_t &attr);
 extern void recordLine(std::string s);
-
 extern std::string joinFieldValues(
         _In_ const std::vector<swss::FieldValueTuple> &values);
 
-extern volatile bool                    g_useTempView;
-
 // other global declarations
 
-extern service_method_table_t           g_services;
+extern volatile bool g_record;
+extern volatile bool g_useTempView;
+extern volatile bool g_asicInitViewMode;
+
+extern service_method_table_t                       g_services;
 extern std::shared_ptr<swss::ProducerTable>         g_asicState;
 extern std::shared_ptr<swss::ConsumerTable>         g_redisGetConsumer;
 extern std::shared_ptr<swss::NotificationConsumer>  g_redisNotifications;

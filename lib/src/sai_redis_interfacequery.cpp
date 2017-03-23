@@ -1,11 +1,18 @@
-#include <string.h>
 #include "sai_redis.h"
 #include "sairedis.h"
+
+#include "swss/selectableevent.h"
+#include <string.h>
 
 std::mutex g_apimutex;
 
 service_method_table_t g_services;
 bool                   g_apiInitialized = false;
+volatile bool          g_run = false;
+
+// this event is used to nice end notifications thread
+swss::SelectableEvent g_redisNotificationTrheadEvent;
+std::shared_ptr<std::thread> notification_thread;
 
 std::shared_ptr<swss::DBConnector>          g_db;
 std::shared_ptr<swss::DBConnector>          g_dbNtf;
@@ -13,6 +20,78 @@ std::shared_ptr<swss::ProducerTable>        g_asicState;
 std::shared_ptr<swss::ConsumerTable>        g_redisGetConsumer;
 std::shared_ptr<swss::NotificationConsumer> g_redisNotifications;
 std::shared_ptr<swss::RedisClient>          g_redisClient;
+
+void clear_local_state()
+{
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_NOTICE("clearing local state");
+
+    /*
+     * Will need to be executed after init VIEW
+     */
+
+    /*
+     * Clear current notifications pointers.
+     *
+     * Clear notifications before clearing metadata database to not cause
+     * potential race condition for updating db right after clear.
+     */
+
+    clear_notifications();
+
+    /*
+     * Initialize metatada database.
+     */
+
+    meta_init_db();
+
+    /*
+     * Reset used switch ids.
+     */
+
+    redis_clear_switch_ids();
+}
+
+void ntf_thread()
+{
+    SWSS_LOG_ENTER();
+
+    swss::Select s;
+
+    s.addSelectable(g_redisNotifications.get());
+    s.addSelectable(&g_redisNotificationTrheadEvent);
+
+    while (g_run)
+    {
+        swss::Selectable *sel;
+
+        int fd;
+
+        int result = s.select(&sel, &fd);
+
+        if (sel == &g_redisNotificationTrheadEvent)
+        {
+            // user requested shutdown_switch
+            break;
+        }
+
+        if (result == swss::Select::OBJECT)
+        {
+            swss::KeyOpFieldsValuesTuple kco;
+
+            std::string op;
+            std::string data;
+            std::vector<swss::FieldValueTuple> values;
+
+            g_redisNotifications->pop(op, data, values);
+
+            SWSS_LOG_DEBUG("notification: op = %s, data = %s", op.c_str(), data.c_str());
+
+            handle_notification(op, data, values);
+        }
+    }
+}
 
 sai_status_t sai_api_initialize(
         _In_ uint64_t flags,
@@ -45,17 +124,19 @@ sai_status_t sai_api_initialize(
     g_redisNotifications = std::make_shared<swss::NotificationConsumer>(g_dbNtf.get(), "NOTIFICATIONS");
     g_redisClient        = std::make_shared<swss::RedisClient>(g_db.get());
 
-    /*
-     * Initialize metatada database.
-     */
+    clear_local_state();
 
-    meta_init_db();
+    g_asicInitViewMode = false;
 
-    /*
-     * Reset used switch ids
-     */
+    g_useTempView = false;
 
-    redis_clear_switch_ids();
+    g_run = true;
+
+    setRecording(g_record);
+
+    SWSS_LOG_DEBUG("creating notification thread");
+
+    notification_thread = std::make_shared<std::thread>(std::thread(ntf_thread));
 
     g_apiInitialized = true;
 
@@ -74,6 +155,15 @@ sai_status_t sai_api_uninitialize(void)
 
         return SAI_STATUS_FAILURE;
     }
+
+    clear_local_state();
+
+    g_run = false;
+
+    // notify thread that it should end
+    g_redisNotificationTrheadEvent.notify();
+
+    notification_thread->join();
 
     g_apiInitialized = false;
 
