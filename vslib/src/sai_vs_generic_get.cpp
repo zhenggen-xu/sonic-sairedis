@@ -27,14 +27,17 @@ sai_status_t internal_vs_get_process(
 sai_status_t internal_vs_generic_get(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &serialized_object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _Out_ sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
 
-    auto it = g_objectHash.find(serialized_object_id);
+    auto & objectHash = g_switch_state_map.at(switch_id)->objectHash;
 
-    if (it == g_objectHash.end())
+    auto it = objectHash.find(serialized_object_id);
+
+    if (it == objectHash.end())
     {
         SWSS_LOG_ERROR("Get failed, object not found, object type: %d: id: %s", object_type, serialized_object_id.c_str());
 
@@ -118,18 +121,14 @@ sai_status_t vs_generic_get(
 {
     SWSS_LOG_ENTER();
 
-    if (object_id == SAI_NULL_OBJECT_ID)
-    {
-        SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-
     std::string str_object_id = sai_serialize_object_id(object_id);
+
+    sai_object_id_t switch_id = sai_switch_id_query(object_id);
 
     return internal_vs_generic_get(
             object_type,
             str_object_id,
+            switch_id,
             attr_count,
             attr_list);
 }
@@ -146,6 +145,7 @@ sai_status_t vs_generic_get_fdb_entry(
     return internal_vs_generic_get(
             SAI_OBJECT_TYPE_FDB_ENTRY,
             str_fdb_entry,
+            fdb_entry->switch_id,
             attr_count,
             attr_list);
 }
@@ -162,6 +162,7 @@ sai_status_t vs_generic_get_neighbor_entry(
     return internal_vs_generic_get(
             SAI_OBJECT_TYPE_NEIGHBOR_ENTRY,
             str_neighbor_entry,
+            neighbor_entry->switch_id,
             attr_count,
             attr_list);
 }
@@ -178,6 +179,7 @@ sai_status_t vs_generic_get_route_entry(
     return internal_vs_generic_get(
             SAI_OBJECT_TYPE_ROUTE_ENTRY,
             str_route_entry,
+            route_entry->switch_id,
             attr_count,
             attr_list);
 }

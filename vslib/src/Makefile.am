@@ -40,7 +40,7 @@ libsaivs_la_SOURCES = \
 					  sai_vs_generic_get.cpp \
 					  sai_vs_generic_remove.cpp \
 					  sai_vs_generic_set.cpp \
-					  sai_vs_init.cpp
+					  sai_vs_switch_BCM56850.cpp
 
 libsaivs_la_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
 libsaivs_la_LIBADD = -lhiredis -lswsscommon

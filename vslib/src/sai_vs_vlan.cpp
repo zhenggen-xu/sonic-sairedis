@@ -1,9 +1,8 @@
 #include "sai_vs.h"
+#include "sai_vs_state.h"
 #include <map>
 #include <set>
 #include <vector>
-
-std::map<sai_object_id_t, std::set<sai_object_id_t>> vlan_members_map;
 
 sai_status_t vs_create_vlan(
         _Out_ sai_object_id_t *vlan_id,
@@ -14,6 +13,8 @@ sai_status_t vs_create_vlan(
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
     SWSS_LOG_ENTER();
+
+    auto &vlan_members_map = g_switch_state_map.at(switch_id)->vlan_members_map;
 
     sai_status_t status = meta_sai_create_oid(
             SAI_OBJECT_TYPE_VLAN,
@@ -45,6 +46,8 @@ sai_status_t vs_remove_vlan(
 
     if (status == SAI_STATUS_SUCCESS)
     {
+        auto &vlan_members_map = g_switch_state_map.at(sai_switch_id_query(vlan_id))->vlan_members_map;
+
         auto it = vlan_members_map.find(vlan_id);
 
         if (it == vlan_members_map.end())
@@ -100,6 +103,8 @@ void update_vlan_member_list_on_vlan(
     std::vector<sai_object_id_t> vlan_member_list;
 
     sai_attribute_t attr;
+
+    auto &vlan_members_map = g_switch_state_map.at(sai_switch_id_query(vlan_id))->vlan_members_map;
 
     std::copy(vlan_members_map[vlan_id].begin(), vlan_members_map[vlan_id].end(), std::back_inserter(vlan_member_list));
 
@@ -168,6 +173,8 @@ sai_status_t vs_create_vlan_member(
     {
         sai_object_id_t vlan_id = get_vlan_id_from_member(*vlan_member_id);
 
+        auto &vlan_members_map = g_switch_state_map.at(sai_switch_id_query(vlan_id))->vlan_members_map;
+
         vlan_members_map[vlan_id].insert(*vlan_member_id);
 
         update_vlan_member_list_on_vlan(vlan_id);
@@ -192,6 +199,8 @@ sai_status_t vs_remove_vlan_member(
 
     if (status == SAI_STATUS_SUCCESS)
     {
+        auto &vlan_members_map = g_switch_state_map.at(sai_switch_id_query(vlan_id))->vlan_members_map;
+
         auto it = vlan_members_map[vlan_id].find(vlan_member_id);
 
         if (it == vlan_members_map[vlan_id].end())

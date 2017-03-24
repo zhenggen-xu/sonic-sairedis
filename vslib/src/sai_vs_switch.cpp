@@ -1,47 +1,5 @@
 #include "sai_vs.h"
-#include "sai_vs_state.h"
-
-bool g_switch_initialized = false;
-
-sai_status_t vs_initialize_switch()
-{
-    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
-
-    SWSS_LOG_ENTER();
-
-    if (g_switch_initialized)
-    {
-        SWSS_LOG_ERROR("already initialized");
-
-        return SAI_STATUS_FAILURE;
-    }
-
-    sai_status_t status = init_switch();
-
-    if (status == SAI_STATUS_SUCCESS)
-    {
-        g_switch_initialized = true;
-    }
-
-    return status;
-}
-
-void vs_shutdown_switch(
-        _In_ bool warm_restart_hint)
-{
-    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
-
-    SWSS_LOG_ENTER();
-
-    if (!g_switch_initialized)
-    {
-        SWSS_LOG_ERROR("not initialized");
-
-        return;
-    }
-
-    g_switch_initialized = false;
-}
+#include "sai_vs_switch_BCM56850.h"
 
 sai_status_t vs_create_switch(
         _Out_ sai_object_id_t* switch_id,
