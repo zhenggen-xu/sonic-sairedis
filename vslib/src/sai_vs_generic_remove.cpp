@@ -1,22 +1,26 @@
 #include "sai_vs.h"
 #include "sai_vs_state.h"
+#include "sai_vs_switch_BCM56850.h"
 
 sai_status_t internal_vs_generic_remove(
         _In_ sai_object_type_t object_type,
-        _In_ const std::string &serialized_object_id)
+        _In_ const std::string &serialized_object_id,
+        _In_ sai_object_id_t switch_id)
 {
     SWSS_LOG_ENTER();
 
-    auto it = g_objectHash.find(serialized_object_id);
+    auto & objectHash = g_switch_state_map.at(switch_id)->objectHash;
 
-    if (it == g_objectHash.end())
+    auto it = objectHash.find(serialized_object_id);
+
+    if (it == objectHash.end())
     {
         SWSS_LOG_ERROR("Remove failed, object not found, object type: %d: id: %s", object_type, serialized_object_id.c_str());
 
         return SAI_STATUS_ITEM_NOT_FOUND;
     }
 
-    g_objectHash.erase(it);
+    objectHash.erase(it);
 
     SWSS_LOG_DEBUG("Remove succeeded, object type: %d, id: %s", object_type, serialized_object_id.c_str());
 
@@ -31,9 +35,24 @@ sai_status_t vs_generic_remove(
 
     std::string str_object_id = sai_serialize_object_id(object_id);
 
-    return internal_vs_generic_remove(
+    sai_object_id_t switch_id = sai_switch_id_query(object_id);
+
+    sai_status_t status = internal_vs_generic_remove(
             object_type,
-            str_object_id);
+            str_object_id,
+            switch_id);
+
+    if (object_type == SAI_OBJECT_TYPE_SWITCH &&
+            status == SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_NOTICE("removing switch id %s", sai_serialize_object_id(object_id).c_str());
+
+        vs_free_real_object_id(object_id);
+
+        uninit_switch_BCM56850(object_id);
+    }
+
+    return status;
 }
 
 sai_status_t vs_generic_remove_fdb_entry(
@@ -45,7 +64,8 @@ sai_status_t vs_generic_remove_fdb_entry(
 
     return internal_vs_generic_remove(
             SAI_OBJECT_TYPE_FDB_ENTRY,
-            str_fdb_entry);
+            str_fdb_entry,
+            fdb_entry->switch_id);
 }
 
 sai_status_t vs_generic_remove_neighbor_entry(
@@ -57,7 +77,8 @@ sai_status_t vs_generic_remove_neighbor_entry(
 
     return internal_vs_generic_remove(
             SAI_OBJECT_TYPE_NEIGHBOR_ENTRY,
-            str_neighbor_entry);
+            str_neighbor_entry,
+            neighbor_entry->switch_id);
 }
 
 sai_status_t vs_generic_remove_route_entry(
@@ -69,5 +90,6 @@ sai_status_t vs_generic_remove_route_entry(
 
     return internal_vs_generic_remove(
             SAI_OBJECT_TYPE_ROUTE_ENTRY,
-            str_route_entry);
+            str_route_entry,
+            route_entry->switch_id);
 }

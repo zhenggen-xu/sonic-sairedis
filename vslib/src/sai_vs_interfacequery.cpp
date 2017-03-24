@@ -1,9 +1,35 @@
 #include "sai_vs.h"
+#include "sai_vs_state.h"
 #include <string.h>
 
 service_method_table_t  g_services;
 bool                    g_api_initialized = false;
 std::recursive_mutex    g_recursive_mutex;
+
+void clear_local_state()
+{
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_NOTICE("clearing local state");
+
+    /*
+     * Initialize metatada database.
+     */
+
+    meta_init_db();
+
+    /*
+     * Reset used switch ids.
+     */
+
+    vs_clear_switch_ids();
+
+    /*
+     * Reset real counter id values
+     */
+
+    vs_reset_id_counter();
+}
 
 sai_status_t sai_api_initialize(
         _In_ uint64_t flags,
@@ -12,6 +38,13 @@ sai_status_t sai_api_initialize(
     std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
 
     SWSS_LOG_ENTER();
+
+    if (g_api_initialized)
+    {
+        SWSS_LOG_ERROR("api already initialized");
+
+        return SAI_STATUS_FAILURE;
+    }
 
     if ((NULL == services) || (NULL == services->profile_get_next_value) || (NULL == services->profile_get_value))
     {
@@ -29,7 +62,29 @@ sai_status_t sai_api_initialize(
         return SAI_STATUS_INVALID_PARAMETER;
     }
 
+    clear_local_state();
+
     g_api_initialized = true;
+
+    return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t sai_api_uninitialize(void)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
+
+    SWSS_LOG_ENTER();
+
+    if (!g_api_initialized)
+    {
+        SWSS_LOG_ERROR("api not initialized");
+
+        return SAI_STATUS_FAILURE;
+    }
+
+    clear_local_state();
+
+    g_api_initialized = false;
 
     return SAI_STATUS_SUCCESS;
 }
@@ -42,7 +97,7 @@ sai_status_t sai_log_set(
 
     SWSS_LOG_ENTER();
 
-    return SAI_STATUS_SUCCESS;
+    return SAI_STATUS_NOT_IMPLEMENTED;
 }
 
 sai_status_t sai_api_query(
@@ -175,16 +230,4 @@ sai_status_t sai_api_query(
             SWSS_LOG_ERROR("Invalid API type %d", sai_api_id);
             return SAI_STATUS_INVALID_PARAMETER;
     }
-}
-
-sai_status_t sai_api_uninitialize(
-        void)
-{
-    std::lock_guard<std::recursive_mutex> lock(g_recursive_mutex);
-
-    SWSS_LOG_ENTER();
-
-    g_api_initialized = false;
-
-    return SAI_STATUS_SUCCESS;
 }

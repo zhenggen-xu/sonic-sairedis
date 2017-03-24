@@ -9,28 +9,70 @@
 #include <string>
 #include <set>
 
-// TODO we need this per switch
+#define CHECK_STATUS(status) \
+{\
+    sai_status_t s = (status);\
+    if (s != SAI_STATUS_SUCCESS) \
+        { return s; }\
+}
 
 typedef std::unordered_map<std::string, std::string> AttrHash;
 typedef std::unordered_map<std::string, AttrHash> ObjectHash;
 
-// first key is serialized object ID (object id, route, neighbor, fdb)
-// value is hash containing attributes
-// second key is serialized attribute ID for given object
-// value is serialized attribute value
-extern ObjectHash g_objectHash;
+#define DEFAULT_VLAN_NUMBER 1
 
-extern void reset_id_counter();
+class SwitchState
+{
+    public:
 
-extern sai_object_id_t vs_create_real_object_id(
-        _In_ sai_object_type_t object_type);
+        SwitchState(
+                _In_ sai_object_id_t switch_id):
+            m_switch_id(switch_id)
+        {
 
-extern sai_status_t init_switch();
+            if (sai_object_type_query(switch_id) != SAI_OBJECT_TYPE_SWITCH)
+            {
+                SWSS_LOG_THROW("object 0x%lx is not SWITCH, its %s",
+                        sai_serialize_object_type(sai_object_type_query(switch_id)).c_str());
+            }
 
-extern sai_object_id_t switch_object_id;
+            // create switch by default
+            // (it will require special treat on creating
 
-extern std::map<sai_object_id_t, std::set<sai_object_id_t>> vlan_members_map;
-extern void update_vlan_member_list_on_vlan(
+            objectHash[sai_serialize_object_id(switch_id)] = {};
+        }
+
+    ObjectHash objectHash;
+
+    sai_object_id_t default_vlan_id;
+    sai_object_id_t default_1q_bridge;
+
+    std::map<sai_object_id_t, std::set<sai_object_id_t>> vlan_members_map;
+
+    sai_object_id_t getSwitchId() const
+    {
+        return m_switch_id;
+    }
+
+    private:
+
+        sai_object_id_t m_switch_id;
+};
+
+void update_vlan_member_list_on_vlan(
         _In_ sai_object_id_t vlan_id);
+
+typedef std::map<sai_object_id_t, std::shared_ptr<SwitchState>> SwitchStateMap;
+
+extern SwitchStateMap g_switch_state_map;
+
+void vs_reset_id_counter();
+void vs_clear_switch_ids();
+void vs_free_real_object_id(
+        _In_ sai_object_id_t switch_id);
+
+sai_object_id_t vs_create_real_object_id(
+        _In_ sai_object_type_t object_type,
+        _In_ sai_object_id_t switch_id);
 
 #endif // __SAI_VS_STATE__

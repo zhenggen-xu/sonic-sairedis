@@ -162,13 +162,14 @@ void test_ports()
 
     sai_attribute_t attr;
 
-    attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
-
     sai_object_id_t switch_id;
 
-    // TODO we need mandatoryattributes
+    attr.id = SAI_SWITCH_ATTR_INIT_SWITCH;
+    attr.value.booldata = true;
 
-    SUCCESS(sai_switch_api->create_switch(&switch_id, 0, NULL));
+    SUCCESS(sai_switch_api->create_switch(&switch_id, 1, &attr));
+
+    attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
 
     SUCCESS(sai_switch_api->get_switch_attribute(switch_id, 1, &attr));
 

@@ -1,35 +1,15 @@
 #include "sai_vs.h"
 #include "sai_vs_state.h"
 
-sai_object_id_t switch_object_id;
-sai_object_id_t default_vlan_id;
-sai_object_id_t default_1q_bridge;
-
-#define CHECK_STATUS(status) \
-{\
-    sai_status_t s = (status);\
-    if (s != SAI_STATUS_SUCCESS) \
-        return s;\
-}
-
-#define DEFAULT_VLAN_NUMBER 1
-
 // TODO extra work may be needed on GET api if N on list will be > then actual
-// TODO all init should be created after creating switch by user
 
-sai_status_t create_default_switch()
-{
-    SWSS_LOG_ENTER();
+/*
+ * We can use local variable here for initialization (init should be in class
+ * constructor anyway, we can move it there later) because each switch init is
+ * done under global lock.
+ */
 
-    SWSS_LOG_INFO("create internal switch object");
-
-    return vs_generic_create(
-            SAI_OBJECT_TYPE_SWITCH,
-            &switch_object_id,
-            SAI_NULL_OBJECT_ID, // no id for switch
-            0,
-            NULL);
-}
+static std::shared_ptr<SwitchState> ss;
 
 sai_status_t set_switch_mac_address()
 {
@@ -48,7 +28,7 @@ sai_status_t set_switch_mac_address()
     attr.value.mac[4] = 0x55;
     attr.value.mac[5] = 0x66;
 
-    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, switch_object_id, &attr);
+    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
 }
 
 sai_status_t create_default_vlan()
@@ -64,8 +44,8 @@ sai_status_t create_default_vlan()
 
     return vs_generic_create(
             SAI_OBJECT_TYPE_VLAN,
-            &default_vlan_id,
-            switch_object_id,
+            &ss->default_vlan_id,
+            ss->getSwitchId(),
             1,
             &attr);
 }
@@ -79,6 +59,8 @@ sai_status_t create_cpu_port()
     sai_object_id_t cpu_port_id;
 
     sai_attribute_t attr;
+
+    sai_object_id_t switch_object_id = ss->getSwitchId();
 
     CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_PORT, &cpu_port_id, switch_object_id, 0, &attr));
 
@@ -107,10 +89,12 @@ sai_status_t create_default_1q_bridge(const std::vector<sai_object_id_t>& port_l
     attr.id = SAI_BRIDGE_ATTR_TYPE;
     attr.value.s32 = SAI_BRIDGE_TYPE_1Q;
 
-    CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_BRIDGE, &default_1q_bridge, switch_object_id, 1, &attr));
+    sai_object_id_t switch_object_id = ss->getSwitchId();
+
+    CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_BRIDGE, &ss->default_1q_bridge, switch_object_id, 1, &attr));
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_1Q_BRIDGE_ID;
-    attr.value.oid = default_1q_bridge;
+    attr.value.oid = ss->default_1q_bridge;
 
     CHECK_STATUS(vs_generic_set(SAI_OBJECT_TYPE_SWITCH, switch_object_id, &attr));
 
@@ -143,7 +127,7 @@ sai_status_t create_default_1q_bridge(const std::vector<sai_object_id_t>& port_l
     attr.value.objlist.count = (uint32_t)bridge_port_list.size();
     attr.value.objlist.list = bridge_port_list.data();
 
-    return vs_generic_set(SAI_OBJECT_TYPE_BRIDGE, default_1q_bridge, &attr);
+    return vs_generic_set(SAI_OBJECT_TYPE_BRIDGE, ss->default_1q_bridge, &attr);
 }
 
 sai_status_t create_ports(std::vector<sai_object_id_t>& port_list)
@@ -194,6 +178,8 @@ sai_status_t create_ports(std::vector<sai_object_id_t>& port_list)
 
     port_list.clear();
 
+    sai_object_id_t switch_object_id = ss->getSwitchId();
+
     for (uint32_t i = 0; i < port_count; i++)
     {
         SWSS_LOG_DEBUG("create port index %u", i);
@@ -239,6 +225,8 @@ sai_status_t create_port_list(std::vector<sai_object_id_t>& port_list)
 
     sai_attribute_t attr;
 
+    sai_object_id_t switch_object_id = ss->getSwitchId();
+
     uint32_t port_count = (uint32_t)port_list.size();
 
     attr.id = SAI_SWITCH_ATTR_PORT_LIST;
@@ -258,6 +246,8 @@ sai_status_t create_default_virtual_router()
     SWSS_LOG_ENTER();
 
     SWSS_LOG_INFO("create default virtual router");
+
+    sai_object_id_t switch_object_id = ss->getSwitchId();
 
     sai_object_id_t virtual_router_id;
 
@@ -279,6 +269,8 @@ sai_status_t create_default_stp_instance()
 
     sai_object_id_t stp_instance_id;
 
+    sai_object_id_t switch_object_id = ss->getSwitchId();
+
     CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_STP, &stp_instance_id, switch_object_id, 0, NULL));
 
     sai_attribute_t attr;
@@ -297,9 +289,11 @@ sai_status_t create_vlan_members_for_default_vlan(
 
     SWSS_LOG_INFO("create vlan members for all ports");
 
+    sai_object_id_t switch_object_id = ss->getSwitchId();
+
     vlan_member_list.clear();
 
-    vlan_members_map[default_vlan_id] = {};
+    ss->vlan_members_map[ss->default_vlan_id] = {};
 
     for (auto &bridge_port_id : bridge_port_list)
     {
@@ -332,10 +326,10 @@ sai_status_t create_vlan_members_for_default_vlan(
 
         vlan_member_list.push_back(vlan_member_id);
 
-        vlan_members_map[default_vlan_id].insert(vlan_member_id);
+        ss->vlan_members_map[ss->default_vlan_id].insert(vlan_member_id);
     }
 
-    update_vlan_member_list_on_vlan(default_vlan_id);
+    update_vlan_member_list_on_vlan(ss->default_vlan_id);
 
     return SAI_STATUS_SUCCESS;
 }
@@ -343,6 +337,8 @@ sai_status_t create_vlan_members_for_default_vlan(
 sai_status_t create_default_trap_group()
 {
     SWSS_LOG_ENTER();
+
+    sai_object_id_t switch_object_id = ss->getSwitchId();
 
     SWSS_LOG_INFO("create default trap group");
 
@@ -367,6 +363,8 @@ sai_status_t create_qos_queues(
     // TODO queues size may change when we will modify queue or ports
 
     SWSS_LOG_INFO("create qos queues");
+
+    sai_object_id_t switch_object_id = ss->getSwitchId();
 
     // 10 in and 10 out queues per port
     const uint32_t port_qos_queues_count = 20;
@@ -408,6 +406,8 @@ sai_status_t create_priority_groups(std::vector<sai_object_id_t>& port_list)
     // TODO prioirity groups size may change when we will modify pg or ports
 
     SWSS_LOG_INFO("create priority groups");
+
+    sai_object_id_t switch_object_id = ss->getSwitchId();
 
     //
     const uint32_t port_pgs_count = 8;
@@ -634,7 +634,7 @@ sai_status_t create_scheduler_groups(
         {
             sai_object_id_t sg_id;
 
-            CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_SCHEDULER_GROUP, &sg_id, switch_object_id, 0, NULL));
+            CHECK_STATUS(vs_generic_create(SAI_OBJECT_TYPE_SCHEDULER_GROUP, &sg_id, ss->getSwitchId(), 0, NULL));
 
             sgs.push_back(sg_id);
         }
@@ -665,14 +665,13 @@ sai_status_t set_maximum_number_of_childs_per_scheduler_group()
     attr.id = SAI_SWITCH_ATTR_QOS_MAX_NUMBER_OF_CHILDS_PER_SCHEDULER_GROUP;
     attr.value.u32 = 16;
 
-    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, switch_object_id, &attr);
+    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
 }
 
 sai_status_t initialize_default_objects()
 {
     SWSS_LOG_ENTER();
 
-    CHECK_STATUS(create_default_switch()); // TODO needs to be removed this is user action
     CHECK_STATUS(set_switch_mac_address());
     CHECK_STATUS(create_default_vlan());
     CHECK_STATUS(create_cpu_port());
@@ -704,25 +703,44 @@ sai_status_t initialize_default_objects()
     return SAI_STATUS_SUCCESS;
 }
 
-sai_status_t init_switch()
+void init_switch_BCM56850(
+        _In_ sai_object_id_t switch_id)
 {
-    // TODO needs to be changed
-    // we need to hold state per switch
+    SWSS_LOG_ENTER();
 
-    sai_status_t status = meta_init_db();
+    if (switch_id == SAI_NULL_OBJECT_ID)
+    {
+        SWSS_LOG_THROW("init switch with NULL switch id is not allowed");
+    }
+
+    if (g_switch_state_map.find(switch_id) != g_switch_state_map.end())
+    {
+        SWSS_LOG_THROW("switch already exists 0x%lx", switch_id);
+    }
+
+    ss = g_switch_state_map[switch_id] = std::make_shared<SwitchState>(switch_id);
+
+    sai_status_t status = initialize_default_objects();
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to init meta db FIXME");
-
-        return status;
+        SWSS_LOG_THROW("unable to init switch %s", sai_serialize_status(status).c_str());
     }
 
-    reset_id_counter();
+    SWSS_LOG_NOTICE("initialized switch 0x%lx", switch_id);
+}
 
-    // remove all objects
+void uninit_switch_BCM56850(
+        _In_ sai_object_id_t switch_id)
+{
+    SWSS_LOG_ENTER();
 
-    g_objectHash.clear();
+    if (g_switch_state_map.find(switch_id) == g_switch_state_map.end())
+    {
+        SWSS_LOG_THROW("switch don't exists 0x%lx", switch_id);
+    }
 
-    return initialize_default_objects();
+    SWSS_LOG_NOTICE("remove switch 0x%lx", switch_id);
+
+    g_switch_state_map.erase(switch_id);
 }
