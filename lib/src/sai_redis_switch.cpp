@@ -145,6 +145,30 @@ sai_status_t redis_create_switch(
 
     SWSS_LOG_ENTER();
 
+    /*
+     * Creating switch can't have any object attributes set on it, need to be
+     * set on separate api.
+     */
+
+    for (uint32_t i = 0; i < attr_count; ++i)
+    {
+        auto meta = sai_metadata_get_attr_metadata(SAI_OBJECT_TYPE_SWITCH, attr_list[i].id);
+
+        if (meta == NULL)
+        {
+            SWSS_LOG_ERROR("attribute %d not found", attr_list[i].id);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+
+        if (meta->allowedobjecttypeslength > 0)
+        {
+            SWSS_LOG_ERROR("attribute %s is object id attribute, not allowed on create", meta->attridname);
+
+            return SAI_STATUS_INVALID_PARAMETER;
+        }
+    }
+
     sai_status_t status = meta_sai_create_oid(
             SAI_OBJECT_TYPE_SWITCH,
             switch_id,
