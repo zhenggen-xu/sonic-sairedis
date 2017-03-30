@@ -690,6 +690,8 @@ std::string sai_serialize_fdb_entry(
     j["switch_id"] = sai_serialize_object_id(fdb_entry.switch_id);
     j["mac"] = sai_serialize_mac(fdb_entry.mac_address);
     j["vlan"] = sai_serialize_vlan_id(fdb_entry.vlan_id);
+    j["bridge_type"] = sai_serialize_enum(fdb_entry.bridge_type, &metadata_enum_sai_fdb_entry_bridge_type_t);
+    j["bridge_id"] = sai_serialize_object_id(fdb_entry.bridge_id);
 
     return j.dump();
 }
@@ -1390,10 +1392,8 @@ std::string sai_serialize_object_meta_key(
 
             if (meta->isnonobjectid)
             {
-                SWSS_LOG_ERROR("object %s is non object id, not supported yet, FIXME",
+                SWSS_LOG_THROW("object %s is non object id, not supported yet, FIXME",
                         sai_serialize_object_type(meta->objecttype).c_str());
-
-                throw std::runtime_error("non object id object type is not supported yet, FIXME");
             }
 
             key = sai_serialize_object_id(meta_key.objectkey.key.object_id);
@@ -2264,6 +2264,13 @@ void sai_deserialize_object_type(
     sai_deserialize_enum(s, &metadata_enum_sai_object_type_t, (int32_t&)object_type);
 }
 
+void sai_deserialize_fdb_entry_bridge_type(
+        _In_ const std::string& s,
+        _Out_ sai_fdb_entry_bridge_type_t& fdb_entry_bridge_type)
+{
+    sai_deserialize_enum(s, &metadata_enum_sai_fdb_entry_bridge_type_t, (int32_t&)fdb_entry_bridge_type);
+}
+
 void sai_deserialize_vlan_id(
         _In_ const std::string& s,
         _In_ sai_vlan_id_t& vlan_id)
@@ -2284,6 +2291,8 @@ void sai_deserialize_fdb_entry(
     sai_deserialize_object_id(j["switch_id"], fdb_entry.switch_id);
     sai_deserialize_mac(j["mac"], fdb_entry.mac_address);
     sai_deserialize_vlan_id(j["vlan"], fdb_entry.vlan_id);
+    sai_deserialize_fdb_entry_bridge_type(j["bridge_type"], fdb_entry.bridge_type);
+    sai_deserialize_object_id(j["bridge_id"], fdb_entry.bridge_id);
 }
 
 void sai_deserialize_neighbor_entry(
