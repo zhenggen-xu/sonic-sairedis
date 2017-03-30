@@ -616,6 +616,14 @@ std::string sai_serialize_status(
     return sai_serialize_enum(status, &metadata_enum_sai_status_t);
 }
 
+std::string sai_serialize_common_api(
+        _In_ const sai_common_api_t common_api)
+{
+    SWSS_LOG_ENTER();
+
+    return sai_serialize_enum(common_api, &metadata_enum_sai_common_api_t);
+}
+
 std::string sai_serialize_object_type(
         _In_ const sai_object_type_t object_type)
 {
