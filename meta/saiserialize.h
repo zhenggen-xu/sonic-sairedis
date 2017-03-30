@@ -66,6 +66,9 @@ std::string sai_serialize_attr_value(
 std::string sai_serialize_status(
         _In_ const sai_status_t status);
 
+std::string sai_serialize_common_api(
+        _In_ const sai_common_api_t common_api);
+
 std::string sai_serialize_port_stat(
         _In_ const sai_port_stat_t counter);
 
