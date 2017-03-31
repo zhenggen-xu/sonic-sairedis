@@ -1400,6 +1400,8 @@ std::string sai_serialize_object_meta_key(
             break;
     }
 
+    key = sai_serialize_object_type(meta_key.objecttype) + ":" + key;
+
     SWSS_LOG_DEBUG("%s", key.c_str());
 
     return key;
