@@ -222,6 +222,7 @@ void hardReinit()
 
     // repopulate asic view from redis db after hard asic initialize
 
+    // TODO this map will hold all switches unless we make map per switch
     g_vidToRidMap = redisGetVidToRidMap();
     g_ridToVidMap = redisGetRidToVidMap();
 
@@ -229,6 +230,8 @@ void hardReinit()
 
     for (auto &key: asicStateKeys)
     {
+        // TODO key will be meta_kay anyway we could use deserialize here
+
         sai_object_type_t objectType = getObjectTypeFromAsicKey(key);
         const std::string &strObjectId = getObjectIdFromAsicKey(key);
 
@@ -246,7 +249,12 @@ void hardReinit()
                 g_neighbors[strObjectId] = key;
                 break;
 
+            case SAI_OBJECT_TYPE_SWITCH:
+                g_oids[strObjectId] = key;
+                break;
+
             default:
+                // TODO check if isobjectid
                 g_oids[strObjectId] = key;
                 break;
         }
@@ -260,11 +268,13 @@ void hardReinit()
     processRoutes(true);
     processRoutes(false);
 
+    // TODO do set on switch at the end !
+
     checkAllIds();
 }
 
 template<typename FUN>
-bool shouldSkipCreateion(
+bool shouldSkipCreation(
         sai_object_id_t vid,
         sai_object_id_t& rid,
         bool& createObject,
@@ -291,6 +301,7 @@ bool shouldSkipCreateion(
     return false;
 }
 
+// TODO there is utility function i metadata
 const sai_attribute_t* get_attribute_by_id(
         _In_ sai_object_id_t id,
         _In_ uint32_t attr_count,
@@ -442,42 +453,42 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
     if (objectType == SAI_OBJECT_TYPE_VIRTUAL_ROUTER)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultVirtualRouterId(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultVirtualRouterId(); }))
         {
             SWSS_LOG_INFO("default virtual router will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
     else if (objectType == SAI_OBJECT_TYPE_STP)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultStpInstanceId(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultStpInstanceId(); }))
         {
             SWSS_LOG_INFO("default stp instance will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
     else if (objectType == SAI_OBJECT_TYPE_QUEUE)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [&](sai_object_id_t queueId) { return g_defaultQueuesRids.find(queueId) != g_defaultQueuesRids.end(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [&](sai_object_id_t queueId) { return g_defaultQueuesRids.find(queueId) != g_defaultQueuesRids.end(); }))
         {
             SWSS_LOG_DEBUG("default queue will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
     else if (objectType == SAI_OBJECT_TYPE_INGRESS_PRIORITY_GROUP)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [&](sai_object_id_t pgId) { return g_defaultPriorityGroupsRids.find(pgId) != g_defaultPriorityGroupsRids.end(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [&](sai_object_id_t pgId) { return g_defaultPriorityGroupsRids.find(pgId) != g_defaultPriorityGroupsRids.end(); }))
         {
             SWSS_LOG_DEBUG("default priority group will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
     else if (objectType == SAI_OBJECT_TYPE_SCHEDULER_GROUP)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [&](sai_object_id_t sgId) { return g_defaultSchedulerGroupsRids.find(sgId) != g_defaultSchedulerGroupsRids.end(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [&](sai_object_id_t sgId) { return g_defaultSchedulerGroupsRids.find(sgId) != g_defaultSchedulerGroupsRids.end(); }))
         {
             SWSS_LOG_DEBUG("default scheduler group will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
     }
     else if (objectType == SAI_OBJECT_TYPE_HOSTIF_TRAP_GROUP)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultTrapGroupId(); }))
+        if (shouldSkipCreation(vid, rid, createObject, [](sai_object_id_t id) { return id == redisGetDefaultTrapGroupId(); }))
         {
             SWSS_LOG_INFO("default trap group will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
@@ -486,7 +497,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
     }
     else if (objectType == SAI_OBJECT_TYPE_PORT)
     {
-        if (shouldSkipCreateion(vid, rid, createObject, [](sai_object_id_t) { return true; }))
+        if (shouldSkipCreation(vid, rid, createObject, [](sai_object_id_t) { return true; }))
         {
             SWSS_LOG_INFO("port will not be created, processed VID 0x%lx to RID 0x%lx", vid, rid);
         }
@@ -579,6 +590,7 @@ void processAttributesForOids(sai_object_type_t objectType, std::shared_ptr<SaiA
         uint32_t count = 0;
         sai_object_id_t *objectIdList;
 
+        // TODO add enable flag
         switch (meta->attrvaluetype)
         {
             case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
@@ -651,26 +663,19 @@ void processOids()
     }
 }
 
-sai_fdb_entry_t getFdbEntryFromString(const std::string &strFdbEntry)
-{
-    SWSS_LOG_ENTER();
-
-    sai_fdb_entry_t fdbEntry;
-    sai_deserialize_fdb_entry(strFdbEntry, fdbEntry);
-
-    return fdbEntry;
-}
-
 void processFdbs()
 {
     SWSS_LOG_ENTER();
+
+    // TODO process objects inside struct
 
     for (auto &kv: g_fdbs)
     {
         const std::string &strFdbEntry = kv.first;
         const std::string &asicKey = kv.second;
 
-        sai_fdb_entry_t fdbEntry = getFdbEntryFromString(strFdbEntry);
+        sai_fdb_entry_t fdbEntry;
+        sai_deserialize_fdb_entry(strFdbEntry, fdbEntry);
 
         std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];
 
@@ -691,26 +696,18 @@ void processFdbs()
     }
 }
 
-sai_neighbor_entry_t getNeighborEntryFromString(const std::string &strNeighborEntry)
-{
-    SWSS_LOG_ENTER();
-
-    sai_neighbor_entry_t neighborEntry;
-    sai_deserialize_neighbor_entry(strNeighborEntry, neighborEntry);
-
-    return neighborEntry;
-}
-
 void processNeighbors()
 {
     SWSS_LOG_ENTER();
 
+    // TODO process objects inside struct
     for (auto &kv: g_neighbors)
     {
         const std::string &strNeighborEntry = kv.first;
         const std::string &asicKey = kv.second;
 
-        sai_neighbor_entry_t neighborEntry = getNeighborEntryFromString(strNeighborEntry);
+        sai_neighbor_entry_t neighborEntry;
+        sai_deserialize_neighbor_entry(strNeighborEntry, neighborEntry);
 
         neighborEntry.rif_id = processSingleVid(neighborEntry.rif_id);
 
@@ -733,22 +730,13 @@ void processNeighbors()
     }
 }
 
-sai_route_entry_t getRouteEntryFromString(const std::string &strRouteEntry)
-{
-    SWSS_LOG_ENTER();
-
-    sai_route_entry_t routeEntry;
-    sai_deserialize_route_entry(strRouteEntry, routeEntry);
-
-    return routeEntry;
-}
-
 void processRoutes(bool defaultOnly)
 {
     SWSS_LOG_ENTER();
 
     SWSS_LOG_TIMER("apply routes");
 
+    // TODO process objects inside struct
     for (auto &kv: g_routes)
     {
         const std::string &strRouteEntry = kv.first;
@@ -761,8 +749,10 @@ void processRoutes(bool defaultOnly)
             continue;
         }
 
-        sai_route_entry_t routeEntry = getRouteEntryFromString(strRouteEntry);
+        sai_route_entry_t routeEntry;
+        sai_deserialize_route_entry(strRouteEntry, routeEntry);
 
+        // TODO do this in automatic way usign stricts, it will impact speed
         routeEntry.vr_id = processSingleVid(routeEntry.vr_id);
 
         std::shared_ptr<SaiAttributeList> list = g_attributesLists[asicKey];

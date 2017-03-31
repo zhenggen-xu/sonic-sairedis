@@ -1,6 +1,9 @@
+#include "syncd.h"
+
 #include <condition_variable>
 #include <sstream>
-#include "syncd.h"
+
+// TODO we need to check whether there are switches available
 
 void collectCounters(swss::Table &countersTable,
                      const std::vector<sai_port_stat_t> &supportedCounters)

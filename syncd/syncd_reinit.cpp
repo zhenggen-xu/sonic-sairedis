@@ -190,6 +190,8 @@ void redisClearLaneMap()
 {
     SWSS_LOG_ENTER();
 
+    // TODO per switch
+
     g_redisClient->del(LANES);
 }
 
@@ -235,11 +237,15 @@ void redisSaveLaneMap(const std::unordered_map<sai_uint32_t, sai_object_id_t> &m
         std::string strLane = sai_serialize_number(lane);
         std::string strPortId = sai_serialize_object_id(portId);
 
+        // TODO per switch
+        //
         // TODO use multi or hmset
         g_redisClient->hset(LANES, strLane, strPortId);
     }
 }
 
+// TODO maybe those could be common ?
+// this may be not necessary
 std::vector<std::string> redisGetAsicStateKeys()
 {
     SWSS_LOG_ENTER();
@@ -355,7 +361,9 @@ sai_object_id_t redisGetDefaultVirtualRouterId()
     auto redisVrId = g_redisClient->hget(HIDDEN, DEFAULT_VIRTUAL_ROUTER_ID);
 
     if (redisVrId == NULL)
+    {
         return SAI_NULL_OBJECT_ID;
+    }
 
     sai_object_id_t vr_id;
 
@@ -451,6 +459,8 @@ void redisCreateRidAndVidMapping(sai_object_id_t rid, sai_object_id_t vid)
 
     SWSS_LOG_DEBUG("set VID 0x%lx and RID 0x%lx", vid, rid);
 }
+
+// TODO should we have different db's per each switch ?
 
 void redisSetDummyAsicStateForRealObjectId(sai_object_id_t rid)
 {
@@ -982,6 +992,15 @@ void helperCheckSchedulerGroupsIds()
     }
 }
 
+// if this is worm start then we assume some switches exists
+// already, we can get them from asic state table
+// and run those checks,
+// if no switches exists, we can create them first
+// TODO - lets only choose CREATE_ONLY and MANDATORY_ON_CREATE
+// atttributes, and rest could be jsut set in hard reinit
+//
+// but before we need helper functions to run
+// we can also put this inside class
 void onSyncdStart(bool warmStart)
 {
     // it may happen that after initialize we will receive

@@ -236,12 +236,14 @@ void check_notifications_pointers(
     SWSS_LOG_ENTER();
 
     /*
-     * This function should only be called on CREATE/SET
-     * api when object is SWITCH.
+     * This function should only be called on CREATE/SET api when object is
+     * SWITCH.
      *
-     * Notifications pointers needs to be corrected since
-     * those we receive from sairedis are in sairedis
-     * memory space.
+     * Notifications pointers needs to be corrected since those we receive from
+     * sairedis are in sairedis memory space and here we are using those ones
+     * we declared in syncd memory space. 
+     *
+     * Also notice that we are using the same pointers for ALL switches.
      */
 
     for (uint32_t index = 0; index < attr_count; ++index)

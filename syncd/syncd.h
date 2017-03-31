@@ -82,13 +82,13 @@ sai_object_id_t redisGetCpuId();
 void redisClearVidToRidMap();
 void redisClearRidToVidMap();
 
-extern swss::ProducerTable         *getResponse;
-extern swss::NotificationProducer  *notifications;
+extern std::shared_ptr<swss::ProducerTable>         getResponse;
+extern std::shared_ptr<swss::NotificationProducer>  notifications;
 
-extern swss::RedisClient   *g_redisClient;
+extern std::shared_ptr<swss::RedisClient>   g_redisClient;
 
-sai_object_id_t redis_create_virtual_object_id(
-        _In_ sai_object_type_t object_type);
+//sai_object_id_t redis_create_virtual_object_id(
+//        _In_ sai_object_type_t object_type);
 
 sai_object_id_t translate_rid_to_vid(
         _In_ sai_object_id_t rid);
@@ -114,38 +114,6 @@ typedef sai_status_t (*get_attribute_fn)(
         _In_ sai_object_id_t stp_id,
         _In_ uint32_t attr_count,
         _Inout_ sai_attribute_t *attr_list);
-
-extern create_fn           common_create[SAI_OBJECT_TYPE_MAX];
-extern remove_fn           common_remove[SAI_OBJECT_TYPE_MAX];
-extern set_attribute_fn    common_set_attribute[SAI_OBJECT_TYPE_MAX];
-extern get_attribute_fn    common_get_attribute[SAI_OBJECT_TYPE_MAX];
-
-extern sai_acl_api_t                *sai_acl_api;
-extern sai_buffer_api_t             *sai_buffer_api;
-extern sai_fdb_api_t                *sai_fdb_api;
-extern sai_hash_api_t               *sai_hash_api;
-extern sai_hostif_api_t             *sai_hostif_api;
-extern sai_lag_api_t                *sai_lag_api;
-extern sai_mirror_api_t             *sai_mirror_api;
-extern sai_neighbor_api_t           *sai_neighbor_api;
-extern sai_next_hop_api_t           *sai_next_hop_api;
-extern sai_next_hop_group_api_t     *sai_next_hop_group_api;
-extern sai_policer_api_t            *sai_policer_api;
-extern sai_port_api_t               *sai_port_api;
-extern sai_qos_map_api_t            *sai_qos_map_api;
-extern sai_queue_api_t              *sai_queue_api;
-extern sai_route_api_t              *sai_route_api;
-extern sai_router_interface_api_t   *sai_router_interface_api;
-extern sai_samplepacket_api_t       *sai_samplepacket_api;
-extern sai_scheduler_api_t          *sai_scheduler_api;
-extern sai_scheduler_group_api_t    *sai_scheduler_group_api;
-extern sai_stp_api_t                *sai_stp_api;
-extern sai_switch_api_t             *sai_switch_api;
-extern sai_tunnel_api_t             *sai_tunnel_api;
-extern sai_udf_api_t                *sai_udf_api;
-extern sai_virtual_router_api_t     *sai_router_api;
-extern sai_vlan_api_t               *sai_vlan_api;
-extern sai_wred_api_t               *sai_wred_api;
 
 void initialize_common_api_pointers();
 void populate_sai_apis();
