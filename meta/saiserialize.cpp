@@ -1369,8 +1369,10 @@ std::string sai_serialize_object_meta_key(
 
     std::string key;
 
-    // NOTE: object type should be serialized since
-    // it will not be possible to desrialize
+    if (meta_key.objecttype == SAI_OBJECT_TYPE_NULL || meta_key.objecttype >= SAI_OBJECT_TYPE_MAX)
+    {
+        SWSS_LOG_THROW("invalid object type value %s", sai_serialize_object_type(meta_key.objecttype).c_str());
+    }
 
     const auto& meta = sai_all_object_type_infos[meta_key.objecttype];
 
@@ -2358,6 +2360,54 @@ void sai_deserialize_attr_id(
 
     attrid = meta->attrid;
 }
+
+void sai_deserialize_object_meta_key(
+        _In_ const std::string &s,
+        _Out_ sai_object_meta_key_t& meta_key)
+{
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_DEBUG("%s", s.c_str());
+
+    const std::string &str_object_type = s.substr(0, s.find(":"));
+    const std::string &str_object_id = s.substr(s.find(":") + 1);
+
+    sai_deserialize_object_type(str_object_type, meta_key.objecttype);
+
+    if (meta_key.objecttype == SAI_OBJECT_TYPE_NULL || meta_key.objecttype >= SAI_OBJECT_TYPE_MAX)
+    {
+        SWSS_LOG_THROW("invalid object type value %s", sai_serialize_object_type(meta_key.objecttype).c_str());
+    }
+
+    const auto& meta = sai_all_object_type_infos[meta_key.objecttype];
+
+    switch (meta_key.objecttype)
+    {
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
+            sai_deserialize_fdb_entry(str_object_id, meta_key.objectkey.key.fdb_entry);
+            break;
+
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+            sai_deserialize_route_entry(str_object_id, meta_key.objectkey.key.route_entry);
+            break;
+
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            sai_deserialize_neighbor_entry(str_object_id, meta_key.objectkey.key.neighbor_entry);
+            break;
+
+        default:
+
+            if (meta->isnonobjectid)
+            {
+                SWSS_LOG_THROW("object %s is non object id, not supported yet, FIXME",
+                        sai_serialize_object_type(meta->objecttype).c_str());
+            }
+
+            sai_deserialize_object_id(str_object_id, meta_key.objectkey.key.object_id);
+            break;
+    }
+}
+
 
 // deserialize ntf
 

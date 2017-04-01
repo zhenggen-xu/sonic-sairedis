@@ -44,6 +44,8 @@ bool inline isInitViewMode()
 
 bool g_veryFirstRun = false;
 
+void exit_and_notify(int status) __attribute__ ((__noreturn__));
+
 void exit_and_notify(
         _In_ int status)
 {
@@ -343,6 +345,8 @@ sai_object_id_t translate_rid_to_vid(
 
     /*
      * TODO: This must be ATOMIC.
+     *
+     * TODO: also should we have vid/rid map per switch?
      */
 
     g_redisClient->hset(RIDTOVID, str_rid, str_vid);
@@ -446,7 +450,7 @@ void translate_rid_to_vid_list(
 
                 if (meta->allowedobjecttypeslength > 0)
                 {
-                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME");
+                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
 
                 break;
@@ -467,7 +471,7 @@ sai_object_id_t translate_vid_to_rid(
 
     if (vid == SAI_NULL_OBJECT_ID)
     {
-        SWSS_LOG_DEBUG("translated RID null to VID null");
+        SWSS_LOG_DEBUG("translated VID null to RID null");
 
         return SAI_NULL_OBJECT_ID;
     }
@@ -493,6 +497,13 @@ sai_object_id_t translate_vid_to_rid(
              * If user created object that is object id, then it should not
              * query attributes of this object in init view mode, because he
              * knows all attributes passed to that object.
+             *
+             * NOTE: This may be a problem for some objects in init view mode.
+             * We will need to revisit this after checking with real SAI
+             * implementation.  Problem here may be that user will create some
+             * object and actually will need to to query some of it's values,
+             * like buffer limitations etc, mostly probably this will happen on
+             * SWITCH object.
              */
 
             SWSS_LOG_THROW("can't get RID in init view mode - don't query created objects");
@@ -594,7 +605,7 @@ void translate_vid_to_rid_list(
 
                 if (meta->allowedobjecttypeslength > 0)
                 {
-                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME");
+                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
 
                 break;
@@ -753,7 +764,7 @@ void snoop_get_response(
 
                 if (meta->allowedobjecttypeslength > 0)
                 {
-                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME");
+                    SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
 
                 break;
@@ -938,6 +949,35 @@ service_method_table_t test_services = {
     profile_get_next_value
 };
 
+void on_switch_create( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
+
+void on_switch_create(
+        _In_ sai_object_id_t switch_id_vid)
+{
+    SWSS_LOG_ENTER();
+
+    // TODO we need to make some actions after switch create
+    // like create switch class and get all ports vlans
+    // queyes etc ... perform reinit here
+
+    SWSS_LOG_THROW("not implemented");
+}
+
+void on_switch_remove( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
+
+void on_switch_remove(
+        _In_ sai_object_id_t switch_id_vid)
+{
+    SWSS_LOG_ENTER();
+
+    // TODO on remove switch there should be extra action
+    // all local obejcts and redis object should be removed on remove switch
+    // local and redis db objects should be cleared
+    // if each switch would be in separate db, then we could just clean db
+
+    SWSS_LOG_THROW("not implemented");
+}
+
 sai_status_t handle_generic(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &str_object_id,
@@ -947,14 +987,13 @@ sai_status_t handle_generic(
 {
     SWSS_LOG_ENTER();
 
-    // TODO we need special case for SWITCH
-
-    // TODO switch
-
-    sai_object_id_t switch_id = SAI_NULL_OBJECT_ID; // TODO populate !
+    /*
+     * TODO: Could deserialize to meta key and then we could combine with non
+     * object id.
+     */
 
     sai_object_id_t object_id;
-    sai_deserialize_object_id(str_object_id, object_id); // TODO could deserialize to meta key
+    sai_deserialize_object_id(str_object_id, object_id);
 
     SWSS_LOG_DEBUG("calling %s for %s",
             sai_serialize_common_api(api).c_str(),
@@ -965,7 +1004,11 @@ sai_status_t handle_generic(
     meta_key.objecttype = object_type;
     meta_key.objectkey.key.object_id = object_id;
 
-    // TODO we need to do translate vid/rid except for create
+    /*
+     * We need to do translate vid/rid except for create, sinec create will
+     * create new RID value, and we will have to map them to VID we received in
+     * create query.
+     */
 
     /*
      * TODO: use metadata utils.
@@ -983,17 +1026,46 @@ sai_status_t handle_generic(
         case SAI_COMMON_API_CREATE:
 
             {
+                /*
+                 * Object id is VID, we can use it to extract switch id.
+                 */
+
+                sai_object_id_t switch_id = redis_sai_switch_id_query(object_id);
+
+                if (switch_id == SAI_NULL_OBJECT_ID)
+                {
+                    SWSS_LOG_THROW("invalid switch_id translated from VID 0x%lx", object_id);
+                }
+
+                if (object_type != SAI_OBJECT_TYPE_SWITCH)
+                {
+                    /*
+                     * When we creating switch, then switch_id parameter is
+                     * ignored, but we can't convert it using vid to rid map,
+                     * since rid don't exist yet, so skip translate for switch,
+                     * but use translate for all other objects.
+                     */
+
+                    switch_id = translate_vid_to_rid(switch_id);
+                }
+
                 sai_status_t status = info->create(&meta_key, switch_id, attr_count, attr_list);
 
                 if (status == SAI_STATUS_SUCCESS)
                 {
                     sai_object_id_t real_object_id = meta_key.objectkey.key.object_id;
 
-                    // object was created so new object id was generated
-                    // we need to save virtual id's to redis db
+                    /*
+                     * Object was created so new object id was generated we
+                     * need to save virtual id's to redis db.
+                     */
 
                     std::string str_vid = sai_serialize_object_id(object_id);
                     std::string str_rid = sai_serialize_object_id(real_object_id);
+
+                    /*
+                     * TODO: This must be ATOMIC.
+                     */
 
                     g_redisClient->hset(VIDTORID, str_vid, str_rid);
                     g_redisClient->hset(RIDTOVID, str_rid, str_vid);
@@ -1001,6 +1073,11 @@ sai_status_t handle_generic(
                     save_rid_and_vid_to_local(real_object_id, object_id);
 
                     SWSS_LOG_INFO("saved VID %s to RID %s", str_vid.c_str(), str_rid.c_str());
+
+                    if (object_type == SAI_OBJECT_TYPE_SWITCH)
+                    {
+                        on_switch_create(switch_id);
+                    }
                 }
 
                 return status;
@@ -1020,13 +1097,19 @@ sai_status_t handle_generic(
                     std::string str_vid = sai_serialize_object_id(object_id);
                     std::string str_rid = sai_serialize_object_id(rid);
 
+                    /*
+                     * TODO: This must be ATOMIC.
+                     */
+
                     g_redisClient->hdel(VIDTORID, str_vid);
                     g_redisClient->hdel(RIDTOVID, str_rid);
 
                     remove_rid_and_vid_from_local(rid, object_id);
 
-                    // TODO on remove switch there should be extra action
-                    // all local obejcts and redis object sshould be removed on remove switch
+                    if (object_type == SAI_OBJECT_TYPE_SWITCH)
+                    {
+                        on_switch_remove(object_id);
+                    }
                 }
 
                 return status;
@@ -1313,6 +1396,39 @@ sai_status_t notifySyncd(
     return SAI_STATUS_SUCCESS;
 }
 
+void on_init_view_switch_create( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
+void on_init_view_switch_create(
+        _In_ sai_object_id_t switch_id_vid)
+{
+    SWSS_LOG_ENTER();
+
+    // TODO we have 2 options here, we match existing switch (even if multiple)
+    // by SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO, if they are different
+    // then we need here to create new switch
+    // thats why we can keep track for all switches
+    // and then we can do comparison and GET will work then
+
+    // BLOCKER
+    //
+    // also this will be a problem if orhagent will create the same switch
+    // with the same hardware info but with different order
+    // since switch id is deterministic, then VID of both switches will not match
+    //
+    // first we can have INFO = "A" swid 0x00170000
+    // te                INFO = "B" swid 0x01170001
+    //
+    // // how to deal with that ?, just throw in that case ? - so far yes !
+
+    // first we can have INFO = "B" swid 0x00170000
+    // te                INFO = "!" swid 0x01170001
+    //
+    // we need to assume that we dont hit this case, if we do, then throw
+
+    // get all sswitches here and compare SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO
+
+    SWSS_LOG_THROW("not implemented");
+}
+
 sai_status_t processEventInInitViewMode(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &str_object_id,
@@ -1322,7 +1438,7 @@ sai_status_t processEventInInitViewMode(
 {
     SWSS_LOG_ENTER();
 
-    /* 
+    /*
      * Since attributes are not checked, it may happen that user will send some
      * invalid VID in object id/list in attribute, metadata should handle that,
      * but if that happen, this id will be treated as "new" object instead of
@@ -1335,168 +1451,124 @@ sai_status_t processEventInInitViewMode(
 
     auto info = sai_all_object_type_infos[object_type];
 
-    if (api == SAI_COMMON_API_CREATE)
+    switch (api)
     {
-        if (info->isnonobjectid)
-        {
-            // we assume create of those non object id object types will succeed
-        }
-        else
-        {
-            // case SAI_OBJECT_TYPE_SWITCH: // TODO for this should be special ? in redis ?
-            // TODO for switch this will not work ! damn !
-            // // BLOCKER
-            //
-            // TODO we have 2 options here, we match existing switch (even if multiple)
-            // by SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO, if they are different
-            // then we need here to create new switch
-            // thats why we can keep track for all switches
-            // and then we can do comparison and GET will work then
+        case SAI_COMMON_API_CREATE:
 
-            // BLOCKER
-            //
-            // also this will be a problem if orhagent will create the same switch
-            // with the same hardware info but with different order
-            // since switch id is deterministic, then VID of both switches will not match
-            //
-            // first we can have INFO = "A" swid 0x00170000
-            // te                INFO = "B" swid 0x01170001
-            //
-            // // how to deal with that ?, just throw in that case ? - so far yes !
+            if (info->isnonobjectid)
+            {
+                /*
+                 * We assume create of those non object id object types will succeed.
+                 */
+            }
+            else
+            {
+                sai_object_id_t object_id;
+                sai_deserialize_object_id(str_object_id, object_id);
 
-            // first we can have INFO = "B" swid 0x00170000
-            // te                INFO = "!" swid 0x01170001
+                /*
+                 * Object ID here is actual VID returned from redis during
+                 * creation this is floating VID in init view mode.
+                 */
 
-            sai_object_id_t object_id;
-            sai_deserialize_object_id(str_object_id, object_id);
+                SWSS_LOG_DEBUG("generic create (init view) for %s, floating VID: %s",
+                        sai_serialize_object_type(object_type).c_str(),
+                        sai_serialize_object_id(object_id).c_str());
 
-            // object ID here is actual VID returned from redis during creation
-            // this is floating VID in init view mode
+                if (object_type == SAI_OBJECT_TYPE_SWITCH)
+                {
+                    on_init_view_switch_create(object_id);
+                }
+            }
 
-            SWSS_LOG_DEBUG("generic create (init view) for %s, floating VID: %s",
-                    sai_serialize_object_type(object_type).c_str(),
-                    sai_serialize_object_id(object_id).c_str());
+            return SAI_STATUS_SUCCESS;
 
-            SWSS_LOG_THROW("CREATE not supportred yet, FIXME");
-        }
+        case SAI_COMMON_API_REMOVE:
 
-        return SAI_STATUS_SUCCESS;
+            if (object_type == SAI_OBJECT_TYPE_SWITCH)
+            {
+                /*
+                 * NOTE: Special care needs to be taken to clear all this
+                 * switch id's from all db's currently we skip this since we
+                 * assume that orchagent will not be removing just created
+                 * switches. But it may happen when asic will fail etc.
+                 */
+
+                SWSS_LOG_THROW("remove switch (%s) is not supported in init view mode yet! FIXME", str_object_id.c_str());
+            }
+
+            return SAI_STATUS_SUCCESS;
+
+        case SAI_COMMON_API_SET:
+
+            /*
+             * We support SET api on all objects in init view mode.
+             */
+
+            return SAI_STATUS_SUCCESS;
+
+        case SAI_COMMON_API_GET:
+
+            {
+                sai_status_t status;
+
+                if (info->isnonobjectid)
+                {
+                    /*
+                     * Those objects are user created, so if user created ROUTE he
+                     * passed some attributes, there is no sense to support GET
+                     * since user explicitly know what attributes were set, similar
+                     * for other non object id types.
+                     */
+
+                    SWSS_LOG_ERROR("get is not supported on %s in init view mode", sai_serialize_object_type(object_type).c_str());
+
+                    status = SAI_STATUS_NOT_SUPPORTED;
+                }
+                else
+                {
+                    sai_object_id_t object_id;
+                    sai_deserialize_object_id(str_object_id, object_id);
+
+                    SWSS_LOG_DEBUG("generic get (init view) for object type %s:%s",
+                            sai_serialize_object_type(object_type).c_str(),
+                            str_object_id.c_str());
+
+                    /*
+                     * Object must exists, we can't call GET on created object
+                     * in init view mode, get here can be called on existing
+                     * objects like default trap group to get some vendor
+                     * specific values.
+                     *
+                     * Exception here is switch, since all switches must be
+                     * created, when user will create switch on init view mode,
+                     * switch will be matched with existing switch, or it will
+                     * be explicitly created so user can query it properties.
+                     *
+                     * Translate vid to rid will make sure that object exist
+                     * and it have RID defined, so we can query it.
+                     */
+
+                    sai_object_id_t rid = translate_vid_to_rid(object_id);
+
+                    sai_object_meta_key_t meta_key;
+
+                    meta_key.objecttype = object_type;
+                    meta_key.objectkey.key.object_id = rid;
+
+                    status = info->get(&meta_key, attr_count, attr_list);
+                }
+
+                internal_syncd_get_send(object_type, str_object_id, status, attr_count, attr_list);
+
+                return status;
+            }
+
+        default:
+
+            SWSS_LOG_THROW("common api (%s) is not implemented in init view mode", sai_serialize_common_api(api).c_str());
     }
 
-    if (api == SAI_COMMON_API_GET)
-    {
-        sai_status_t status;
-
-        if (info->isnonobjectid)
-        {
-            // those object's are user created, so if user created ROUTE
-            // he passed some attributes, there is no sense to support GET
-            // since user explicitly know what attributes were set, similar
-            // for other object types here
-            //
-
-            SWSS_LOG_ERROR("get is not supported on %s in init view mode", sai_serialize_object_type(object_type).c_str());
-
-            status = SAI_STATUS_NOT_SUPPORTED;
-        }
-        else
-        {
-            sai_object_id_t object_id;
-            sai_deserialize_object_id(str_object_id, object_id);
-
-            SWSS_LOG_DEBUG("generic get (init view) for object type %s", sai_serialize_object_type(object_type).c_str());
-
-            // object must exists, we can't call GET on created object in init view mode
-            // get here can be called on existing objects like default trap group to
-            // get some vendor specific values
-
-            // TODO switch must exist to do GET !
-
-            sai_object_id_t rid = translate_vid_to_rid(object_id);
-
-            sai_object_meta_key_t meta_key;
-
-            meta_key.objecttype = object_type;
-            meta_key.objectkey.key.object_id = rid;
-
-            status = info->get(&meta_key, attr_count, attr_list);
-        }
-
-        internal_syncd_get_send(object_type, str_object_id, status, attr_count, attr_list);
-
-        return status;
-    }
-
-    if (object_type == SAI_OBJECT_TYPE_SWITCH && api == SAI_COMMON_API_REMOVE)
-    {
-        SWSS_LOG_ERROR("remove switch is not supported yet! FIXME");
-        exit_and_notify(EXIT_FAILURE);
-
-        // special care needs to be taken to clear all this switch id's from all db's
-        // TODO make this proper comment
-    }
-
-    // TODO remove of the switch should be also a case here
-
-    // we assume that SET and REMOVE succeeded, no real asic operations
-    // this is only DB operation in TEMP asic view
-
-    if (api == SAI_COMMON_API_SET)
-    {
-        return SAI_STATUS_SUCCESS;
-    }
-
-    if (api == SAI_COMMON_API_REMOVE)
-    {
-        return SAI_STATUS_SUCCESS;
-    }
-
-    /*
-     * We don't support bulk API's in init view mode yet.
-     */
-
-    SWSS_LOG_ERROR("api %d is not supported in init view mode", api);
-    exit_and_notify(EXIT_FAILURE);
-}
-
-sai_status_t handle_bulk_route(
-        _In_ const std::vector<std::string> &object_ids,
-        _In_ sai_common_api_t api,
-        _In_ const std::vector<std::shared_ptr<SaiAttributeList>> &attributes)
-{
-    SWSS_LOG_ENTER();
-
-    /*
-     * Since we don't have asic support yet for bulk api, just execute one by
-     * one.
-     */
-
-    for (size_t idx = 0; idx < object_ids.size(); ++idx)
-    {
-        sai_status_t status = SAI_STATUS_FAILURE;
-
-        auto &list = attributes[idx];
-
-        sai_attribute_t *attr_list = list->get_attr_list();
-        uint32_t attr_count = list->get_attr_count();
-
-        if (api == (sai_common_api_t)SAI_COMMON_API_BULK_SET)
-        {
-            status = handle_route(object_ids[idx], SAI_COMMON_API_SET, attr_count, attr_list);
-        }
-        else
-        {
-            SWSS_LOG_ERROR("api %d is not supported in bulk route", api);
-            exit_and_notify(EXIT_FAILURE);
-        }
-
-        if (status != SAI_STATUS_SUCCESS)
-        {
-            return status;
-        }
-    }
-
-    return SAI_STATUS_SUCCESS;
 }
 
 sai_status_t processEvent(
@@ -1581,7 +1653,7 @@ sai_status_t processEvent(
     const std::vector<swss::FieldValueTuple> &values = kfvFieldsValues(kco);
 
     SaiAttributeList list(object_type, values, false);
-    
+
     /*
      * Attribute list can't be const since we will use it to translate VID to
      * RID inplace.
@@ -1590,12 +1662,23 @@ sai_status_t processEvent(
     sai_attribute_t *attr_list = list.get_attr_list();
     uint32_t attr_count = list.get_attr_count();
 
-===========
-    // TODO should this be before init view mode or after ?
+    /*
+     * NOTE: This check pointers must be executed before init view mode, since
+     * this methods replaces pointers from orchagent memory space to syncd
+     * memory space.
+     */
 
     if (object_type == SAI_OBJECT_TYPE_SWITCH && (api == SAI_COMMON_API_CREATE || api == SAI_COMMON_API_SET))
     {
+        /*
+         * We don't need to clear those pointers on switch remove (evan last),
+         * since those pointers will reside inside attributes, also sairedis
+         * will internally check whether pointer is null or not, so we here
+         * will receive all notifications, but redis only those that were set.
+         */
+
         check_notifications_pointers(attr_count, attr_list);
+
     }
 
     if (isInitViewMode())
@@ -1605,12 +1688,24 @@ sai_status_t processEvent(
 
     if (api != SAI_COMMON_API_GET)
     {
+        /*
+         * TODO we can also call translate on get, if sairedis will clean
+         * buffer so then all OIDs will be NULL, and translation will also
+         * convert them to NULL.
+         */
+
+        SWSS_LOG_DEBUG("translating VID to RIDs on all attributes");
+
         translate_vid_to_rid_list(object_type, attr_count, attr_list);
     }
 
     auto info = sai_all_object_type_infos[object_type];
 
     sai_status_t status;
+
+    /*
+     * TODO we can combine this to 1 method if we have serialize/deserialize meta key.
+     */
 
     switch (object_type)
     {
@@ -1649,14 +1744,15 @@ sai_status_t processEvent(
     }
     else if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to execute api: %s, key: %s, status: %s", op.c_str(), key.c_str(), sai_serialize_status(status).c_str());
-
         for (const auto&v: values)
         {
             SWSS_LOG_ERROR(" field: %s, value: %s", fvField(v).c_str(), fvValue(v).c_str());
         }
 
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to execute api: %s, key: %s, status: %s",
+                op.c_str(),
+                key.c_str(),
+                sai_serialize_status(status).c_str());
     }
 
     return status;
@@ -1725,7 +1821,9 @@ void handleCmdLine(int argc, char **argv)
         int c = getopt_long(argc, argv, optstring, long_options, &option_index);
 
         if (c == -1)
+        {
             break;
+        }
 
         switch (c)
         {
@@ -1757,7 +1855,10 @@ void handleCmdLine(int argc, char **argv)
 
                     if (interval == 0)
                     {
-                        // use zero interval to disable counters thread
+                        /*
+                         * Use zero interval to disable counters thread.
+                         */
+
                         options.disableCountersThread = true;
                     }
                     else
@@ -1822,7 +1923,9 @@ void handleProfileMap(const std::string& profileMapFile)
     SWSS_LOG_ENTER();
 
     if (profileMapFile.size() == 0)
+    {
         return;
+    }
 
     std::ifstream profile(profileMapFile);
 
@@ -1865,7 +1968,9 @@ std::map<std::set<int>, std::string> gPortMap;
 void handlePortMap(const std::string& portMapFile)
 {
     if (portMapFile.size() == 0)
+    {
         return;
+    }
 
     std::ifstream portmap(portMapFile);
 
@@ -1880,7 +1985,9 @@ void handlePortMap(const std::string& portMapFile)
     while(getline(portmap, line))
     {
         if (line.size() > 0 && (line[0] == '#' || line[0] == ';'))
+        {
             continue;
+        }
 
         std::istringstream iss(line);
         std::string name, lanes, alias;
@@ -1935,9 +2042,12 @@ bool isVeryFirstRun()
 
     SWSS_LOG_ENTER();
 
-    // if lane map is not defined in redis db then
-    // we assume this is very first start of syncd
-    // later on we can add additional checks here
+    /*
+     * If lane map is not defined in redis db then we assume this is very first
+     * start of syncd later on we can add additional checks here.
+     *
+     * TODO: if we add more switches then we need lane maps per switch.
+     */
 
     auto redisLaneMap = redisGetLaneMap();
 
@@ -2043,9 +2153,12 @@ int main(int argc, char **argv)
     std::shared_ptr<swss::ConsumerTable> asicState = std::make_shared<swss::ConsumerTable>(db.get(), ASIC_STATE_TABLE);
     std::shared_ptr<swss::NotificationConsumer> restartQuery = std::make_shared<swss::NotificationConsumer>(db.get(), "RESTARTQUERY");
 
-    // at the end we cant use producer consumer concept since
-    // if one proces will restart there may be something in the queue
-    // also "remove" from response queue will also trigger another "response"
+    /*
+     * At the end we cant use producer consumer concept since if one proces
+     * will restart there may be something in the queue also "remove" from
+     * response queue will also trigger another "response".
+     */
+
     getResponse  = std::make_shared<swss::ProducerTable>(db.get(), "GETRESPONSE");
     notifications = std::make_shared<swss::NotificationProducer>(dbNtf.get(), "NOTIFICATIONS");
 
@@ -2069,9 +2182,13 @@ int main(int argc, char **argv)
     {
         SWSS_LOG_WARN("warm start requested, but this is very first syncd start, forcing cold start");
 
-        // we force cold start since if it's first run then redis db is not complete
-        // so redis asic view will not reflect warm boot asic state, if this happen
-        // then orch agent needs to be restarted as well to repopulate asic view
+        /*
+         * We force cold start since if it's first run then redis db is not
+         * complete so redis asic view will not reflect warm boot asic state,
+         * if this happen then orch agent needs to be restarted as well to
+         * repopulate asic view.
+         */
+
         options.startType = SAI_COLD_BOOT;
     }
 
@@ -2082,7 +2199,7 @@ int main(int argc, char **argv)
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_ERROR("fail to sai_api_initialize: %d", status);
-        exit_and_notify(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     int failed = sai_meta_apis_query(sai_api_query);
@@ -2092,16 +2209,20 @@ int main(int argc, char **argv)
         SWSS_LOG_WARN("sai_api_query failed for %d apis", failed);
     }
 
-    // TODO user should create switch from OA, or should we create it here?
-    // and which switch if there are multiple switches ?
+    /*
+     * TODO: user should create switch from OA, so shell should be started only
+     * after we create switch.
+     */
 
     if (options.diagShell)
     {
         SWSS_LOG_NOTICE("starting diag shell thread");
 
-        // diag shell must be created after swtich is created ?
+        /*
+         * TODO actual switch id must be supplied
+         */
 
-        std::thread diag_shell_thread = std::thread(sai_diag_shell, SAI_NULL_OBJECT_ID); // TODO actual switch id
+        std::thread diag_shell_thread = std::thread(sai_diag_shell, SAI_NULL_OBJECT_ID);
 
         diag_shell_thread.detach();
     }
@@ -2195,11 +2316,16 @@ int main(int argc, char **argv)
 
     SWSS_LOG_NOTICE("calling api uninitialize");
 
-    sai_api_uninitialize();
+    status = sai_api_uninitialize();
+
+    if (status != SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_ERROR("failed to uninitialize api: %s", sai_serialize_status(status).c_str());
+    }
 
     SWSS_LOG_NOTICE("uninitialize finished");
 
     stop_cli();
 
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }

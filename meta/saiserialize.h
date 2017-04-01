@@ -161,6 +161,10 @@ void sai_deserialize_attr_id(
         _In_ const std::string& s,
         _In_ const sai_attr_metadata_t** meta);
 
+void sai_deserialize_object_meta_key(
+        _In_ const std::string &s,
+        _Out_ sai_object_meta_key_t& meta_key);
+
 // deserialize ntf
 
 void sai_deserialize_fdb_event_ntf(
