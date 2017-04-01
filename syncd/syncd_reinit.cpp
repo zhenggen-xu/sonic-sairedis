@@ -8,6 +8,8 @@
 
 // TODO we need switch id for all that
 // TODO put this in class ?
+//
+// TODO where put HIDDEN objects for multiple switches ?
 
 sai_object_id_t switch_id;
 

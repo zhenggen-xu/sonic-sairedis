@@ -60,8 +60,6 @@ extern "C" {
 #define SWITCH_SAI_THRIFT_RPC_SERVER_PORT 9092
 #endif // SAITHRIFT
 
-extern void exit_and_notify(int status) __attribute__ ((__noreturn__));
-
 extern std::mutex g_mutex;
 extern std::set<sai_object_id_t> g_defaultPriorityGroupsRids;
 extern std::set<sai_object_id_t> g_defaultSchedulerGroupsRids;

@@ -8,6 +8,10 @@ SwitchStateMap g_switch_state_map;
 #define OT_POSITION 32
 #define SWID_POSITION 40
 
+/*
+ * TODO those real id's should also be per switch index
+ */
+
 uint64_t real_ids[SAI_OBJECT_TYPE_MAX];
 
 void vs_reset_id_counter()
