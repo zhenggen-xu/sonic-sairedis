@@ -83,7 +83,7 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortList()
 
     portList.resize(attr.value.objlist.count);
 
-    SWSS_LOG_DEBUG("number of ports: %zu", portList.resize());
+    SWSS_LOG_DEBUG("number of ports: %zu", portList.size());
 
     return portList;
 }
@@ -508,6 +508,10 @@ void SaiSwitch::redisCreateRidAndVidMapping(
 
     // TODO should we have different mapping per switch ?
 
+    /*
+     * TODO: this must be ATOMIC.
+     */
+
     g_redisClient->hset(VIDTORID, strVid, strRid);
     g_redisClient->hset(RIDTOVID, strRid, strVid);
 
@@ -747,7 +751,7 @@ sai_uint32_t SaiSwitch::saiGetPortNumberOfQueues(
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_THROW("failed to get port RID %s number of queues: %s",
-                sai_serialize_object_id(port_rid),
+                sai_serialize_object_id(port_rid).c_str(),
                 sai_serialize_status(status).c_str());
     }
 
@@ -785,7 +789,7 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortQueues(
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_THROW("failed to get port RID %s queue list: %s",
-                sai_serialize_object_id(port_rid),
+                sai_serialize_object_id(port_rid).c_str(),
                 sai_serialize_status(status).c_str());
     }
 
@@ -839,7 +843,7 @@ sai_uint32_t SaiSwitch::saiGetPortNumberOfPriorityGroups(
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_THROW("failed to get port RID %s number of priority groups: %s",
-                sai_serialize_object_id(port_rid),
+                sai_serialize_object_id(port_rid).c_str(),
                 sai_serialize_status(status).c_str());
     }
 
@@ -877,7 +881,7 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortPriorityGroups(
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_THROW("failed to get port RID %s priority groups list: %s",
-                sai_serialize_object_id(port_rid),
+                sai_serialize_object_id(port_rid).c_str(),
                 sai_serialize_status(status).c_str());
     }
 
@@ -1078,9 +1082,11 @@ void SaiSwitch::helperCheckSchedulerGroupsIds()
 }
 
 SaiSwitch::SaiSwitch(
-        _In_ sai_object_id_t switch_vid)
+        _In_ sai_object_id_t switch_vid,
+        _In_ sai_object_id_t switch_rid)
 {
-    m_switch_id = switch_id;
+    m_switch_rid = switch_rid;
+    m_switch_vid = switch_vid;
 
     // TODO ! we need RID !
 
