@@ -15,9 +15,9 @@ SAILIB=-lsai
 endif
 
 syncd_SOURCES = \
+				syncd_reinit.cpp \
 				syncd.cpp \
 				syncd_cli.cpp \
-				syncd_reinit.cpp \
 				syncd_hard_reinit.cpp \
 				syncd_notifications.cpp \
 				syncd_counters.cpp \

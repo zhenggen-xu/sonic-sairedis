@@ -4573,6 +4573,8 @@ void updateRedisDatabase(/*{{{*/
      * Remove previous RID2VID maps and apply new map.
      */
 
+    // TODO this needs to be done per switch, we can't remove all maps
+
     redisClearVidToRidMap();
     redisClearRidToVidMap();
 

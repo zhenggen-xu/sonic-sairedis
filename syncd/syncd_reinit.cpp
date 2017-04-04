@@ -1,19 +1,19 @@
+#include "syncd.h"
+#include "sairedis.h"
+
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <set>
 
-#include "syncd.h"
-#include "sairedis.h"
+/*
+ * NOTE: all those methods could be implemented inside SaiSwitch class so then
+ * we could skip using switch_id in params and even they could be public then.
+ */
 
-// TODO we need switch id for all that
-// TODO put this in class ?
-//
-// TODO where put HIDDEN objects for multiple switches ?
+// TODO maybe per switch mapping should be per switch index ?
 
-sai_object_id_t switch_id;
-
-sai_uint32_t saiGetPortCount()
+sai_uint32_t SaiSwitch::saiGetPortCount()
 {
     SWSS_LOG_ENTER();
 
@@ -21,13 +21,12 @@ sai_uint32_t saiGetPortCount()
 
     attr.id = SAI_SWITCH_ATTR_PORT_NUMBER;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port number: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port number: %s",
+                sai_serialize_status(status).c_str());
     }
 
     SWSS_LOG_DEBUG("port count is %u", attr.value.u32);
@@ -35,7 +34,7 @@ sai_uint32_t saiGetPortCount()
     return attr.value.u32;
 }
 
-sai_object_id_t saiGetCpuId()
+sai_object_id_t SaiSwitch::saiGetCpuId()
 {
     SWSS_LOG_ENTER();
 
@@ -43,21 +42,21 @@ sai_object_id_t saiGetCpuId()
 
     attr.id = SAI_SWITCH_ATTR_CPU_PORT;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get cpu port: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get cpu port: %s",
+                sai_serialize_status(status).c_str());
     }
 
-    SWSS_LOG_DEBUG("cpu port RID 0x%lx", attr.value.oid);
+    SWSS_LOG_DEBUG("cpu port RID %s",
+            sai_serialize_object_id(attr.value.oid).c_str());
 
     return attr.value.oid;
 }
 
-std::vector<sai_object_id_t> saiGetPortList()
+std::vector<sai_object_id_t> SaiSwitch::saiGetPortList()
 {
     SWSS_LOG_ENTER();
 
@@ -73,20 +72,21 @@ std::vector<sai_object_id_t> saiGetPortList()
     attr.value.objlist.count = portCount;
     attr.value.objlist.list = portList.data();
 
-    // we assube port list is always returned in the same order
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    // we assume port list is always returned in the same order
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port list: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port list: %s",
+                sai_serialize_status(status).c_str());
     }
+
+    portList.resize(attr.value.objlist.count);
 
     return portList;
 }
 
-std::unordered_map<sai_uint32_t, sai_object_id_t> saiGetHardwareLaneMap()
+std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::saiGetHardwareLaneMap()
 {
     SWSS_LOG_ENTER();
 
@@ -94,8 +94,11 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> saiGetHardwareLaneMap()
 
     const std::vector<sai_object_id_t> portList = saiGetPortList();
 
-    // NOTE: currently we don't support port breakout
-    // this will need to be addressed in future
+    /*
+     * NOTE: currently we don't support port breakout
+     * this will need to be addressed in future.
+     */
+
     const int lanesPerPort = 4;
 
     for (size_t i = 0; i < portList.size(); i++)
@@ -108,13 +111,13 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> saiGetHardwareLaneMap()
         attr.value.u32list.count = lanesPerPort;
         attr.value.u32list.list = lanes;
 
-        sai_status_t status = sai_port_api->get_port_attribute(portList[i], 1, &attr);
+        sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(portList[i], 1, &attr);
 
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_ERROR("failed to get hardware lane list pid: %lx: %d", portList[i], status);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("failed to get hardware lane list pid: %s: %s",
+                    sai_serialize_object_id(portList[i]).c_str(),
+                    sai_serialize_status(status).c_str());
         }
 
         sai_int32_t laneCount = attr.value.u32list.count;
@@ -128,7 +131,7 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> saiGetHardwareLaneMap()
     return map;
 }
 
-sai_object_id_t saiGetDefaultTrapGroup()
+sai_object_id_t SaiSwitch::saiGetDefaultTrapGroup()
 {
     SWSS_LOG_ENTER();
 
@@ -136,19 +139,21 @@ sai_object_id_t saiGetDefaultTrapGroup()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_TRAP_GROUP;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_ERROR("failed to get switch default trap group %d", status);
-
-         exit_and_notify(EXIT_FAILURE);
+         SWSS_LOG_THROW("failed to get switch default trap group %s",
+                 sai_serialize_status(status).c_str());
     }
+
+    SWSS_LOG_DEBUG("default trap group RID %s",
+            sai_serialize_object_id(attr.value.oid).c_str());
 
     return attr.value.oid;
 }
 
-sai_object_id_t saiGetDefaultStpInstance()
+sai_object_id_t SaiSwitch::saiGetDefaultStpInstance()
 {
     SWSS_LOG_ENTER();
 
@@ -156,19 +161,21 @@ sai_object_id_t saiGetDefaultStpInstance()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_STP_INST_ID;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_ERROR("failed to get switch default stp instance %d", status);
-
-         exit_and_notify(EXIT_FAILURE);
+         SWSS_LOG_THROW("failed to get switch default stp instance %s",
+                 sai_serialize_status(status).c_str());
     }
+
+    SWSS_LOG_DEBUG("default stp instance RID %s",
+            sai_serialize_object_id(attr.value.oid).c_str());
 
     return attr.value.oid;
 }
 
-sai_object_id_t saiGetDefaultVirtualRouter()
+sai_object_id_t SaiSwitch::saiGetDefaultVirtualRouter()
 {
     SWSS_LOG_ENTER();
 
@@ -176,32 +183,49 @@ sai_object_id_t saiGetDefaultVirtualRouter()
 
     attr.id = SAI_SWITCH_ATTR_DEFAULT_VIRTUAL_ROUTER_ID;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_ERROR("failed to get switch virtual router id %d", status);
-
-         exit_and_notify(EXIT_FAILURE);
+         SWSS_LOG_THROW("failed to get switch virtual router id %s",
+                 sai_serialize_status(status).c_str());
     }
+
+    SWSS_LOG_DEBUG("default virtual router RID %s",
+            sai_serialize_object_id(attr.value.oid).c_str());
 
     return attr.value.oid;
 }
 
-void redisClearLaneMap()
+std::string SaiSwitch::getRedisLanesKey()
 {
     SWSS_LOG_ENTER();
 
-    // TODO per switch
+    /*
+     * Each switch will have it's own lanes in format LANES:oid:0xYYYYYYYY.
+     *
+     * NOTE: We are using switch VID here.
+     */
 
-    g_redisClient->del(LANES);
+    return std::string(LANES) + ":" + sai_serialize_object_id(m_switch_vid);
 }
 
-std::unordered_map<sai_uint32_t, sai_object_id_t> redisGetLaneMap()
+void SaiSwitch::redisClearLaneMap()
 {
     SWSS_LOG_ENTER();
 
-    auto hash = g_redisClient->hgetall(LANES);
+    auto key = getRedisLanesKey();
+
+    g_redisClient->del(key);
+}
+
+std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::redisGetLaneMap()
+{
+    SWSS_LOG_ENTER();
+
+    auto key = getRedisLanesKey();
+
+    auto hash = g_redisClient->hgetall(key);
 
     SWSS_LOG_DEBUG("previous lanes: %lu", hash.size());
 
@@ -225,7 +249,8 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> redisGetLaneMap()
     return map;
 }
 
-void redisSaveLaneMap(const std::unordered_map<sai_uint32_t, sai_object_id_t> &map)
+void SaiSwitch::redisSaveLaneMap(
+        _In_ const std::unordered_map<sai_uint32_t, sai_object_id_t> &map)
 {
     SWSS_LOG_ENTER();
 
@@ -239,37 +264,21 @@ void redisSaveLaneMap(const std::unordered_map<sai_uint32_t, sai_object_id_t> &m
         std::string strLane = sai_serialize_number(lane);
         std::string strPortId = sai_serialize_object_id(portId);
 
-        // TODO per switch
-        //
-        // TODO use multi or hmset
-        g_redisClient->hset(LANES, strLane, strPortId);
+        auto key = getRedisLanesKey();
+
+        g_redisClient->hset(key, strLane, strPortId);
     }
 }
 
-// TODO maybe those could be common ?
-// this may be not necessary
-std::vector<std::string> redisGetAsicStateKeys()
+std::vector<std::string> SaiSwitch::redisGetAsicStateKeys()
 {
     SWSS_LOG_ENTER();
 
     return g_redisClient->keys(ASIC_STATE_TABLE + std::string(":*"));
 }
 
-void redisClearVidToRidMap()
-{
-    SWSS_LOG_ENTER();
-
-    g_redisClient->del(VIDTORID);
-}
-
-void redisClearRidToVidMap()
-{
-    SWSS_LOG_ENTER();
-
-    g_redisClient->del(RIDTOVID);
-}
-
-std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetObjectMap(std::string key)
+std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetObjectMap(
+        _In_ const std::string &key)
 {
     SWSS_LOG_ENTER();
 
@@ -295,21 +304,21 @@ std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetObjectMap(std::stri
     return map;
 }
 
-std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetVidToRidMap()
+std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetVidToRidMap()
 {
     SWSS_LOG_ENTER();
 
     return redisGetObjectMap(VIDTORID);
 }
 
-std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetRidToVidMap()
+std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetRidToVidMap()
 {
     SWSS_LOG_ENTER();
 
     return redisGetObjectMap(RIDTOVID);
 }
 
-void helperCheckLaneMap()
+void SaiSwitch::helperCheckLaneMap()
 {
     SWSS_LOG_ENTER();
 
@@ -321,7 +330,6 @@ void helperCheckLaneMap()
     {
         SWSS_LOG_INFO("no lanes defined in redis, seems like it is first syncd start");
 
-        // TODO put ports to db ?
         redisSaveLaneMap(laneMap);
 
         redisLaneMap = laneMap; // copy
@@ -329,9 +337,7 @@ void helperCheckLaneMap()
 
     if (laneMap.size() != redisLaneMap.size())
     {
-        SWSS_LOG_ERROR("lanes map size differ: %lu vs %lu", laneMap.size(), redisLaneMap.size());
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("lanes map size differ: %lu vs %lu", laneMap.size(), redisLaneMap.size());
     }
 
     for (auto kv: laneMap)
@@ -341,26 +347,39 @@ void helperCheckLaneMap()
 
         if (redisLaneMap.find(lane) == redisLaneMap.end())
         {
-            SWSS_LOG_ERROR("lane %u not found in redis", lane);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("lane %u not found in redis", lane);
         }
 
         if (redisLaneMap[lane] != portId)
         {
             // if this happens, we need to remap VIDTORID and RIDTOVID
-            SWSS_LOG_ERROR("FIXME: lane port id differs: 0x%lx vs 0x%lx, port ids must be remapped", portId, redisLaneMap[lane]);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("FIXME: lane port id differs: %s vs %s, port ids must be remapped",
+                    sai_serialize_object_id(portId).c_str(),
+                    sai_serialize_object_id(redisLaneMap[lane]).c_str());
         }
     }
 }
 
-sai_object_id_t redisGetDefaultVirtualRouterId()
+std::string SaiSwitch::getRedisHiddenKey()
 {
     SWSS_LOG_ENTER();
 
-    auto redisVrId = g_redisClient->hget(HIDDEN, DEFAULT_VIRTUAL_ROUTER_ID);
+    /*
+     * Each switch will have it's own hidden in format HIDDEN:oid:0xYYYYYYYY.
+     *
+     * NOTE: We are using switch VID here.
+     */
+
+    return std::string(HIDDEN) + ":" + sai_serialize_object_id(m_switch_vid);
+}
+
+sai_object_id_t SaiSwitch::redisGetDefaultVirtualRouterId()
+{
+    SWSS_LOG_ENTER();
+
+    auto key = getRedisHiddenKey();
+
+    auto redisVrId = g_redisClient->hget(key, DEFAULT_VIRTUAL_ROUTER_ID);
 
     if (redisVrId == NULL)
     {
@@ -374,14 +393,18 @@ sai_object_id_t redisGetDefaultVirtualRouterId()
     return vr_id;
 }
 
-sai_object_id_t redisGetDefaultTrapGroupId()
+sai_object_id_t SaiSwitch::redisGetDefaultTrapGroupId()
 {
     SWSS_LOG_ENTER();
 
-    auto redisVrId = g_redisClient->hget(HIDDEN, DEFAULT_TRAP_GROUP_ID);
+    auto key = getRedisHiddenKey();
+
+    auto redisVrId = g_redisClient->hget(key, DEFAULT_TRAP_GROUP_ID);
 
     if (redisVrId == NULL)
+    {
         return SAI_NULL_OBJECT_ID;
+    }
 
     sai_object_id_t vr_id;
 
@@ -390,14 +413,18 @@ sai_object_id_t redisGetDefaultTrapGroupId()
     return vr_id;
 }
 
-sai_object_id_t redisGetDefaultStpInstanceId()
+sai_object_id_t SaiSwitch::redisGetDefaultStpInstanceId()
 {
     SWSS_LOG_ENTER();
 
-    auto redisStpId = g_redisClient->hget(HIDDEN, DEFAULT_STP_INSTANCE_ID);
+    auto key = getRedisHiddenKey();
+
+    auto redisStpId = g_redisClient->hget(key, DEFAULT_STP_INSTANCE_ID);
 
     if (redisStpId == NULL)
+    {
         return SAI_NULL_OBJECT_ID;
+    }
 
     sai_object_id_t stp_id;
 
@@ -406,14 +433,18 @@ sai_object_id_t redisGetDefaultStpInstanceId()
     return stp_id;
 }
 
-sai_object_id_t redisGetCpuId()
+sai_object_id_t SaiSwitch::redisGetCpuId()
 {
     SWSS_LOG_ENTER();
 
-    auto redisCpuId = g_redisClient->hget(HIDDEN, CPU_PORT_ID);
+    auto key = getRedisHiddenKey();
+
+    auto redisCpuId = g_redisClient->hget(key, CPU_PORT_ID);
 
     if (redisCpuId == NULL)
+    {
         return SAI_NULL_OBJECT_ID;
+    }
 
     sai_object_id_t cpuId;
 
@@ -422,39 +453,52 @@ sai_object_id_t redisGetCpuId()
     return cpuId;
 }
 
-void redisSetDefaultVirtualRouterId(sai_object_id_t vr_id)
+void SaiSwitch::redisSetDefaultVirtualRouterId(
+        _In_ sai_object_id_t vr_id)
 {
     SWSS_LOG_ENTER();
 
     std::string strVrId = sai_serialize_object_id(vr_id);
 
-    g_redisClient->hset(HIDDEN, DEFAULT_VIRTUAL_ROUTER_ID, strVrId);
+    auto key = getRedisHiddenKey();
+
+    g_redisClient->hset(key, DEFAULT_VIRTUAL_ROUTER_ID, strVrId);
 }
 
-void redisSetDefaultTrapGroup(sai_object_id_t vr_id)
+void SaiSwitch::redisSetDefaultTrapGroup(
+        _In_ sai_object_id_t vr_id)
 {
     SWSS_LOG_ENTER();
 
     std::string strVrId = sai_serialize_object_id(vr_id);
 
-    g_redisClient->hset(HIDDEN, DEFAULT_TRAP_GROUP_ID, strVrId);
+    auto key = getRedisHiddenKey();
+
+    g_redisClient->hset(key, DEFAULT_TRAP_GROUP_ID, strVrId);
 }
 
-void redisSetDefaultStpInstance(sai_object_id_t stp_id)
+void SaiSwitch::redisSetDefaultStpInstance(
+        _In_ sai_object_id_t stp_id)
 {
     SWSS_LOG_ENTER();
 
     std::string strStpId = sai_serialize_object_id(stp_id);
 
-    g_redisClient->hset(HIDDEN, DEFAULT_STP_INSTANCE_ID, strStpId);
+    auto key = getRedisHiddenKey();
+
+    g_redisClient->hset(key, DEFAULT_STP_INSTANCE_ID, strStpId);
 }
 
-void redisCreateRidAndVidMapping(sai_object_id_t rid, sai_object_id_t vid)
+void SaiSwitch::redisCreateRidAndVidMapping(
+        _In_ sai_object_id_t rid,
+        _In_ sai_object_id_t vid)
 {
     SWSS_LOG_ENTER();
 
     std::string strRid = sai_serialize_object_id(rid);
     std::string strVid = sai_serialize_object_id(vid);
+
+    // TODO should we have different mapping per switch ?
 
     g_redisClient->hset(VIDTORID, strVid, strRid);
     g_redisClient->hset(RIDTOVID, strRid, strVid);
@@ -464,7 +508,8 @@ void redisCreateRidAndVidMapping(sai_object_id_t rid, sai_object_id_t vid)
 
 // TODO should we have different db's per each switch ?
 
-void redisSetDummyAsicStateForRealObjectId(sai_object_id_t rid)
+void SaiSwitch::redisSetDummyAsicStateForRealObjectId(
+        _In_ sai_object_id_t rid)
 {
     SWSS_LOG_ENTER();
 
@@ -472,14 +517,13 @@ void redisSetDummyAsicStateForRealObjectId(sai_object_id_t rid)
 
     if (objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_ERROR("sai_object_type_query returned NULL type for RID 0x%lx", rid);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID %s",
+                sai_serialize_object_id(rid).c_str());
     }
 
     std::string strObjectType = sai_serialize_object_type(objectType);
 
-    sai_object_id_t vid = redis_create_virtual_object_id(objectType);
+    sai_object_id_t vid = redis_create_virtual_object_id(m_switch_vid, objectType);
 
     std::string strVid = sai_serialize_object_id(vid);
 
@@ -490,7 +534,7 @@ void redisSetDummyAsicStateForRealObjectId(sai_object_id_t rid)
     redisCreateRidAndVidMapping(rid, vid);
 }
 
-void helperCheckDefaultVirtualRouterId()
+void SaiSwitch::helperCheckDefaultVirtualRouterId()
 {
     SWSS_LOG_ENTER();
 
@@ -512,13 +556,13 @@ void helperCheckDefaultVirtualRouterId()
     if (vrId != redisVrId)
     {
         // if this happens, we need to remap VIDTORID and RIDTOVID
-        SWSS_LOG_ERROR("FIXME: default virtual router id differs: 0x%lx vs 0x%lx, ids must be remapped", vrId, redisVrId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("FIXME: default virtual router id differs: %s vs %s, ids must be remapped",
+                sai_serialize_object_id(vrId).c_str(),
+                sai_serialize_object_id(redisVrId).c_str());
     }
 }
 
-void helperCheckDefaultTrapGroup()
+void SaiSwitch::helperCheckDefaultTrapGroup()
 {
     SWSS_LOG_ENTER();
 
@@ -540,13 +584,13 @@ void helperCheckDefaultTrapGroup()
     if (tgId != redisTgId)
     {
         // if this happens, we need to remap VIDTORID and RIDTOVID
-        SWSS_LOG_ERROR("FIXME: default trap group id differs: 0x%lx vs 0x%lx, ids must be remapped", tgId, redisTgId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("FIXME: default trap group id differs: %s vs %s, ids must be remapped",
+                sai_serialize_object_id(tgId).c_str(),
+                sai_serialize_object_id(redisTgId).c_str());
     }
 }
 
-void helperCheckDefaultStpInstance()
+void SaiSwitch::helperCheckDefaultStpInstance()
 {
     SWSS_LOG_ENTER();
 
@@ -568,22 +612,25 @@ void helperCheckDefaultStpInstance()
     if (stpId != redisStpId)
     {
         // if this happens, we need to remap VIDTORID and RIDTOVID
-        SWSS_LOG_ERROR("FIXME: default stp instance id differs: 0x%lx vs 0x%lx, ids must be remapped", stpId, redisStpId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("FIXME: default stp instance id differs: %s vs %s, ids must be remapped",
+                sai_serialize_object_id(stpId).c_str(),
+                sai_serialize_object_id(redisStpId).c_str());
     }
 }
 
-void redisSetCpuId(sai_object_id_t cpuId)
+void SaiSwitch::redisSetCpuId(
+        _In_ sai_object_id_t cpuId)
 {
     SWSS_LOG_ENTER();
 
     std::string strCpuId = sai_serialize_object_id(cpuId);
 
-    g_redisClient->hset(HIDDEN, CPU_PORT_ID, strCpuId);
+    auto key = getRedisHiddenKey();
+
+    g_redisClient->hset(key, CPU_PORT_ID, strCpuId);
 }
 
-void helperCheckCpuId()
+void SaiSwitch::helperCheckCpuId()
 {
     SWSS_LOG_ENTER();
 
@@ -605,13 +652,14 @@ void helperCheckCpuId()
     if (cpuId != redisCpuId)
     {
         // if this happens, we need to remap VIDTORID and RIDTOVID
-        SWSS_LOG_ERROR("FIXME: cpu id differs: 0x%lx vs 0x%lx, ids must be remapped", cpuId, redisCpuId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("FIXME: cpu id differs: %s vs %s, ids must be remapped",
+                sai_serialize_object_id(cpuId).c_str(),
+                sai_serialize_object_id(redisCpuId).c_str());
     }
 }
 
-void redisCreateDummyEntryInAsicView(sai_object_id_t objectId)
+void SaiSwitch::redisCreateDummyEntryInAsicView(
+        _In_ sai_object_id_t objectId)
 {
     SWSS_LOG_ENTER();
 
@@ -621,9 +669,8 @@ void redisCreateDummyEntryInAsicView(sai_object_id_t objectId)
 
     if (objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_ERROR("sai_object_type_query returned NULL type for RID 0x%lx", objectId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID %s",
+                sai_serialize_object_id(objectId).c_str());
     }
 
     std::string strObjectType = sai_serialize_object_type(objectType);
@@ -635,9 +682,7 @@ void redisCreateDummyEntryInAsicView(sai_object_id_t objectId)
     g_redisClient->hset(strKey, "NULL", "NULL");
 }
 
-std::set<sai_object_id_t> g_defaultPortsRids;
-
-void helperCheckPortIds()
+void SaiSwitch::helperCheckPortIds()
 {
     SWSS_LOG_ENTER();
 
@@ -645,18 +690,21 @@ void helperCheckPortIds()
 
     for (auto kv: laneMap)
     {
-        sai_object_id_t portId = kv.second;
+        sai_object_id_t port_rid = kv.second;
 
-        // translate will create entry if missing
-        // we assume here that port numbers didn't changed
-        // during restarts
-        redisCreateDummyEntryInAsicView(portId);
+        /*
+         * NOTE: Translate will create entry if missing, we assume here that
+         * port numbers didn't changed during restarts.
+         */
 
-        g_defaultPortsRids.insert(portId);
+        redisCreateDummyEntryInAsicView(port_rid);
+
+        m_default_ports_rids.insert(port_rid);
     }
 }
 
-void helperCheckVlanId()
+// TODO vlan 1 is now object id, we could extract it
+void SaiSwitch::helperCheckVlanId()
 {
     SWSS_LOG_ENTER();
 
@@ -675,7 +723,8 @@ void helperCheckVlanId()
     g_redisClient->hset(strKey, "NULL", "NULL");
 }
 
-sai_uint32_t saiGetPortNumberOfQueues(sai_object_id_t portId)
+sai_uint32_t SaiSwitch::saiGetPortNumberOfQueues(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
@@ -683,25 +732,27 @@ sai_uint32_t saiGetPortNumberOfQueues(sai_object_id_t portId)
 
     attr.id = SAI_PORT_ATTR_QOS_NUMBER_OF_QUEUES;
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port number of queues: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port number of queues: %s",
+                sai_serialize_status(status).c_str());
     }
 
-    SWSS_LOG_DEBUG("port 0x%lx queues number: %u", portId, attr.value.u32);
+    SWSS_LOG_DEBUG("port RID %s queues number: %u",
+            sai_serialize_object_id(port_rid).c_str(),
+            attr.value.u32);
 
     return attr.value.u32;
 }
 
-std::vector<sai_object_id_t> saiGetPortQueues(sai_object_id_t portId)
+std::vector<sai_object_id_t> SaiSwitch::saiGetPortQueues(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
-    uint32_t queueCount = saiGetPortNumberOfQueues(portId);
+    uint32_t queueCount = saiGetPortNumberOfQueues(port_rid);
 
     std::vector<sai_object_id_t> queueList;
 
@@ -718,49 +769,52 @@ std::vector<sai_object_id_t> saiGetPortQueues(sai_object_id_t portId)
     attr.value.objlist.count = queueCount;
     attr.value.objlist.list = queueList.data();
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port queue list: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port queue list: %s",
+                sai_serialize_status(status).c_str());
     }
+
+    queueList.resize(attr.value.objlist.count);
 
     return queueList;
 }
 
-// later we need to have this in redis with port mapping
-std::set<sai_object_id_t> g_defaultQueuesRids;
-
-void helperCheckQueuesIds()
+void SaiSwitch::helperCheckQueuesIds()
 {
     SWSS_LOG_ENTER();
 
     std::vector<sai_object_id_t> ports = saiGetPortList();
 
-    for (const auto& portId: ports)
+    for (const auto& port_rid: ports)
     {
-        SWSS_LOG_DEBUG("getting queues for port 0x%lx", portId);
+        SWSS_LOG_DEBUG("getting queues for port RID %s",
+                sai_serialize_object_id(port_rid).c_str());
 
-        std::vector<sai_object_id_t> queues = saiGetPortQueues(portId);
+        std::vector<sai_object_id_t> queues = saiGetPortQueues(port_rid);
 
-        // we have queues
+        /*
+         * We have queues.
+         */
 
-        for (const auto& queueId: queues)
+        for (const auto& queue_rid: queues)
         {
-            // create entry in asic view if missing
-            // we assume here that queue numbers will
-            // not be changed during restarts
+            /*
+             * NOTE: Create entry in asic view if missing we assume here that
+             * queue numbers will not be changed during restarts.
+             */
 
-            redisCreateDummyEntryInAsicView(queueId);
+            redisCreateDummyEntryInAsicView(queue_rid);
 
-            g_defaultQueuesRids.insert(queueId);
+            m_default_queues_rids.insert(queue_rid);
         }
     }
 }
 
-sai_uint32_t saiGetPortNumberOfPriorityGroups(sai_object_id_t portId)
+sai_uint32_t SaiSwitch::saiGetPortNumberOfPriorityGroups(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
@@ -768,25 +822,27 @@ sai_uint32_t saiGetPortNumberOfPriorityGroups(sai_object_id_t portId)
 
     attr.id = SAI_PORT_ATTR_NUMBER_OF_INGRESS_PRIORITY_GROUPS;
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port number of priority groups: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port number of priority groups: %s",
+                sai_serialize_status(status).c_str());
     }
 
-    SWSS_LOG_DEBUG("port 0x%lx priority groups number: %u", portId, attr.value.u32);
+    SWSS_LOG_DEBUG("port RID %s priority groups number: %u",
+            sai_serialize_object_id(port_rid).c_str(),
+            attr.value.u32);
 
     return attr.value.u32;
 }
 
-std::vector<sai_object_id_t> saiGetPortPriorityGroups(sai_object_id_t portId)
+std::vector<sai_object_id_t> SaiSwitch::saiGetPortPriorityGroups(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
-    uint32_t pgCount = saiGetPortNumberOfPriorityGroups(portId);
+    uint32_t pgCount = saiGetPortNumberOfPriorityGroups(port_rid);
 
     std::vector<sai_object_id_t> pgList;
 
@@ -803,47 +859,47 @@ std::vector<sai_object_id_t> saiGetPortPriorityGroups(sai_object_id_t portId)
     attr.value.objlist.count = pgCount;
     attr.value.objlist.list = pgList.data();
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to get port priority groups list: %d", status);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to get port priority groups list: %s",
+                sai_serialize_status(status).c_str());
     }
+
+    pgList.resize(attr.value.objlist.count);
 
     return pgList;
 }
 
-// later we need to have this in redis with port mapping
-std::set<sai_object_id_t> g_defaultPriorityGroupsRids;
-
-void helperCheckPriorityGroupsIds()
+void SaiSwitch::helperCheckPriorityGroupsIds()
 {
     SWSS_LOG_ENTER();
 
     std::vector<sai_object_id_t> ports = saiGetPortList();
 
-    for (const auto& portId: ports)
+    for (const auto& port_rid: ports)
     {
-        SWSS_LOG_DEBUG("getting priority groups for port 0x%lx", portId);
+        SWSS_LOG_DEBUG("getting priority groups for port RID %s",
+                sai_serialize_object_id(port_rid).c_str());
 
-        std::vector<sai_object_id_t> pgs = saiGetPortPriorityGroups(portId);
+        std::vector<sai_object_id_t> pgs = saiGetPortPriorityGroups(port_rid);
 
-        for (const auto& pgId: pgs)
+        for (const auto& pg_rid: pgs)
         {
-            // create entry in asic view if missing
-            // we assume here that PG numbers will
-            // not be changed during restarts
+            /*
+             * NOTE: Create entry in asic view if missing we assume here that
+             * PG numbers will not be changed during restarts.
+             */
 
-            redisCreateDummyEntryInAsicView(pgId);
+            redisCreateDummyEntryInAsicView(pg_rid);
 
-            g_defaultPriorityGroupsRids.insert(pgId);
+            m_default_priority_groups_rids.insert(pg_rid);
         }
     }
 }
 
-uint32_t saiGetMaxNumberOfChildsPerSchedulerGroup()
+uint32_t SaiSwitch::saiGetMaxNumberOfChildsPerSchedulerGroup()
 {
     SWSS_LOG_ENTER();
 
@@ -851,19 +907,20 @@ uint32_t saiGetMaxNumberOfChildsPerSchedulerGroup()
 
     attr.id = SAI_SWITCH_ATTR_QOS_MAX_NUMBER_OF_CHILDS_PER_SCHEDULER_GROUP;
 
-    sai_status_t status = sai_switch_api->get_switch_attribute(switch_id, 1, &attr);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("faled to obtain SAI_SWITCH_ATTR_QOS_MAX_NUMBER_OF_CHILDS_PER_SCHEDULER_GROUP");
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("faled to obtain SAI_SWITCH_ATTR_QOS_MAX_NUMBER_OF_CHILDS_PER_SCHEDULER_GROUP for switch RID %s: %s",
+                sai_serialize_object_id(m_switch_rid).c_str(),
+                sai_serialize_status(status).c_str());
     }
 
     return attr.value.u32;
 }
 
-uint32_t saiGetQosNumberOfSchedulerGroups(sai_object_id_t portId)
+uint32_t SaiSwitch::saiGetQosNumberOfSchedulerGroups(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
@@ -871,24 +928,28 @@ uint32_t saiGetQosNumberOfSchedulerGroups(sai_object_id_t portId)
 
     attr.id = SAI_PORT_ATTR_QOS_NUMBER_OF_SCHEDULER_GROUPS;
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("Failed to get number of scheduler groups for port: 0x%lx", portId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("Failed to get number of scheduler groups for port RID %s: %s",
+                sai_serialize_object_id(port_rid).c_str(),
+                sai_serialize_status(status).c_str());
     }
 
-    // total groups list on the port
+    /*
+     * Total groups list on the port.
+     */
+
     return attr.value.u32;
 }
 
-std::vector<sai_object_id_t> saiGetSchedulerGroupList(sai_object_id_t portId)
+std::vector<sai_object_id_t> SaiSwitch::saiGetSchedulerGroupList(
+        _In_ sai_object_id_t port_rid)
 {
     SWSS_LOG_ENTER();
 
-    uint32_t groupsCount = saiGetQosNumberOfSchedulerGroups(portId);
+    uint32_t groupsCount = saiGetQosNumberOfSchedulerGroups(port_rid);
 
     std::vector<sai_object_id_t> groups;
 
@@ -900,24 +961,25 @@ std::vector<sai_object_id_t> saiGetSchedulerGroupList(sai_object_id_t portId)
     attr.value.objlist.list = groups.data();
     attr.value.objlist.count = (uint32_t)groups.size();
 
-    sai_status_t status = sai_port_api->get_port_attribute(portId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("Failed to get scheduler group list for port: 0x%lx", portId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("Failed to get scheduler group list for port RID %s: %s",
+                sai_serialize_object_id(port_rid).c_str(),
+                sai_serialize_status(status).c_str());
     }
 
-    // just in case
     groups.resize(attr.value.objlist.count);
 
-    SWSS_LOG_DEBUG("got %zu scheduler groups on port 0x%lx", groups.size(), portId);
+    SWSS_LOG_DEBUG("got %zu scheduler groups on port RID %s", groups.size(),
+            sai_serialize_object_id(port_rid).c_str());
 
     return groups;
 }
 
-uint32_t saiGetSchedulerGroupChildCount(sai_object_id_t schedulerGroupId)
+uint32_t SaiSwitch::saiGetSchedulerGroupChildCount(
+        _In_ sai_object_id_t sg_rid)
 {
     SWSS_LOG_ENTER();
 
@@ -925,25 +987,28 @@ uint32_t saiGetSchedulerGroupChildCount(sai_object_id_t schedulerGroupId)
 
     attr.id = SAI_SCHEDULER_GROUP_ATTR_CHILD_COUNT; // queues + sched groups
 
-    sai_status_t status = sai_scheduler_group_api->get_scheduler_group_attribute(schedulerGroupId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_scheduler_group_api->get_scheduler_group_attribute(sg_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("Failed to get child count for scheduler group: 0x%lx", schedulerGroupId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("Failed to get child count for scheduler group RID %s: %s",
+                sai_serialize_object_id(sg_rid).c_str(),
+                sai_serialize_status(status).c_str());
     }
 
     return attr.value.u32;
 }
 
-std::vector<sai_object_id_t> saiGetSchedulerGroupChildList(sai_object_id_t schedulerGroupId)
+std::vector<sai_object_id_t> SaiSwitch::saiGetSchedulerGroupChildList(
+        _In_ sai_object_id_t sg_rid)
 {
     SWSS_LOG_ENTER();
 
-    uint32_t childCount = saiGetSchedulerGroupChildCount(schedulerGroupId);
+    uint32_t childCount = saiGetSchedulerGroupChildCount(sg_rid);
 
-    SWSS_LOG_DEBUG("child count for SG 0x%lx is %u", schedulerGroupId, childCount);
+    SWSS_LOG_DEBUG("child count for SG RID %s is %u",
+            sai_serialize_object_id(sg_rid).c_str(),
+            childCount);
 
     std::vector<sai_object_id_t> childs;
 
@@ -955,68 +1020,53 @@ std::vector<sai_object_id_t> saiGetSchedulerGroupChildList(sai_object_id_t sched
     attr.value.objlist.list = childs.data();
     attr.value.objlist.count = (uint32_t)childs.size();
 
-    sai_status_t status = sai_scheduler_group_api->get_scheduler_group_attribute(schedulerGroupId, 1, &attr);
+    sai_status_t status = sai_metadata_sai_scheduler_group_api->get_scheduler_group_attribute(sg_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("Failed to get child list for scheduler group: 0x%lx", schedulerGroupId);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("Failed to get child list for scheduler group RID %s: %s",
+                sai_serialize_object_id(sg_rid).c_str(),
+                sai_serialize_status(status).c_str());
     }
 
     childs.resize(attr.value.objlist.count);
 
-    SWSS_LOG_DEBUG("got %zu childs on scheduler group 0x%lx", childs.size(), schedulerGroupId);
+    SWSS_LOG_DEBUG("got %zu childs on scheduler group RID %s", childs.size(),
+            sai_serialize_object_id(sg_rid).c_str());
 
     return childs; // scheduler groups + queues
 }
 
-std::set<sai_object_id_t> g_defaultSchedulerGroupsRids;
-
-void helperCheckSchedulerGroupsIds()
+void SaiSwitch::helperCheckSchedulerGroupsIds()
 {
     SWSS_LOG_ENTER();
 
-    for (const auto& portId: saiGetPortList())
+    for (const auto& port_rid: saiGetPortList())
     {
-        // each group can contain next scheduler group or queue
+        /*
+         * Each group can contain next scheduler group or queue.
+         */
 
-        for (const auto& schedGroupId: saiGetSchedulerGroupList(portId))
+        for (const auto& sg_rid: saiGetSchedulerGroupList(port_rid))
         {
-            // create entry in asic view if missing
-            // we assume here that SchedulerGroups numbers will
-            // not be changed during restarts
+            /*
+             * NOTE: Create entry in asic view if missing we assume here that
+             * SchedulerGroups numbers will not be changed during restarts.
+             */
 
-            redisCreateDummyEntryInAsicView(schedGroupId);
+            redisCreateDummyEntryInAsicView(sg_rid);
 
-            g_defaultSchedulerGroupsRids.insert(schedGroupId);
+            m_default_scheduler_groups_rids.insert(sg_rid);
         }
     }
 }
 
-// if this is worm start then we assume some switches exists
-// already, we can get them from asic state table
-// and run those checks,
-// if no switches exists, we can create them first
-// TODO - lets only choose CREATE_ONLY and MANDATORY_ON_CREATE
-// atttributes, and rest could be jsut set in hard reinit
-//
-// but before we need helper functions to run
-// we can also put this inside class
-void onSyncdStart(bool warmStart)
+SaiSwitch::SaiSwitch(
+        _In_ sai_object_id_t switch_vid)
 {
-    // it may happen that after initialize we will receive
-    // some port notifications with port'ids that are not in
-    // redis db yet, so after checking VIDTORID map there will
-    // be entries and translate_vid_to_rid will generate new
-    // id's for ports, this may cause race condition so we need
-    // to use a lock here to prevent that
+    m_switch_id = switch_id;
 
-    std::lock_guard<std::mutex> lock(g_mutex);
-
-    SWSS_LOG_ENTER();
-
-    SWSS_LOG_TIMER("on syncd start");
+    // TODO ! we need RID !
 
     helperCheckLaneMap();
 
@@ -1038,6 +1088,49 @@ void onSyncdStart(bool warmStart)
     helperCheckPriorityGroupsIds();
 
     helperCheckSchedulerGroupsIds();
+
+    // TODO we need to get SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO
+}
+
+
+
+// if this is worm start then we assume some switches exists
+// already, we can get them from asic state table
+// and run those checks,
+// if no switches exists, we can create them first
+// TODO - lets only choose CREATE_ONLY and MANDATORY_ON_CREATE
+// atttributes, and rest could be jsut set in hard reinit
+//
+// but before we need helper functions to run
+// we can also put this inside class
+void onSyncdStart(bool warmStart)
+{
+    // it may happen that after initialize we will receive
+    // some port notifications with port'ids that are not in
+    // redis db yet, so after checking VIDTORID map there will
+    // be entries and translate_vid_to_rid will generate new
+    // id's for ports, this may cause race condition so we need
+    // to use a lock here to prevent that
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    // TODO this needs to be check on warm start and on hard reinit
+    // so we need to get list of all switches somehow, since after
+    // restart that list will not be populated
+    // we could use redis or bulk api query to do that
+    // and check some get operations etc
+
+    // TODO and on restart we need to populate switch map
+    // and initialize them both, if they exists ?
+    // if they don't exist, then hard reinit, but they will exist
+    // anyway and hard reinit will create them then ?
+    // how we will know if it's in asic ?
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_TIMER("on syncd start");
+
+    // helpers
 
     // TODO add SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID
     // also support this values inside virtual switch
