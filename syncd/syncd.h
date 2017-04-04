@@ -47,6 +47,8 @@ extern "C" {
 #define VIDCOUNTER                  "VIDCOUNTER"
 #define LANES                       "LANES"
 #define HIDDEN                      "HIDDEN"
+
+// TODO should we use sai_switch_attr_t enums ?
 #define DEFAULT_VIRTUAL_ROUTER_ID   "DEFAULT_VIRTUAL_ROUTER_ID"
 #define DEFAULT_TRAP_GROUP_ID       "DEFAULT_TRAP_GROUP_ID"
 #define DEFAULT_STP_INSTANCE_ID     "DEFAULT_STP_INSTANCE_ID"
@@ -162,20 +164,19 @@ class SaiSwitch
          */
 
         sai_object_id_t m_cpu_rid;
+        sai_object_id_t m_default_vlan_rid;
         sai_object_id_t m_default_virtual_router_rid;
         sai_object_id_t m_default_trap_group_rid;
         sai_object_id_t m_default_stp_instance_rid;
-
-        // later we need to have this in redis with port mapping
-        std::set<sai_object_id_t> m_default_queues_rids;
-        std::set<sai_object_id_t> m_default_scheduler_groups_rids;
-        std::set<sai_object_id_t> m_default_ports_rids;
 
         /*
          * NOTE: Later we need to have this in redis with port mapping.
          */
 
         std::set<sai_object_id_t> m_default_priority_groups_rids;
+        std::set<sai_object_id_t> m_default_queues_rids;
+        std::set<sai_object_id_t> m_default_scheduler_groups_rids;
+        std::set<sai_object_id_t> m_default_ports_rids;
 
         /*
          * Sai Methods.

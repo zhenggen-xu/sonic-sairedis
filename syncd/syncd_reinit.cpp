@@ -11,8 +11,6 @@
  * we could skip using switch_id in params and even they could be public then.
  */
 
-// TODO maybe per switch mapping should be per switch index ?
-
 sai_uint32_t SaiSwitch::saiGetPortCount()
 {
     SWSS_LOG_ENTER();
@@ -53,6 +51,8 @@ sai_object_id_t SaiSwitch::saiGetCpuId()
     SWSS_LOG_DEBUG("cpu port RID %s",
             sai_serialize_object_id(attr.value.oid).c_str());
 
+    m_cpu_rid = attr.value.oid;
+
     return attr.value.oid;
 }
 
@@ -83,6 +83,8 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortList()
 
     portList.resize(attr.value.objlist.count);
 
+    SWSS_LOG_DEBUG("number of ports: %zu", portList.resize());
+
     return portList;
 }
 
@@ -101,7 +103,7 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::saiGetHardwareLaneM
 
     const int lanesPerPort = 4;
 
-    for (size_t i = 0; i < portList.size(); i++)
+    for (const auto &port_rid : portList)
     {
         sai_uint32_t lanes[lanesPerPort];
 
@@ -111,12 +113,12 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::saiGetHardwareLaneM
         attr.value.u32list.count = lanesPerPort;
         attr.value.u32list.list = lanes;
 
-        sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(portList[i], 1, &attr);
+        sai_status_t status = sai_metadata_sai_port_api->get_port_attribute(port_rid, 1, &attr);
 
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_THROW("failed to get hardware lane list pid: %s: %s",
-                    sai_serialize_object_id(portList[i]).c_str(),
+            SWSS_LOG_THROW("failed to get hardware lane list port RID %s: %s",
+                    sai_serialize_object_id(port_rid).c_str(),
                     sai_serialize_status(status).c_str());
         }
 
@@ -124,7 +126,7 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::saiGetHardwareLaneM
 
         for (int j = 0; j < laneCount; j++)
         {
-            map[lanes[j]] = portList[i];
+            map[lanes[j]] = port_rid;
         }
     }
 
@@ -143,12 +145,14 @@ sai_object_id_t SaiSwitch::saiGetDefaultTrapGroup()
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_THROW("failed to get switch default trap group %s",
-                 sai_serialize_status(status).c_str());
+        SWSS_LOG_THROW("failed to get switch default trap group: %s",
+                sai_serialize_status(status).c_str());
     }
 
     SWSS_LOG_DEBUG("default trap group RID %s",
             sai_serialize_object_id(attr.value.oid).c_str());
+
+    m_default_trap_group_rid = attr.value.oid;
 
     return attr.value.oid;
 }
@@ -165,12 +169,14 @@ sai_object_id_t SaiSwitch::saiGetDefaultStpInstance()
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_THROW("failed to get switch default stp instance %s",
-                 sai_serialize_status(status).c_str());
+        SWSS_LOG_THROW("failed to get switch default stp instance: %s",
+                sai_serialize_status(status).c_str());
     }
 
     SWSS_LOG_DEBUG("default stp instance RID %s",
             sai_serialize_object_id(attr.value.oid).c_str());
+
+    m_default_stp_instance_rid = attr.value.oid;
 
     return attr.value.oid;
 }
@@ -187,12 +193,14 @@ sai_object_id_t SaiSwitch::saiGetDefaultVirtualRouter()
 
     if (status != SAI_STATUS_SUCCESS)
     {
-         SWSS_LOG_THROW("failed to get switch virtual router id %s",
-                 sai_serialize_status(status).c_str());
+        SWSS_LOG_THROW("failed to get switch virtual router id: %s",
+                sai_serialize_status(status).c_str());
     }
 
     SWSS_LOG_DEBUG("default virtual router RID %s",
             sai_serialize_object_id(attr.value.oid).c_str());
+
+    m_default_virtual_router_rid = attr.value.oid;
 
     return attr.value.oid;
 }
@@ -517,7 +525,7 @@ void SaiSwitch::redisSetDummyAsicStateForRealObjectId(
 
     if (objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID %s",
+        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID: %s",
                 sai_serialize_object_id(rid).c_str());
     }
 
@@ -669,7 +677,7 @@ void SaiSwitch::redisCreateDummyEntryInAsicView(
 
     if (objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID %s",
+        SWSS_LOG_THROW("sai_object_type_query returned NULL type for RID: %s",
                 sai_serialize_object_id(objectId).c_str());
     }
 
@@ -709,6 +717,8 @@ void SaiSwitch::helperCheckVlanId()
     SWSS_LOG_ENTER();
 
     // TODO create vlan entry only when its hard restart
+    //
+    // TODO get that from switch
 
     sai_object_type_t objectType = SAI_OBJECT_TYPE_VLAN;
 
@@ -736,7 +746,8 @@ sai_uint32_t SaiSwitch::saiGetPortNumberOfQueues(
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_THROW("failed to get port number of queues: %s",
+        SWSS_LOG_THROW("failed to get port RID %s number of queues: %s",
+                sai_serialize_object_id(port_rid),
                 sai_serialize_status(status).c_str());
     }
 
@@ -773,7 +784,8 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortQueues(
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_THROW("failed to get port queue list: %s",
+        SWSS_LOG_THROW("failed to get port RID %s queue list: %s",
+                sai_serialize_object_id(port_rid),
                 sai_serialize_status(status).c_str());
     }
 
@@ -790,7 +802,7 @@ void SaiSwitch::helperCheckQueuesIds()
 
     for (const auto& port_rid: ports)
     {
-        SWSS_LOG_DEBUG("getting queues for port RID %s",
+        SWSS_LOG_DEBUG("getting queues for port RID: %s",
                 sai_serialize_object_id(port_rid).c_str());
 
         std::vector<sai_object_id_t> queues = saiGetPortQueues(port_rid);
@@ -826,7 +838,8 @@ sai_uint32_t SaiSwitch::saiGetPortNumberOfPriorityGroups(
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_THROW("failed to get port number of priority groups: %s",
+        SWSS_LOG_THROW("failed to get port RID %s number of priority groups: %s",
+                sai_serialize_object_id(port_rid),
                 sai_serialize_status(status).c_str());
     }
 
@@ -863,7 +876,8 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortPriorityGroups(
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_THROW("failed to get port priority groups list: %s",
+        SWSS_LOG_THROW("failed to get port RID %s priority groups list: %s",
+                sai_serialize_object_id(port_rid),
                 sai_serialize_status(status).c_str());
     }
 
@@ -880,7 +894,7 @@ void SaiSwitch::helperCheckPriorityGroupsIds()
 
     for (const auto& port_rid: ports)
     {
-        SWSS_LOG_DEBUG("getting priority groups for port RID %s",
+        SWSS_LOG_DEBUG("getting priority groups for port RID: %s",
                 sai_serialize_object_id(port_rid).c_str());
 
         std::vector<sai_object_id_t> pgs = saiGetPortPriorityGroups(port_rid);
@@ -972,7 +986,8 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetSchedulerGroupList(
 
     groups.resize(attr.value.objlist.count);
 
-    SWSS_LOG_DEBUG("got %zu scheduler groups on port RID %s", groups.size(),
+    SWSS_LOG_DEBUG("got %zu scheduler groups on port RID %s",
+            groups.size(),
             sai_serialize_object_id(port_rid).c_str());
 
     return groups;
@@ -1031,7 +1046,8 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetSchedulerGroupChildList(
 
     childs.resize(attr.value.objlist.count);
 
-    SWSS_LOG_DEBUG("got %zu childs on scheduler group RID %s", childs.size(),
+    SWSS_LOG_DEBUG("got %zu childs on scheduler group RID %s",
+            childs.size(),
             sai_serialize_object_id(sg_rid).c_str());
 
     return childs; // scheduler groups + queues
