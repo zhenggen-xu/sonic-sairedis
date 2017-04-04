@@ -143,7 +143,8 @@ class SaiSwitch
     public:
 
         SaiSwitch(
-                _In_ sai_object_id_t switch_vid);
+                _In_ sai_object_id_t switch_vid,
+                _In_ sai_object_id_t switch_rid);
     private:
 
         /*

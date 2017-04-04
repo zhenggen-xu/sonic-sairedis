@@ -958,8 +958,11 @@ void on_switch_create(
     SWSS_LOG_ENTER();
 
     // TODO we also need RID for this switch
+    //
 
-    std::shared_ptr<SaiSwitch> sw = std::make_shared<SaiSwitch>(switch_id_vid);
+    sai_object_id_t switch_id_rid = SAI_NULL_OBJECT_ID; // TODO
+
+    std::shared_ptr<SaiSwitch> sw = std::make_shared<SaiSwitch>(switch_id_vid, switch_id_rid);
 
 
     // TODO we need to make some actions after switch create
