@@ -109,10 +109,26 @@ std::string getObjectIdFromAsicKey(const std::string &key)
     return key.substr(end + 1);
 }
 
+void redisClearVidToRidMap()
+{
+    SWSS_LOG_ENTER();
+
+    g_redisClient->del(VIDTORID);
+}
+
+void redisClearRidToVidMap()
+{
+    SWSS_LOG_ENTER();
+
+    g_redisClient->del(RIDTOVID);
+}
+
 void redisSetVidAndRidMap(std::unordered_map<sai_object_id_t, sai_object_id_t> map)
 {
     SWSS_LOG_ENTER();
 
+    // TODO clear can be done after recreating all switches
+    // unless vidtoridmap will be per switch
     redisClearVidToRidMap();
     redisClearRidToVidMap();
 

@@ -2,6 +2,8 @@
 #include "sairedis.h"
 #include "swss/tokenize.h"
 
+// TODO should VIDTORID also be per switch ? or global?
+
 #include <iostream>
 #include <map>
 
@@ -207,8 +209,8 @@ sai_object_id_t redis_sai_switch_id_query(
 }
 
 sai_object_id_t redis_create_virtual_object_id(
-        _In_ sai_object_type_t object_type,
-        _In_ sai_object_id_t switch_id)
+        _In_ sai_object_id_t switch_id,
+        _In_ sai_object_type_t object_type)
 {
     SWSS_LOG_ENTER();
 
@@ -337,7 +339,7 @@ sai_object_id_t translate_rid_to_vid(
         SWSS_LOG_THROW("RID 0x%lx is switch object, bug!");
     }
 
-    vid = redis_create_virtual_object_id(object_type, switch_id);
+    vid = redis_create_virtual_object_id(switch_id, object_type);
 
     SWSS_LOG_DEBUG("translated RID 0x%lx to VID 0x%lx", rid, vid);
 
@@ -956,6 +958,11 @@ void on_switch_create(
 {
     SWSS_LOG_ENTER();
 
+    // TODO we also need RID for this switch
+
+    std::shared_ptr<SaiSwitch> sw = std::make_shared<SaiSwitch>(switch_id_vid);
+
+
     // TODO we need to make some actions after switch create
     // like create switch class and get all ports vlans
     // queyes etc ... perform reinit here
@@ -1401,6 +1408,9 @@ void on_init_view_switch_create(
         _In_ sai_object_id_t switch_id_vid)
 {
     SWSS_LOG_ENTER();
+
+    // TODO we will need to create here actual switch if it don't exists
+    // if hardware info do not match
 
     // TODO we have 2 options here, we match existing switch (even if multiple)
     // by SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO, if they are different
@@ -2047,6 +2057,7 @@ bool isVeryFirstRun()
      * start of syncd later on we can add additional checks here.
      *
      * TODO: if we add more switches then we need lane maps per switch.
+     * TODO we also need other way to check if this is first start
      */
 
     auto redisLaneMap = redisGetLaneMap();
