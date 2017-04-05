@@ -224,6 +224,7 @@ void translate_local_to_redis(
             exit(EXIT_FAILURE);
         }
 
+        // TODO enable flag
         switch (meta->attrvaluetype)
         {
             case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
@@ -251,6 +252,7 @@ void translate_local_to_redis(
                 break;
 
             default:
+                // check for non oid
                 break;
         }
     }
@@ -447,6 +449,7 @@ void match_redis_with_rec(
             exit(EXIT_FAILURE);
         }
 
+        // enable flag
         switch (meta->attrvaluetype)
         {
             case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
@@ -474,6 +477,7 @@ void match_redis_with_rec(
                 break;
 
             default:
+                // todo check for non oid
                 break;
         }
     }

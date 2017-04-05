@@ -38,6 +38,8 @@ extern "C" {
 #include "swss/logger.h"
 #include "swss/table.h"
 
+#include "syncd_saiswitch.h"
+
 #define UNREFERENCED_PARAMETER(X)
 
 #define DEFAULT_VLAN_NUMBER         1
@@ -52,6 +54,7 @@ extern "C" {
 #define DEFAULT_VIRTUAL_ROUTER_ID   "DEFAULT_VIRTUAL_ROUTER_ID"
 #define DEFAULT_TRAP_GROUP_ID       "DEFAULT_TRAP_GROUP_ID"
 #define DEFAULT_STP_INSTANCE_ID     "DEFAULT_STP_INSTANCE_ID"
+#define DEFAULT_VLAN_ID             "DEFAULT_VLAN_ID"
 #define CPU_PORT_ID                 "CPU_PORT_ID"
 
 #define SAI_COLD_BOOT               0
@@ -63,6 +66,8 @@ extern "C" {
 #endif // SAITHRIFT
 
 extern std::mutex g_mutex;
+
+extern std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;
 
 void hardReinit();
 
@@ -76,7 +81,7 @@ void hardReinit();
 //sai_object_id_t redisGetCpuId();
 //void redisClearVidToRidMap();
 //void redisClearRidToVidMap();
-//
+
 //extern std::shared_ptr<swss::ProducerTable>         getResponse;
 extern std::shared_ptr<swss::NotificationProducer>  notifications;
 
@@ -99,21 +104,16 @@ void translate_rid_to_vid_list(
         _In_ uint32_t attr_count,
         _In_ sai_attribute_t *attr_list);
 
-//void initialize_common_api_pointers();
-//void populate_sai_apis();
-
 void startCountersThread(int intervalInSeconds);
 void endCountersThread();
 
 std::unordered_map<sai_uint32_t, sai_object_id_t> redisGetLaneMap();
 
-////std::vector<sai_object_id_t> saiGetPortList();
-
 ////sai_object_type_t getObjectTypeFromVid(sai_object_id_t sai_object_id);
 
 void start_cli();
 void stop_cli();
-//
+
 //sai_status_t applyViewTransition();
 sai_status_t syncdApplyView();
 

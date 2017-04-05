@@ -316,13 +316,6 @@ void SaiSwitch::redisSaveLaneMap(
     }
 }
 
-std::vector<std::string> SaiSwitch::redisGetAsicStateKeys()
-{
-    SWSS_LOG_ENTER();
-
-    return g_redisClient->keys(ASIC_STATE_TABLE + std::string(":*"));
-}
-
 std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetObjectMap(
         _In_ const std::string &key)
 {
@@ -449,6 +442,26 @@ sai_object_id_t SaiSwitch::redisGetDefaultVirtualRouterId()
     return vr_id;
 }
 
+sai_object_id_t SaiSwitch::redisGetDefaultVlanId()
+{
+    SWSS_LOG_ENTER();
+
+    auto key = getRedisHiddenKey();
+
+    auto redisVrId = g_redisClient->hget(key, DEFAULT_VLAN_ID);
+
+    if (redisVrId == NULL)
+    {
+        return SAI_NULL_OBJECT_ID;
+    }
+
+    sai_object_id_t vr_id;
+
+    sai_deserialize_object_id(*redisVrId, vr_id);
+
+    return vr_id;
+}
+
 sai_object_id_t SaiSwitch::redisGetDefaultTrapGroupId()
 {
     SWSS_LOG_ENTER();
@@ -543,6 +556,18 @@ void SaiSwitch::redisSetDefaultStpInstance(
     auto key = getRedisHiddenKey();
 
     g_redisClient->hset(key, DEFAULT_STP_INSTANCE_ID, strStpId);
+}
+
+void SaiSwitch::redisSetDefaultVlanId(
+        _In_ sai_object_id_t vlan_rid)
+{
+    SWSS_LOG_ENTER();
+
+    std::string strVlanRid = sai_serialize_object_id(vlan_rid);
+
+    auto key = getRedisHiddenKey();
+
+    g_redisClient->hset(key, DEFAULT_VLAN_ID, strVlanRid);
 }
 
 void SaiSwitch::redisCreateRidAndVidMapping(
@@ -764,26 +789,64 @@ void SaiSwitch::helperCheckPortIds()
     }
 }
 
-// TODO vlan 1 is now object id, we could extract it
-void SaiSwitch::helperCheckVlanId()
+sai_object_id_t SaiSwitch::saiGetDefaultVlanId()
 {
     SWSS_LOG_ENTER();
 
-    // TODO create vlan entry only when its hard restart
-    //
-    // TODO get that from switch
+    sai_attribute_t attr;
 
-    sai_object_type_t objectType = SAI_OBJECT_TYPE_VLAN;
+    attr.id = SAI_SWITCH_ATTR_DEFAULT_VLAN_ID;
 
-    std::string strObjectType = sai_serialize_object_type(objectType);
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
-    sai_vlan_id_t vlanId = 1;
+    if (status != SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_THROW("failed to get default vlan id: %s",
+                sai_serialize_status(status).c_str());
+    }
 
-    std::string strVlanId = sai_serialize_vlan_id(vlanId);
+    SWSS_LOG_DEBUG("default vlan RID %s",
+            sai_serialize_object_id(attr.value.oid).c_str());
 
-    std::string strKey = ASIC_STATE_TABLE + (":" + strObjectType + ":" + strVlanId);
+    m_default_vlan_rid = attr.value.oid;
 
-    g_redisClient->hset(strKey, "NULL", "NULL");
+    return attr.value.oid;
+}
+
+void SaiSwitch::helperCheckDefaultVlanId()
+{
+    /*
+     * In SAI v1.0 default vlan is object id.
+     *
+     * We are adding this vlan here to redis db additional care needs to be
+     * taken when reinit since this vlan will be recreated in hard reinit
+     * logic, so we need to add additional case for that.
+     */
+
+    SWSS_LOG_ENTER();
+
+    sai_object_id_t vlanRid = saiGetDefaultVlanId();
+
+    sai_object_id_t redisVlanRid = redisGetDefaultVlanId();
+
+    if (redisVlanRid == SAI_NULL_OBJECT_ID)
+    {
+        redisSetDummyAsicStateForRealObjectId(vlanRid);
+
+        SWSS_LOG_INFO("redis default vlan id is not defined yet");
+
+        redisSetDefaultVlanId(vlanRid);
+
+        redisVlanRid = vlanRid;
+    }
+
+    if (vlanRid != redisVlanRid)
+    {
+        // if this happens, we need to remap VIDTORID and RIDTOVID
+        SWSS_LOG_THROW("FIXME: default vlan id differs: %s vs %s, ids must be remapped",
+                sai_serialize_object_id(vlanRid).c_str(),
+                sai_serialize_object_id(redisVlanRid).c_str());
+    }
 }
 
 sai_uint32_t SaiSwitch::saiGetPortNumberOfQueues(
@@ -1156,10 +1219,88 @@ std::string SaiSwitch::getHardwareInfo() const
     return m_hardware_info;
 }
 
+#define MAX_VLAN_MEMBERS 0x10000
+
+void SaiSwitch::removeDefaultVlanMembers()
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * In sai v1.0 vlan members are not by port but
+     * by bridge port id.
+     */
+
+    /*
+     * TODO: This method needs to be revisited after asic init in v1.0, all
+     * bridge ports are vlan 1 members, we will remove them to not complicate
+     * reinit if user want to add bridge ports to vlan 1, then it needs to be
+     * done explicitly.
+     */
+
+    std::vector<sai_object_id_t> vlanMemberList;
+
+    vlanMemberList.resize(MAX_VLAN_MEMBERS);
+
+    sai_attribute_t attr;
+
+    attr.id = SAI_VLAN_ATTR_MEMBER_LIST;
+
+    attr.value.objlist.count = (uint32_t)vlanMemberList.size();
+    attr.value.objlist.list = vlanMemberList.data();
+
+    sai_status_t status = sai_metadata_sai_vlan_api->get_vlan_attribute(m_default_vlan_rid, 1, &attr);
+
+    if (status != SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_THROW("failed to obtain default vlan %s members",
+                sai_serialize_object_id(m_default_vlan_rid).c_str());
+    }
+
+    vlanMemberList.resize(attr.value.objlist.count);
+
+    SWSS_LOG_DEBUG("obtained %zu vlan members", vlanMemberList.size());
+
+    for (auto &vm: vlanMemberList)
+    {
+        status = sai_metadata_sai_vlan_api->remove_vlan_member(vm);
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_THROW("Failed to remove vlan member 0x%lx from vlan %d", vm, DEFAULT_VLAN_NUMBER);
+        }
+    }
+}
+
+void SaiSwitch::buildNonCreateRids()
+{
+    SWSS_LOG_ENTER();
+
+    m_non_create_rids.insert(m_cpu_rid);
+    m_non_create_rids.insert(m_default_vlan_rid);
+    m_non_create_rids.insert(m_default_virtual_router_rid);
+    m_non_create_rids.insert(m_default_trap_group_rid);
+    m_non_create_rids.insert(m_default_stp_instance_rid);
+
+    m_non_create_rids.insert(m_default_priority_groups_rids.begin(), m_default_priority_groups_rids.end());
+    m_non_create_rids.insert(m_default_queues_rids.begin(), m_default_queues_rids.end());
+    m_non_create_rids.insert(m_default_scheduler_groups_rids.begin(), m_default_scheduler_groups_rids.end());
+    m_non_create_rids.insert(m_default_ports_rids.begin(), m_default_ports_rids.end());
+}
+
+bool SaiSwitch::isNonCreateRid(
+        _In_ sai_object_id_t rid)
+{
+    SWSS_LOG_ENTER();
+
+    return m_non_create_rids.find(rid) != m_non_create_rids.end();
+}
+
 SaiSwitch::SaiSwitch(
         _In_ sai_object_id_t switch_vid,
         _In_ sai_object_id_t switch_rid)
 {
+    SWSS_LOG_ENTER();
+
     m_switch_rid = switch_rid;
     m_switch_vid = switch_vid;
 
@@ -1176,7 +1317,7 @@ SaiSwitch::SaiSwitch(
     // currently STP is disabled since not all vendors supports that
     //helperCheckDefaultStpInstance();
 
-    helperCheckVlanId();
+    helperCheckDefaultVlanId();
 
     helperCheckPortIds();
 
@@ -1185,4 +1326,10 @@ SaiSwitch::SaiSwitch(
     helperCheckPriorityGroupsIds();
 
     helperCheckSchedulerGroupsIds();
+
+    /*
+     * TODO we will need bridge ports here also.
+     */
+
+    buildNonCreateRids();
 }
