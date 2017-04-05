@@ -1,7 +1,6 @@
 #ifndef __SYNCD_SAISWITCH_H__
 #define __SYNCD_SAISWITCH_H__
 
-//#include "string.h"
 extern "C" {
 #include "sai.h"
 }
@@ -9,6 +8,10 @@ extern "C" {
 class SaiSwitch
 {
     public:
+
+        /*
+         * Constructors.
+         */
 
         SaiSwitch(
                 _In_ sai_object_id_t switch_vid,
@@ -23,7 +26,31 @@ class SaiSwitch
 
         std::string getHardwareInfo() const;
 
+        void removeDefaultVlanMembers();
+
+        bool isNonCreateRid(
+                _In_ sai_object_id_t rid);
+
+        /*
+         * Redis Static Methods.
+         */
+
+        static std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetObjectMap(
+                _In_ const std::string &key);
+
     private:
+
+        /*
+         * Constructors.
+         */
+
+        SaiSwitch(const SaiSwitch&);
+
+        /*
+         * Operators.
+         */
+
+        SaiSwitch& operator=(const SaiSwitch&);
 
         /*
          * Fields.
@@ -59,11 +86,15 @@ class SaiSwitch
         std::set<sai_object_id_t> m_default_scheduler_groups_rids;
         std::set<sai_object_id_t> m_default_ports_rids;
 
+        std::set<sai_object_id_t> m_non_create_rids;
+
         /*
          * Sai Methods.
          */
 
         sai_uint32_t saiGetPortCount();
+
+        sai_object_id_t saiGetDefaultVlanId();
 
         std::string saiGetHardwareInfo();
 
@@ -111,14 +142,11 @@ class SaiSwitch
 
         std::unordered_map<sai_uint32_t, sai_object_id_t> redisGetLaneMap();
 
-        std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetObjectMap(
-                _In_ const std::string &key);
-
         std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetVidToRidMap();
 
         std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetRidToVidMap();
 
-        std::vector<std::string> redisGetAsicStateKeys();
+        sai_object_id_t redisGetDefaultVlanId();
 
         sai_object_id_t redisGetDefaultVirtualRouterId();
 
@@ -133,14 +161,17 @@ class SaiSwitch
 
         void redisClearLaneMap();
 
+        void redisSetDefaultVlanId(
+                _In_ sai_object_id_t vlan_rid);
+
         void redisSetDefaultVirtualRouterId(
-                _In_ sai_object_id_t vr_id);
+                _In_ sai_object_id_t vr_rid);
 
         void redisSetDefaultTrapGroup(
-                _In_ sai_object_id_t vr_id);
+                _In_ sai_object_id_t tg_rid);
 
         void redisSetDefaultStpInstance(
-                _In_ sai_object_id_t stp_id);
+                _In_ sai_object_id_t stp_rid);
 
         void redisCreateRidAndVidMapping(
                 _In_ sai_object_id_t rid,
@@ -150,7 +181,7 @@ class SaiSwitch
                 _In_ sai_object_id_t rid);
 
         void redisSetCpuId(
-                _In_ sai_object_id_t cpuId);
+                _In_ sai_object_id_t cpu_rid);
 
         void redisCreateDummyEntryInAsicView(
                 _In_ sai_object_id_t objectId);
@@ -163,9 +194,9 @@ class SaiSwitch
         void helperCheckDefaultVirtualRouterId();
         void helperCheckDefaultTrapGroup();
         void helperCheckDefaultStpInstance();
+        void helperCheckDefaultVlanId();
         void helperCheckCpuId();
         void helperCheckPortIds();
-        void helperCheckVlanId();
         void helperCheckQueuesIds();
         void helperCheckPriorityGroupsIds();
         void helperCheckSchedulerGroupsIds();
@@ -176,6 +207,8 @@ class SaiSwitch
 
         std::string getRedisLanesKey();
         std::string getRedisHiddenKey();
+
+        void buildNonCreateRids();
 };
 
 extern std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;
