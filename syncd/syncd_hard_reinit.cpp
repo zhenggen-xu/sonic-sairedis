@@ -4,14 +4,19 @@
 
 #include "syncd.h"
 
-// TODO we need to handle switch first
-//
 // TODO there will be needed extra care about switch
 // since if we set switch attributes with oids then we need to process
 // them first, but we need switch id to create them first, so we need
 // to first create switch with mandatory or all non object id's and then
 // DO "set" and process all
-// also pointers
+// TODO also handle pointers on switch
+// mandatory on create or create only
+
+/*
+ * To support multiple switches here we need to refactor this to a class
+ * similar to SaiSwitch, and then have separate vid/rid map and ecah class will
+ * be recreating only one switch and handling that
+ */
 
 typedef std::unordered_map<std::string, std::string> StringHash;
 typedef std::unordered_map<sai_object_id_t, sai_object_id_t> ObjectIdMap;
@@ -29,31 +34,36 @@ StringHash g_fdbs;
 StringHash g_routes;
 
 void processAttributesForOids(sai_object_type_t objectType, std::shared_ptr<SaiAttributeList> list);
-void processNeighbors();
 void processOids();
 void processFdbs();
+void processNeighbors();
+void processSwitchesStart();
+void processSwitchesEnd();
 void processRoutes(bool defaultOnly);
 
-sai_object_type_t getObjectTypeFromAsicKey(const std::string &key);
+sai_object_type_t getObjectTypeFromAsicKey(
+        _In_ const std::string &key);
 
-sai_object_type_t getObjectTypeFromVid(sai_object_id_t sai_object_id)
+sai_object_type_t getObjectTypeFromVid(
+        _In_ sai_object_id_t object_vid)
 {
     SWSS_LOG_ENTER();
 
-    sai_object_type_t objectType = (sai_object_type_t)(sai_object_id >> 48);
+    sai_object_type_t objectType = redis_sai_object_type_query(object_vid);
 
     if (objectType >= SAI_OBJECT_TYPE_MAX ||
             objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_ERROR("invalid object type: %x on object id: 0x%lx", objectType, sai_object_id);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("invalid object type: %s on object id: %s",
+                sai_serialize_object_type(objectType).c_str(),
+                sai_serialize_object_id(object_vid).c_str());
     }
 
     return objectType;
 }
 
-std::shared_ptr<SaiAttributeList> redisGetAttributesFromAsicKey(const std::string &key)
+std::shared_ptr<SaiAttributeList> redisGetAttributesFromAsicKey(
+        _In_ const std::string &key)
 {
     SWSS_LOG_ENTER();
 
@@ -73,10 +83,11 @@ std::shared_ptr<SaiAttributeList> redisGetAttributesFromAsicKey(const std::strin
         values.push_back(fvt);
     }
 
-    return std::shared_ptr<SaiAttributeList>(new SaiAttributeList(objectType, values, false));
+    return std::make_shared<SaiAttributeList>(objectType, values, false);
 }
 
-sai_object_type_t getObjectTypeFromAsicKey(const std::string &key)
+sai_object_type_t getObjectTypeFromAsicKey(
+        _In_ const std::string &key)
 {
     SWSS_LOG_ENTER();
 
@@ -91,15 +102,16 @@ sai_object_type_t getObjectTypeFromAsicKey(const std::string &key)
     if (objectType >= SAI_OBJECT_TYPE_MAX ||
         objectType == SAI_OBJECT_TYPE_NULL)
     {
-        SWSS_LOG_ERROR("invalid object type: %x on asic key: %s", objectType, key.c_str());
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("invalid object type: %s on asic key: %s", 
+                sai_serialize_object_type(objectType).c_str(), 
+                key.c_str());
     }
 
     return objectType;
 }
 
-std::string getObjectIdFromAsicKey(const std::string &key)
+std::string getObjectIdFromAsicKey(
+        _In_ const std::string &key)
 {
     SWSS_LOG_ENTER();
 
@@ -123,12 +135,18 @@ void redisClearRidToVidMap()
     g_redisClient->del(RIDTOVID);
 }
 
-void redisSetVidAndRidMap(std::unordered_map<sai_object_id_t, sai_object_id_t> map)
+void redisSetVidAndRidMap(
+        _In_ const std::unordered_map<sai_object_id_t, sai_object_id_t> &map)
 {
     SWSS_LOG_ENTER();
 
-    // TODO clear can be done after recreating all switches
-    // unless vidtoridmap will be per switch
+    /*
+     * TODO clear can be done after recreating all switches unless vid/rid map
+     * will be per switch.
+     *
+     * This needs to be addressed when we want to support multiple switches.
+     */
+
     redisClearVidToRidMap();
     redisClearRidToVidMap();
 
@@ -152,9 +170,8 @@ void checkAllIds()
 
         if (it == g_vidToRidMap.end())
         {
-            SWSS_LOG_ERROR("failed to find vid 0x%lx in previous map", kv.first);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("failed to find vid %s in previous map", 
+                    sai_serialize_object_id(kv.first).c_str());
         }
 
         g_vidToRidMap.erase(it);
@@ -164,7 +181,6 @@ void checkAllIds()
 
     if (size != 0)
     {
-        SWSS_LOG_ERROR("vid to rid map is not empty (%zu) after translation", size);
 
         for (auto &kv: g_vidToRidMap)
         {
@@ -175,7 +191,7 @@ void checkAllIds()
                     sai_serialize_object_type(objectType).c_str());
         }
 
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("vid to rid map is not empty (%zu) after translation", size);
     }
 
     redisSetVidAndRidMap(g_translated);
@@ -185,6 +201,7 @@ void saiRemoveDefaultVlanMembers()
 {
     SWSS_LOG_ENTER();
 
+    // TODO this method needs to be revisited
     // after asic init, all ports are vlan 1 members
     // we will remove them to not complicate reinit
     // if user want to add vlan 1, then it needs to be
@@ -208,9 +225,7 @@ void saiRemoveDefaultVlanMembers()
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("Failed to obtain vlan %d members", DEFAULT_VLAN_NUMBER);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("Failed to obtain vlan %d members", DEFAULT_VLAN_NUMBER);
     }
 
     vlanMemberList.resize(attr.value.objlist.count);
@@ -221,9 +236,7 @@ void saiRemoveDefaultVlanMembers()
 
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_ERROR("Failed to remove vlan member 0x%lx from vlan %d", vm, DEFAULT_VLAN_NUMBER);
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("Failed to remove vlan member 0x%lx from vlan %d", vm, DEFAULT_VLAN_NUMBER);
         }
     }
 }
@@ -236,9 +249,15 @@ void hardReinit()
 
     saiRemoveDefaultVlanMembers();
 
-    // repopulate asic view from redis db after hard asic initialize
+    /*
+     * Repopulate asic view from redis db after hard asic initialize.
+     */
 
-    // TODO this map will hold all switches unless we make map per switch
+    /*
+     * To support multiple switchies this needs to be refactores since we need
+     * a class with hard reinit, per switch
+     */
+
     g_vidToRidMap = redisGetVidToRidMap();
     g_ridToVidMap = redisGetRidToVidMap();
 
@@ -246,10 +265,14 @@ void hardReinit()
 
     for (auto &key: asicStateKeys)
     {
-        // TODO key will be meta_kay anyway we could use deserialize here
+        /*
+         * TODO if key will be meta_kay anyway we could use deserialize here.
+         */
 
         sai_object_type_t objectType = getObjectTypeFromAsicKey(key);
         const std::string &strObjectId = getObjectIdFromAsicKey(key);
+
+        auto info = sai_all_object_type_infos[objectType];
 
         switch (objectType)
         {
@@ -270,7 +293,12 @@ void hardReinit()
                 break;
 
             default:
-                // TODO check if isobjectid
+
+                if (info->isnonobjectid)
+                {
+                    SWSS_LOG_THROW("passing non object id %s as generic object", info->objecttypename);
+                }
+
                 g_oids[strObjectId] = key;
                 break;
         }
@@ -278,31 +306,32 @@ void hardReinit()
         g_attributesLists[key] = redisGetAttributesFromAsicKey(key);
     }
 
+    processSwitchesStart();
     processFdbs();
     processNeighbors();
     processOids();
+    processSwitchesEnd();
     processRoutes(true);
     processRoutes(false);
-
-    // TODO do set on switch at the end !
 
     checkAllIds();
 }
 
 template<typename FUN>
 bool shouldSkipCreation(
-        sai_object_id_t vid,
-        sai_object_id_t& rid,
-        bool& createObject,
-        FUN fun)
+        _In_ sai_object_id_t vid,
+        _In_ sai_object_id_t& rid,
+        _In_ bool& createObject,
+        _In_ FUN fun)
 {
+    SWSS_LOG_ENTER();
+
     auto it = g_vidToRidMap.find(vid);
 
     if (it == g_vidToRidMap.end())
     {
-        SWSS_LOG_ERROR("failed to find VID 0x%lx in VIDTORID map", vid);
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to find VID %s in VIDTORID map", 
+                sai_serialize_object_id(vid).c_str());
     }
 
     if (fun(it->second))
@@ -317,36 +346,12 @@ bool shouldSkipCreation(
     return false;
 }
 
-// TODO there is utility function i metadata
-const sai_attribute_t* get_attribute_by_id(
-        _In_ sai_object_id_t id,
-        _In_ uint32_t attr_count,
-        _In_ const sai_attribute_t* attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    if (attr_list == NULL)
-    {
-        return NULL;
-    }
-
-    for (uint32_t i = 0; i < attr_count; ++i)
-    {
-        if (attr_list[i].id == id)
-        {
-            return &attr_list[i];
-        }
-    }
-
-    return NULL;
-}
-
 void trapGroupWorkaround(
-        sai_object_id_t vid,
-        sai_object_id_t& rid,
-        bool& createObject,
-        uint32_t attrCount,
-        const sai_attribute_t* attrList)
+        _In_ sai_object_id_t vid,
+        _In_ sai_object_id_t& rid,
+        _In_ bool& createObject,
+        _In_ uint32_t attrCount,
+        _In_ const sai_attribute_t* attrList)
 {
     SWSS_LOG_ENTER();
 
@@ -364,41 +369,45 @@ void trapGroupWorkaround(
 
     SWSS_LOG_INFO("creating trap group and setting attributes 1 by 1 as workaround");
 
-    // TODO move this to metadata utils
-    const sai_attribute_t* queue_attr = get_attribute_by_id(SAI_HOSTIF_TRAP_GROUP_ATTR_QUEUE, attrCount, attrList);
+    const sai_attribute_t* queue_attr = sai_metadata_get_attr_by_id(SAI_HOSTIF_TRAP_GROUP_ATTR_QUEUE, attrCount, attrList);
 
     if (queue_attr == NULL)
     {
-        SWSS_LOG_ERROR("missing QUEUE attribute on TRAP_GROUP creation even if it's not MANDATORY");
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("missing QUEUE attribute on TRAP_GROUP creation even if it's not MANDATORY");
     }
 
-    create_fn create = common_create[objectType];
+    auto info = sai_all_object_type_infos[objectType];
 
-    if (create == NULL)
+    if (info == NULL)
     {
-        SWSS_LOG_ERROR("create function is not defined for object type %s", sai_serialize_object_type(objectType).c_str());
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("create function is not defined for object type %s", 
+                sai_serialize_object_type(objectType).c_str());
     }
 
-    sai_status_t status = create(&rid, 1, queue_attr);
+    sai_object_meta_key meta_key;
+
+    meta_key.object_type = objectType;
+
+    sai_status_t status = info->(&meta_key, switch_rid, 1, queue_attr);
+
+    rid = meta_key.object_ket.key.object_id;
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to create TRAP_GROUP %s", sai_serialize_status(status).c_str());
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to create TRAP_GROUP %s", 
+                sai_serialize_status(status).c_str());
     }
 
-    SWSS_LOG_DEBUG("created TRAP_GROUP (%d), processed VID 0x%lx to RID 0x%lx", objectType, vid, rid);
+    SWSS_LOG_DEBUG("created TRAP_GROUP (%s), processed VID %s to RID %s", 
+            sai_serialize_object_type(objectType).c_str(),
+            sai_serialize_object_id(vid).c_str(),
+            sai_serialize_object_id(rid).c_str();
 }
 
 void listFailedAttributes(
-        sai_object_type_t objectType,
-        uint32_t attrCount,
-        const sai_attribute_t* attrList)
+        _In_ sai_object_type_t objectType,
+        _In_ uint32_t attrCount,
+        _In_ const sai_attribute_t* attrList)
 {
     SWSS_LOG_ENTER();
 
@@ -410,15 +419,17 @@ void listFailedAttributes(
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("failed to get atribute metadata %d %d", objectType, attr->id);
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_ERROR("failed to get atribute metadata %s %d", 
+                    sai_serialize_object_type(objectType).c_str(),
+                    attr->id);
         }
 
         SWSS_LOG_ERROR("%s = %s", meta->attridname, sai_serialize_attr_value(*meta, *attr).c_str());
     }
 }
 
-sai_object_id_t processSingleVid(sai_object_id_t vid)
+sai_object_id_t processSingleVid(
+        _In_ sai_object_id_t vid)
 {
     SWSS_LOG_ENTER();
 
@@ -433,10 +444,13 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
     if (it != g_translated.end())
     {
-        // this object was already processed,
-        // just return real object id
+        /*
+         * This object was already processed, just return real object id.
+         */
 
-        SWSS_LOG_DEBUG("processed VID 0x%lx to RID 0x%lx", vid, it->second);
+        SWSS_LOG_DEBUG("processed VID %s to RID %s", 
+                sai_serialize_object_id(vid).c_str(),
+                sai_serialize_object_id(it->second).c_str());
 
         return it->second;
     }
@@ -450,9 +464,7 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
     if (oit == g_oids.end())
     {
-        SWSS_LOG_ERROR("failed to find VID %s in OIDs map", strVid.c_str());
-
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to find VID %s in OIDs map", strVid.c_str());
     }
 
     std::string asicKey = oit->second;;
@@ -466,6 +478,11 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
     uint32_t attrCount = list->get_attr_count();
 
     bool createObject = true;
+
+    /*
+     * TODO optimze this should skip creation. We should have some stuff inside
+     * SaiSwitch.
+     */
 
     if (objectType == SAI_OBJECT_TYPE_VIRTUAL_ROUTER)
     {
@@ -525,20 +542,19 @@ sai_object_id_t processSingleVid(sai_object_id_t vid)
 
         if (create == NULL)
         {
-            SWSS_LOG_ERROR("create function is not defined for object type %s", sai_serialize_object_type(objectType).c_str());
-
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("create function is not defined for object type %s", 
+                    sai_serialize_object_type(objectType).c_str());
         }
 
         sai_status_t status = create(&rid, attrCount, attrList);
 
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_ERROR("failed to create object %s: %s", sai_serialize_object_type(objectType).c_str(), sai_serialize_status(status).c_str());
-
             listFailedAttributes(objectType, attrCount, attrList);
 
-            exit_and_notify(EXIT_FAILURE);
+            SWSS_LOG_THROW("failed to create object %s: %s", 
+                    sai_serialize_object_type(objectType).c_str(), 
+                    sai_serialize_status(status).c_str());
         }
 
         SWSS_LOG_DEBUG("created object of type %x, processed VID 0x%lx to RID 0x%lx", objectType, vid, rid);
@@ -794,3 +810,6 @@ void processRoutes(bool defaultOnly)
         }
     }
 }
+
+// TODO at the end we need to repopulate switch attributes
+// since on create we need only use the ones without object id's

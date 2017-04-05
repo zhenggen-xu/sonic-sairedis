@@ -1,4 +1,5 @@
 #include "syncd.h"
+#include "syncd_saiswitch.h"
 #include "sairedis.h"
 
 #include <string>
@@ -30,6 +31,38 @@ sai_uint32_t SaiSwitch::saiGetPortCount()
     SWSS_LOG_DEBUG("port count is %u", attr.value.u32);
 
     return attr.value.u32;
+}
+
+#define MAX_HARDWARE_INFO_LENGTH 0x1000
+
+std::string SaiSwitch::saiGetHardwareInfo()
+{
+    SWSS_LOG_ENTER();
+
+    sai_attribute_t attr;
+
+    char info[MAX_HARDWARE_INFO_LENGTH];
+
+    memset(info, 0, MAX_HARDWARE_INFO_LENGTH);
+
+    attr.id = SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO;
+
+    attr.value.s8list.count = MAX_HARDWARE_INFO_LENGTH;
+    attr.value.s8list.list = (int8_t*)info;
+
+    sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
+
+    if (status != SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_THROW("failed to get switch hardware info: %s",
+                sai_serialize_status(status).c_str());
+    }
+
+    SWSS_LOG_DEBUG("hardware info length: %s", info);
+
+    m_hardware_info = std::string(info);
+
+    return m_hardware_info;
 }
 
 sai_object_id_t SaiSwitch::saiGetCpuId()
@@ -72,7 +105,10 @@ std::vector<sai_object_id_t> SaiSwitch::saiGetPortList()
     attr.value.objlist.count = portCount;
     attr.value.objlist.list = portList.data();
 
-    // we assume port list is always returned in the same order
+    /*
+     * NOTE: We assume port list is always returned in the same order.
+     */
+
     sai_status_t status = sai_metadata_sai_switch_api->get_switch_attribute(m_switch_rid, 1, &attr);
 
     if (status != SAI_STATUS_SUCCESS)
@@ -97,8 +133,8 @@ std::unordered_map<sai_uint32_t, sai_object_id_t> SaiSwitch::saiGetHardwareLaneM
     const std::vector<sai_object_id_t> portList = saiGetPortList();
 
     /*
-     * NOTE: currently we don't support port breakout
-     * this will need to be addressed in future.
+     * NOTE: Currently we don't support port breakout this will need to be
+     * addressed in future.
      */
 
     const int lanesPerPort = 4;
@@ -212,10 +248,12 @@ std::string SaiSwitch::getRedisLanesKey()
     /*
      * Each switch will have it's own lanes in format LANES:oid:0xYYYYYYYY.
      *
-     * NOTE: We are using switch VID here.
+     * NOTE: To support multple switches LANES needs to be made per switch.
+     *
+     * return std::string(LANES) + ":" + sai_serialize_object_id(m_switch_vid);
      */
 
-    return std::string(LANES) + ":" + sai_serialize_object_id(m_switch_vid);
+    return std::string(LANES);
 }
 
 void SaiSwitch::redisClearLaneMap()
@@ -316,12 +354,20 @@ std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetVidToRid
 {
     SWSS_LOG_ENTER();
 
+    /*
+     * NOTE: To support multiple switches VIDTORID must be per switch.
+     */
+
     return redisGetObjectMap(VIDTORID);
 }
 
 std::unordered_map<sai_object_id_t, sai_object_id_t> SaiSwitch::redisGetRidToVidMap()
 {
     SWSS_LOG_ENTER();
+
+    /*
+     * NOTE: To support multiple switches RIDTOVID must be per switch.
+     */
 
     return redisGetObjectMap(RIDTOVID);
 }
@@ -375,10 +421,12 @@ std::string SaiSwitch::getRedisHiddenKey()
     /*
      * Each switch will have it's own hidden in format HIDDEN:oid:0xYYYYYYYY.
      *
-     * NOTE: We are using switch VID here.
+     * NOTE: To support multiple switches HIDDEN needs to me made per switch.
+     *
+     * return std::string(HIDDEN) + ":" + sai_serialize_object_id(m_switch_vid);
      */
 
-    return std::string(HIDDEN) + ":" + sai_serialize_object_id(m_switch_vid);
+    return std::string(HIDDEN);
 }
 
 sai_object_id_t SaiSwitch::redisGetDefaultVirtualRouterId()
@@ -506,10 +554,13 @@ void SaiSwitch::redisCreateRidAndVidMapping(
     std::string strRid = sai_serialize_object_id(rid);
     std::string strVid = sai_serialize_object_id(vid);
 
-    // TODO should we have different mapping per switch ?
-
     /*
      * TODO: this must be ATOMIC.
+     */
+
+    /*
+     * NOTE: To support multiple switches VIDTORID and RIDTOVID must be per
+     * switch.
      */
 
     g_redisClient->hset(VIDTORID, strVid, strRid);
@@ -517,8 +568,6 @@ void SaiSwitch::redisCreateRidAndVidMapping(
 
     SWSS_LOG_DEBUG("set VID 0x%lx and RID 0x%lx", vid, rid);
 }
-
-// TODO should we have different db's per each switch ?
 
 void SaiSwitch::redisSetDummyAsicStateForRealObjectId(
         _In_ sai_object_id_t rid)
@@ -675,7 +724,7 @@ void SaiSwitch::redisCreateDummyEntryInAsicView(
 {
     SWSS_LOG_ENTER();
 
-    sai_object_id_t vid = translate_rid_to_vid(objectId);
+    sai_object_id_t vid = translate_rid_to_vid(objectId, m_switch_vid);
 
     sai_object_type_t objectType = sai_object_type_query(objectId);
 
@@ -1081,6 +1130,32 @@ void SaiSwitch::helperCheckSchedulerGroupsIds()
     }
 }
 
+sai_object_id_t SaiSwitch::getVid() const
+{
+    SWSS_LOG_ENTER();
+
+    return m_switch_vid;
+}
+
+sai_object_id_t SaiSwitch::getRid() const
+{
+    SWSS_LOG_ENTER();
+
+    return m_switch_rid;
+}
+
+std::string SaiSwitch::getHardwareInfo() const
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * Since this attribute is CREATE_ONLY this value will not change in entire
+     * life of switch.
+     */
+
+    return m_hardware_info;
+}
+
 SaiSwitch::SaiSwitch(
         _In_ sai_object_id_t switch_vid,
         _In_ sai_object_id_t switch_rid)
@@ -1088,7 +1163,7 @@ SaiSwitch::SaiSwitch(
     m_switch_rid = switch_rid;
     m_switch_vid = switch_vid;
 
-    // TODO ! we need RID !
+    m_hardware_info = saiGetHardwareInfo();
 
     helperCheckLaneMap();
 
@@ -1110,61 +1185,4 @@ SaiSwitch::SaiSwitch(
     helperCheckPriorityGroupsIds();
 
     helperCheckSchedulerGroupsIds();
-
-    // TODO we need to get SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO
-}
-
-
-
-// if this is worm start then we assume some switches exists
-// already, we can get them from asic state table
-// and run those checks,
-// if no switches exists, we can create them first
-// TODO - lets only choose CREATE_ONLY and MANDATORY_ON_CREATE
-// atttributes, and rest could be jsut set in hard reinit
-//
-// but before we need helper functions to run
-// we can also put this inside class
-void onSyncdStart(bool warmStart)
-{
-    // it may happen that after initialize we will receive
-    // some port notifications with port'ids that are not in
-    // redis db yet, so after checking VIDTORID map there will
-    // be entries and translate_vid_to_rid will generate new
-    // id's for ports, this may cause race condition so we need
-    // to use a lock here to prevent that
-
-    std::lock_guard<std::mutex> lock(g_mutex);
-
-    // TODO this needs to be check on warm start and on hard reinit
-    // so we need to get list of all switches somehow, since after
-    // restart that list will not be populated
-    // we could use redis or bulk api query to do that
-    // and check some get operations etc
-
-    // TODO and on restart we need to populate switch map
-    // and initialize them both, if they exists ?
-    // if they don't exist, then hard reinit, but they will exist
-    // anyway and hard reinit will create them then ?
-    // how we will know if it's in asic ?
-
-    SWSS_LOG_ENTER();
-
-    SWSS_LOG_TIMER("on syncd start");
-
-    // helpers
-
-    // TODO add SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID
-    // also support this values inside virtual switch
-    // and what will happen if user will moify existing profile values?
-
-    if (warmStart)
-    {
-        SWSS_LOG_NOTICE("skipping hard reinit since WARM start was performed");
-        return;
-    }
-
-    SWSS_LOG_NOTICE("performing hard reinit since COLD start was performed");
-
-    hardReinit();
 }

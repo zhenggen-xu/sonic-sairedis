@@ -1,7 +1,6 @@
 #include "syncd.h"
+#include "syncd_saiswitch.h"
 #include "sairedis.h"
-
-// TODO should VIDTORID also be per switch ? or global?
 
 #include <iostream>
 #include <map>
@@ -13,6 +12,21 @@ std::shared_ptr<swss::ProducerTable>        getResponse;
 std::shared_ptr<swss::NotificationProducer> notifications;
 
 std::map<std::string, std::string> gProfileMap;
+
+/**
+ * @brief Contais map of all created switches.
+ *
+ * This syncd implementation supports only one switch but it's writeen in
+ * a way that could be excented to use multple switches in t he future, some
+ * refactoring needs to be made in marked places.
+ *
+ * To support multiple switches VIDTORID and RIDTOVID db entries needs to be
+ * made per switch like HIDDEN and LANES. Best way is to wrap vid/rid map to
+ * functions that will return right key.
+ *
+ * Key is switch VID.
+ */
+std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;
 
 /*
  * By default we are in APPLY mode.
@@ -280,12 +294,12 @@ void remove_rid_and_vid_from_local(
  */
 sai_object_id_t translate_rid_to_vid(
         _In_ sai_object_id_t rid,
-        _In_ sai_object_id_t switch_id)
+        _In_ sai_object_id_t switch_vid)
 {
     SWSS_LOG_ENTER();
 
     /*
-     * NOTE: switch_id here is Virtual ID of switch for which we need
+     * NOTE: switch_vid here is Virtual ID of switch for which we need
      * create VID for given RID.
      */
 
@@ -335,10 +349,15 @@ sai_object_id_t translate_rid_to_vid(
 
     if (object_type == SAI_OBJECT_TYPE_SWITCH)
     {
-        SWSS_LOG_THROW("RID 0x%lx is switch object, bug!");
+        /*
+         * Switch ID should be already inside local db or redis db when we
+         * created switch, so we should never get here.
+         */
+
+        SWSS_LOG_THROW("RID 0x%lx is switch object, but not in local or redis db, bug!");
     }
 
-    vid = redis_create_virtual_object_id(switch_id, object_type);
+    vid = redis_create_virtual_object_id(switch_vid, object_type);
 
     SWSS_LOG_DEBUG("translated RID 0x%lx to VID 0x%lx", rid, vid);
 
@@ -347,7 +366,7 @@ sai_object_id_t translate_rid_to_vid(
     /*
      * TODO: This must be ATOMIC.
      *
-     * TODO: also should we have vid/rid map per switch?
+     * TODO: To support multiple swiches we need this map per switch;
      */
 
     g_redisClient->hset(RIDTOVID, str_rid, str_vid);
@@ -803,6 +822,7 @@ void snoop_get_response(
 void internal_syncd_get_send(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &str_object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ sai_status_t status,
         _In_ uint32_t attr_count,
         _In_ sai_attribute_t *attr_list)
@@ -813,7 +833,7 @@ void internal_syncd_get_send(
 
     if (status == SAI_STATUS_SUCCESS)
     {
-        translate_rid_to_vid_list(object_type, attr_count, attr_list);
+        translate_rid_to_vid_list(object_type, switch_id, attr_count, attr_list);
 
         /*
          * Normal serialization + translate RID to VID.
@@ -950,41 +970,47 @@ service_method_table_t test_services = {
     profile_get_next_value
 };
 
-void on_switch_create( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
-
 void on_switch_create(
-        _In_ sai_object_id_t switch_id_vid)
+        _In_ sai_object_id_t switch_vid)
 {
     SWSS_LOG_ENTER();
 
-    // TODO we also need RID for this switch
-    //
+    sai_object_id_t switch_rid = translate_vid_to_rid(switch_vid);
 
-    sai_object_id_t switch_id_rid = SAI_NULL_OBJECT_ID; // TODO
+    if (switches.size() > 0)
+    {
+        SWSS_LOG_THROW("creating multiple switches is not supported yet, FIXME");
+    }
 
-    std::shared_ptr<SaiSwitch> sw = std::make_shared<SaiSwitch>(switch_id_vid, switch_id_rid);
+    /*
+     * All needed data to populate switch schould be obtained inside SaiSwitch
+     * constructor, like getting all queues, ports, etc.
+     */
 
-
-    // TODO we need to make some actions after switch create
-    // like create switch class and get all ports vlans
-    // queyes etc ... perform reinit here
-
-    SWSS_LOG_THROW("not implemented");
+    switches[switch_vid] = std::make_shared<SaiSwitch>(switch_vid, switch_rid);
 }
 
-void on_switch_remove( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
+void on_switch_remove(
+        _In_ sai_object_id_t switch_id_vid)
+    __attribute__ ((__noreturn__));
 
 void on_switch_remove(
         _In_ sai_object_id_t switch_id_vid)
 {
     SWSS_LOG_ENTER();
 
-    // TODO on remove switch there should be extra action
-    // all local obejcts and redis object should be removed on remove switch
-    // local and redis db objects should be cleared
-    // if each switch would be in separate db, then we could just clean db
+    /*
+     * On remove switch there should be extra action all local obejcts and
+     * redis object should be removed on remove switch local and redis db
+     * objects should be cleared.
+     *
+     * Currently we don't want to remove switch so we don't need this method,
+     * but lets put this as a safety check.
+     *
+     * To support multiple switches this function needs to be refactored.
+     */
 
-    SWSS_LOG_THROW("not implemented");
+    SWSS_LOG_THROW("remove switch is not implemented, FIXME");
 }
 
 sai_status_t handle_generic(
@@ -1057,6 +1083,18 @@ sai_status_t handle_generic(
 
                     switch_id = translate_vid_to_rid(switch_id);
                 }
+                else
+                {
+                    if (switches.size() > 0)
+                    {
+                        /*
+                         * NOTE: to support multiple switches we need support
+                         * here for create.
+                         */
+
+                        SWSS_LOG_THROW("creating multiple switches is not supported yet, FIXME");
+                    }
+                }
 
                 sai_status_t status = info->create(&meta_key, switch_id, attr_count, attr_list);
 
@@ -1074,6 +1112,8 @@ sai_status_t handle_generic(
 
                     /*
                      * TODO: This must be ATOMIC.
+                     *
+                     * To support multiple switches vid/rid map must be per switch.
                      */
 
                     g_redisClient->hset(VIDTORID, str_vid, str_rid);
@@ -1405,40 +1445,159 @@ sai_status_t notifySyncd(
     return SAI_STATUS_SUCCESS;
 }
 
-void on_init_view_switch_create( _In_ sai_object_id_t switch_id_vid) __attribute__ ((__noreturn__));
-void on_init_view_switch_create(
-        _In_ sai_object_id_t switch_id_vid)
+void on_switch_create_in_init_view(
+        _In_ sai_object_id_t switch_vid,
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
 
-    // TODO we will need to create here actual switch if it don't exists
-    // if hardware info do not match
+    /*
+     * This needs to be refactored if we need multiple switch support.
+     */
 
-    // TODO we have 2 options here, we match existing switch (even if multiple)
-    // by SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO, if they are different
-    // then we need here to create new switch
-    // thats why we can keep track for all switches
-    // and then we can do comparison and GET will work then
+    /*
+     * We can have multiple switches here, but each switch is identified by
+     * SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO. This attribute is treated as key,
+     * so each switch will have diferent hardware info.
+     *
+     * Currently we assume that we have only one switch.
+     *
+     * We can have 2 scenarios here:
+     *
+     * - we have multiple switches already existing, and in init view mode user
+     *   will create the same switches, then since switch id are deterministic
+     *   we can match them byt hardware info and by switch id, it may happen
+     *   that switch id will be different if user will create switches in
+     *   different order, this case will be not supported unless special logic
+     *   will be written to handle that case.
+     *
+     * - if user creted switches but non of switch has the same hardware info
+     *   then it means we need to create actual switch here, since user will
+     *   want to query switch ports etc values, thats why on create switch is
+     *   special case, and thats why we need to keep track of all switches
+     *
+     * Since we are creating switch here, we are sure that this switch don't
+     * have any oid attributes set, so we can pass all attributes
+     */
 
-    // BLOCKER
-    //
-    // also this will be a problem if orhagent will create the same switch
-    // with the same hardware info but with different order
-    // since switch id is deterministic, then VID of both switches will not match
-    //
-    // first we can have INFO = "A" swid 0x00170000
-    // te                INFO = "B" swid 0x01170001
-    //
-    // // how to deal with that ?, just throw in that case ? - so far yes !
+    /*
+     * Multiple switches scenario with changed order:
+     *
+     * Ff orhagent will create the same switch with the same hardware info but
+     * with different order since switch id is deterministic, then VID of both
+     * switches will not match:
+     *
+     * First we can have INFO = "A" swid 0x00170000, INFO = "B" swid 0x01170001
+     *
+     * Then we can have INFO = "B" swid 0x00170000, INFO = "A" swid 0x01170001
+     *
+     * Currently we don't have good solution for that so we will throw in that case.
+     */
 
-    // first we can have INFO = "B" swid 0x00170000
-    // te                INFO = "!" swid 0x01170001
-    //
-    // we need to assume that we dont hit this case, if we do, then throw
+    if (switches.size() == 0)
+    {
+        /*
+         * There are no switches currently, so we need to create this switch so
+         * user in init mode could query switch properties using GET api.
+         *
+         * We assume that none of attributes is obejct id attribute.
+         *
+         * This scenario can happen when you start syncd on empty database and
+         * then you quit and restart it again.
+         */
 
-    // get all sswitches here and compare SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO
+        sai_object_id_t switch_rid;
 
-    SWSS_LOG_THROW("not implemented");
+        sai_status_t status = sai_metadata_sai_switch_api->create_switch(&switch_rid, attr_count, attr_list);
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_THROW("failed to create switch in init view mode: %s",
+                    sai_serialize_status(status).c_str());
+        }
+
+        /*
+         * Object was created so new object id was generated we
+         * need to save virtual id's to redis db.
+         */
+
+        std::string str_vid = sai_serialize_object_id(switch_vid);
+        std::string str_rid = sai_serialize_object_id(switch_rid);
+
+        /*
+         * TODO: This must be ATOMIC.
+         *
+         * To support multiple switches vid/rid map must be per switch.
+         */
+
+        g_redisClient->hset(VIDTORID, str_vid, str_rid);
+        g_redisClient->hset(RIDTOVID, str_rid, str_vid);
+
+        save_rid_and_vid_to_local(switch_rid, switch_vid);
+
+        /*
+         * Make switch initialization and get all default data.
+         */
+
+        switches[switch_vid] = std::make_shared<SaiSwitch>(switch_vid, switch_rid);
+
+        SWSS_LOG_NOTICE("created real switch VID %s to RID %s in init view mode", str_vid.c_str(), str_rid.c_str());
+    }
+    else if (switches.size() == 1)
+    {
+        /*
+         * There is already switch defined, we need to match it by hardware
+         * info and we need to know that current switch VID also should match
+         * since it's deterministic created.
+         */
+
+        auto sw = switches.at(0);
+
+        /*
+         * Switches VID must match, since it's deterministic.
+         */
+
+        if (switch_vid != sw->getVid())
+        {
+            SWSS_LOG_THROW("created switch VID don't match: previous %s, current: %s",
+                    sai_serialize_object_id(switch_vid).c_str(),
+                    sai_serialize_object_id(sw->getVid()).c_str());
+        }
+
+        /*
+         * Also hardware info also must match.
+         */
+
+        std::string currentHw = sw->getHardwareInfo();
+        std::string newHw;
+
+        auto attr = sai_metadata_get_attr_by_id(SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO, attr_count, attr_list);
+
+        if (attr == NULL)
+        {
+            /*
+             * This is ok, attribute don't exists, so assumption is empty string.
+             */
+        }
+        else
+        {
+            SWSS_LOG_DEBUG("new switch contains hardware info of length %u", attr->value.s8list.count);
+
+            newHw = std::string((char*)attr->value.s8list.list, attr->value.s8list.count);
+        }
+
+        if (currentHw != newHw)
+        {
+            SWSS_LOG_THROW("hardware info missmatch: current '%s' vs new '%s'", currentHw.c_str(), newHw.c_str());
+        }
+
+        SWSS_LOG_NOTICE("current switch hardware info: %s", currentHw.c_str());
+    }
+    else
+    {
+        SWSS_LOG_THROW("number of switches is %zu in init view mode, this is not supported yet, FIXME", switches.size());
+    }
 }
 
 sai_status_t processEventInInitViewMode(
@@ -1489,7 +1648,7 @@ sai_status_t processEventInInitViewMode(
 
                 if (object_type == SAI_OBJECT_TYPE_SWITCH)
                 {
-                    on_init_view_switch_create(object_id);
+                    on_switch_create_in_init_view(object_id, attr_count, attr_list);
                 }
             }
 
@@ -1504,6 +1663,8 @@ sai_status_t processEventInInitViewMode(
                  * switch id's from all db's currently we skip this since we
                  * assume that orchagent will not be removing just created
                  * switches. But it may happen when asic will fail etc.
+                 *
+                 * To support multiple switches this case must be refactored.
                  */
 
                 SWSS_LOG_THROW("remove switch (%s) is not supported in init view mode yet! FIXME", str_object_id.c_str());
@@ -1571,7 +1732,33 @@ sai_status_t processEventInInitViewMode(
                     status = info->get(&meta_key, attr_count, attr_list);
                 }
 
-                internal_syncd_get_send(object_type, str_object_id, status, attr_count, attr_list);
+                sai_object_id_t switch_id;
+
+                if (switches.size() == 1)
+                {
+                    /*
+                     * We are in init view mode, but eather switch already
+                     * existed or first command was creating switch and user
+                     * created switch.
+                     *
+                     * We could change that later on, depends on object type we
+                     * can extract switch id, we could also have this method
+                     * inside metadata to get meta key.
+                     */
+
+                    switch_id = switches.at(0)->getVid();
+                }
+                else
+                {
+                    /*
+                     * This needs to be updated to support multiple switches
+                     * scenario.
+                     */
+
+                    SWSS_LOG_THROW("multiple switches are not supported yet: %zu", switches.size());
+                }
+
+                internal_syncd_get_send(object_type, str_object_id, switch_id, status, attr_count, attr_list);
 
                 return status;
             }
@@ -1581,6 +1768,50 @@ sai_status_t processEventInInitViewMode(
             SWSS_LOG_THROW("common api (%s) is not implemented in init view mode", sai_serialize_common_api(api).c_str());
     }
 
+}
+
+sai_object_id_t extractSwitchVid(
+        _In_ sai_object_type_t object_type,
+        _In_ const std::string& str_object_id)
+{
+    SWSS_LOG_ENTER();
+
+    auto info = sai_all_object_type_infos[object_type];
+
+    /*
+     * Could be replaced by meta_key.
+     */
+
+    sai_fdb_entry_t fdb_entry;
+    sai_neighbor_entry_t neighbor_entry;
+    sai_route_entry_t route_entry;
+    sai_object_id_t oid;
+
+    switch (object_type)
+    {
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
+            sai_deserialize_fdb_entry(str_object_id, fdb_entry);
+            return fdb_entry.switch_id;
+
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            sai_deserialize_neighbor_entry(str_object_id, neighbor_entry);
+            return neighbor_entry.switch_id;
+
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+            sai_deserialize_route_entry(str_object_id, route_entry);
+            return route_entry.switch_id;
+
+        default:
+
+            if (info->isnonobjectid)
+            {
+                SWSS_LOG_THROW("passing non object id %s as generic object", info->objecttypename);
+            }
+
+            sai_deserialize_object_id(str_object_id, oid);
+
+            return redis_sai_switch_id_query(oid);
+    }
 }
 
 sai_status_t processEvent(
@@ -1747,11 +1978,20 @@ sai_status_t processEvent(
     {
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_WARN("get API for key: %s op: %s returned status: %s", key.c_str(), op.c_str(),
+            SWSS_LOG_WARN("get API for key: %s op: %s returned status: %s",
+                    key.c_str(),
+                    op.c_str(),
                     sai_serialize_status(status).c_str());
         }
 
-        internal_syncd_get_send(object_type, str_object_id, status, attr_count, attr_list);
+        /*
+         * Extracting switch is double work here, we can avoid this when we
+         * will use meta_key.
+         */
+
+        sai_object_id_t switch_vid = extractSwitchVid(object_type, str_object_id);
+
+        internal_syncd_get_send(object_type, str_object_id, switch_vid, status, attr_count, attr_list);
     }
     else if (status != SAI_STATUS_SUCCESS)
     {
@@ -2065,7 +2305,7 @@ bool isVeryFirstRun()
      * start of syncd later on we can add additional checks here.
      *
      * TODO: if we add more switches then we need lane maps per switch.
-     * TODO we also need other way to check if this is first start
+     * TODO: we also need other way to check if this is first start
      */
 
     auto redisLaneMap = redisGetLaneMap();
@@ -2134,6 +2374,107 @@ void set_sai_api_loglevel()
     {
         swss::Logger::linkToDb(metadata_enum_sai_api_t.valuesnames[idx], saiLoglevelNotify, "SAI_LOG_LEVEL_NOTICE");
     }
+}
+
+void performWarmRestart()
+{
+    SWSS_LOG_ENTER();
+
+    /*
+     * There should be no case when we are doing warm restart and there is no
+     * switch defined, we will throw at sucha case.
+     *
+     * This case could be possible when no switches were created and only api
+     * was initialized, but we will skip this scenario and address is when we
+     * will have need for it.
+     */
+
+    auto entries = g_redisClient->keys(ASIC_STATE_TABLE + std::string(":SAI_OBJECT_TYPE_SWITCH"));
+
+    if (entries.size() == 0)
+    {
+        SWSS_LOG_THROW("on warm restart there is no switches defined in DB, not supported yet, FIXME");
+    }
+
+    if (entries.size() != 1)
+    {
+        SWSS_LOG_THROW("multiple switches defined in warm start: %zu, not supported yet, FIXME", entries.size());
+    }
+
+    /*
+     * Here wa have only one switch defined, let's extract his vid and rid.
+     */
+
+    /*
+     * Entry should be in format ASIC_STATE:SAI_OBJECT_TYPE_SWITCH:oid:0xYYYY
+     *
+     * Let's extract oid value
+     */
+
+    std::string key = entries.at(0);
+
+    auto start = key.find_first_of(":") + 1;
+    auto end = key.find(":", start);
+
+    std::string strSwitchVid = key.substr(end + 1);
+
+    sai_object_id_t switch_vid;
+
+    sai_deserialize_object_id(strSwitchVid, switch_vid);
+
+    sai_object_id_t switch_rid = translate_vid_to_rid(switch_vid);
+
+    /*
+     * Perform all get operations on existing switch.
+     */
+
+    switches[switch_vid] = std::make_shared<SaiSwitch>(switch_vid, switch_rid);
+}
+
+void onSyncdStart(bool warmStart)
+{
+    /*
+     * It may happen that after initialize we will receive some port
+     * notifications with port'ids that are not in redis db yet, so after
+     * checking VIDTORID map there will be entries and translate_vid_to_rid
+     * will generate new id's for ports, this may cause race condition so we
+     * need to use a lock here to prevent that.
+     */
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_TIMER("on syncd start");
+
+    if (warmStart)
+    {
+        /*
+         * Switch was warm started, so switches map is empty, we need to
+         * recreate it based on existing entries inside database.
+         *
+         * Currently we expect only one switch, then we need to call it.
+         *
+         * Also this will make sure that current switch id is the same as
+         * before restart.
+         *
+         * If we want to support multiple switches, this needs to be addjusted.
+         */
+
+        performWarmRestart();
+
+        SWSS_LOG_NOTICE("skipping hard reinit since WARM start was performed");
+        return;
+    }
+
+    SWSS_LOG_NOTICE("performing hard reinit since COLD start was performed");
+
+    /*
+     * Switch was restarted in hard way, we need to perform hard reinit and
+     * recreate switches map.
+     */
+
+    hardReinit();
 }
 
 int main(int argc, char **argv)
