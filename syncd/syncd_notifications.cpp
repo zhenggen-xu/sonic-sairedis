@@ -1,9 +1,6 @@
 #include "syncd.h"
 #include "sairedis.h"
 
-// TODO support those notifications on SET and CREATE on switch
-// so that pointers need to be redefined (same on player)
-
 void send_notification(
         _In_ std::string op,
         _In_ std::string data,
@@ -30,16 +27,16 @@ void send_notification(
 }
 
 void on_switch_state_change(
-        _In_ sai_object_id_t switch_id,
+        _In_ sai_object_id_t switch_rid,
         _In_ sai_switch_oper_status_t switch_oper_status)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
-    switch_id = translate_rid_to_vid(switch_id);
+    sai_object_id_t switch_vid = translate_rid_to_vid(switch_rid, SAI_NULL_OBJECT_ID);
 
-    std::string s = sai_serialize_switch_oper_status(switch_id, switch_oper_status);
+    std::string s = sai_serialize_switch_oper_status(switch_vid, switch_oper_status);
 
     send_notification("switch_state_change", s);
 }
@@ -103,8 +100,13 @@ void redisPutFdbEntryToAsicView(
 
     if (meta == NULL)
     {
-        SWSS_LOG_ERROR("unable to get metadata for object type %x, attribute %x", objectType, attr.id);
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("unable to get metadata for object type %s, attribute %d",
+                sai_serialize_object_type(objectType).c_str(),
+                attr.id);
+        /*
+         * TODO We should notify orch agent here. And also this probably should
+         * not be here, but on redis side, getting through metadata.
+         */
     }
 
     std::string strAttrId = sai_serialize_attr_id(*meta);
@@ -129,10 +131,13 @@ void on_fdb_event(
 
         SWSS_LOG_DEBUG("fdb %u: type: %d", i, fdb->event_type);
 
-        translate_rid_to_vid_list(SAI_OBJECT_TYPE_FDB_ENTRY, fdb->attr_count, fdb->attr);
+        translate_rid_to_vid_list(SAI_OBJECT_TYPE_FDB_ENTRY, fdb->fdb_entry.switch_id, fdb->attr_count, fdb->attr);
 
-        // currently because of bcrm bug, we need to install fdb entries in asic view
-        // and currently this event don't have fdb type which is required on creation
+        /*
+         * Currently because of bcrm bug, we need to install fdb entries in
+         * asic view and currently this event don't have fdb type which is
+         * required on creation.
+         */
 
         redisPutFdbEntryToAsicView(fdb);
     }
@@ -156,7 +161,16 @@ void on_port_state_change(
     {
         sai_port_oper_status_notification_t *oper_stat = &data[i];
 
-        oper_stat->port_id = translate_rid_to_vid(oper_stat->port_id);
+        /*
+         * We are using switch_rid as null, since port should be already
+         * defined inside local db after creation.
+         *
+         * If this will be faster than return from create port then we can use
+         * query switch id and extract rid of switch id and then convert it to
+         * switch vid.
+         */
+
+        oper_stat->port_id = translate_rid_to_vid(oper_stat->port_id, SAI_NULL_OBJECT_ID);
     }
 
     std::string s = sai_serialize_port_oper_status_ntf(count, data);
@@ -165,15 +179,15 @@ void on_port_state_change(
 }
 
 void on_switch_shutdown_request(
-        _In_ sai_object_id_t switch_id)
+        _In_ sai_object_id_t switch_rid)
 {
     std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
-    switch_id = translate_rid_to_vid(switch_id);
+    sai_object_id_t switch_vid = translate_rid_to_vid(switch_rid, SAI_NULL_OBJECT_ID);
 
-    std::string s = sai_serialize_switch_shutdown_request(switch_id);
+    std::string s = sai_serialize_switch_shutdown_request(switch_vid);
 
     send_notification("switch_shutdown_request", s);
 }
@@ -241,7 +255,7 @@ void check_notifications_pointers(
      *
      * Notifications pointers needs to be corrected since those we receive from
      * sairedis are in sairedis memory space and here we are using those ones
-     * we declared in syncd memory space. 
+     * we declared in syncd memory space.
      *
      * Also notice that we are using the same pointers for ALL switches.
      */
@@ -273,6 +287,13 @@ void check_notifications_pointers(
                 break;
 
             default:
+
+                /*
+                 * TODO: We should get metadata for attribute and check if it's
+                 * pointer type, and then warn if pointer is not supported, if
+                 * new notifications were added in the future.
+                 */
+
                 break;
         }
     }

@@ -101,6 +101,10 @@ void collectCountersThread(int intervalInSeconds)
     swss::DBConnector db(COUNTERS_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
     swss::Table countersTable(&db, "COUNTERS");
 
+    /*
+     * This must be per switch
+     */
+
     auto ports = saiGetPortList();
 
     // get supported counters on first port
@@ -122,14 +126,26 @@ void startCountersThread(int intervalInSeconds)
 {
     SWSS_LOG_ENTER();
 
+    if (g_runCountersThread)
+    {
+        SWSS_LOG_WARN("counter thread is already running");
+        return;
+    }
+
     g_runCountersThread = true;
 
-    g_countersThread = std::shared_ptr<std::thread>(new std::thread(collectCountersThread, intervalInSeconds));
+    g_countersThread = std::make_shared<std::thread>(collectCountersThread, intervalInSeconds);
 }
 
 void endCountersThread()
 {
     SWSS_LOG_ENTER();
+
+    if (!g_runCountersThread)
+    {
+        SWSS_LOG_WARN("counter thread is not running");
+        return;
+    }
 
     g_runCountersThread = false;
 

@@ -55,6 +55,7 @@ const service_method_table_t test_services = {
     test_profile_get_next_value
 };
 
+/* // TODO use meta pointers
 sai_acl_api_t                *sai_acl_api;
 sai_buffer_api_t             *sai_buffer_api;
 sai_fdb_api_t                *sai_fdb_api;
@@ -103,7 +104,7 @@ create_fn           common_create[SAI_OBJECT_TYPE_MAX];
 remove_fn           common_remove[SAI_OBJECT_TYPE_MAX];
 set_attribute_fn    common_set_attribute[SAI_OBJECT_TYPE_MAX];
 get_attribute_fn    common_get_attribute[SAI_OBJECT_TYPE_MAX];
-
+*/
 void initialize_common_api_pointers()
 {
     SWSS_LOG_ENTER();
