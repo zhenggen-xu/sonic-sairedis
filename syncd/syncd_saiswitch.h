@@ -31,6 +31,9 @@ class SaiSwitch
         bool isNonCreateRid(
                 _In_ sai_object_id_t rid);
 
+        void collectCounters(
+                _In_ swss::Table &countersTable);
+
         /*
          * Redis Static Methods.
          */
@@ -60,6 +63,8 @@ class SaiSwitch
         sai_object_id_t m_switch_rid;
 
         std::string m_hardware_info;
+
+        std::vector<sai_port_stat_t> m_supported_counters;
 
         /*
          * NOTE: Those default value will make sense only when we will do hard
@@ -136,6 +141,7 @@ class SaiSwitch
 
         uint32_t saiGetMaxNumberOfChildsPerSchedulerGroup();
 
+        std::vector<sai_port_stat_t> saiGetSupportedCounters();
         /*
          * Redis Methods.
          */
