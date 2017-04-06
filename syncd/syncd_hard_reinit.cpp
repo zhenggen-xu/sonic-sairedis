@@ -125,12 +125,20 @@ void redisClearVidToRidMap()
 {
     SWSS_LOG_ENTER();
 
+    /*
+     * NOTE: needs to be done per switch.
+     */
+
     g_redisClient->del(VIDTORID);
 }
 
 void redisClearRidToVidMap()
 {
     SWSS_LOG_ENTER();
+
+    /*
+     * NOTE: needs to be done per switch.
+     */
 
     g_redisClient->del(RIDTOVID);
 }

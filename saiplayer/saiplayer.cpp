@@ -252,7 +252,7 @@ void translate_local_to_redis(
                 break;
 
             default:
-                // check for non oid
+                // TODO check for non oid
                 break;
         }
     }

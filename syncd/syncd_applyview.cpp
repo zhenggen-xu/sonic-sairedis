@@ -6,6 +6,15 @@
 
 #include <algorithm>
 
+// TODO since next view maybe empty, then this mean it will execute remove switch
+// we need to handle taht case and clear switches to update and clear them
+// also clear db and vid maps
+
+
+// TODO we need to support obvious cases where switch don't exists on the beginning
+// so there is nothing to compare, that means just apply temporary state right away
+// no need to do any extra logic
+
 /*
  * NOTE: all methods taking current and temporary view could be moved to
  * transition class etc to just use class members instead of passing those
@@ -202,6 +211,11 @@ class SaiAttr
                     break;
 
                 default:
+
+                    if (m_meta->allowedobjecttypeslength > 0)
+                    {
+                        SWSS_LOG_THROW("attribute %s is oid attrubute but not handled", m_meta->attridname);
+                    }
 
                     /*
                      * Attribute not contain any object ids.
@@ -4587,8 +4601,6 @@ void updateRedisDatabase(/*{{{*/
 
 sai_status_t internalSyncdApplyView()/*{{{*/
 {
-    sai_status_t status;
-
     SWSS_LOG_ENTER();
 
     /*
@@ -4607,6 +4619,10 @@ sai_status_t internalSyncdApplyView()/*{{{*/
 
     AsicView current;
     AsicView temp;
+
+    /*
+     * Need to be per switch.
+     */
 
     ObjectIdMap vidToRidMap = redisGetVidToRidMap();
     ObjectIdMap ridToVidMap = redisGetRidToVidMap();
@@ -4657,13 +4673,15 @@ sai_status_t internalSyncdApplyView()/*{{{*/
      * counting on that that those objects exists.
      */
 
+    // TODO needs to be done per switch
+
     populateExistingObjects(current, temp, existingObjects);
     populateExistingObjects(current, temp, g_defaultQueuesRids);
     populateExistingObjects(current, temp, g_defaultPriorityGroupsRids);
     populateExistingObjects(current, temp, g_defaultSchedulerGroupsRids);
     populateExistingObjects(current, temp, g_defaultPortsRids);
 
-    status = applyViewTransition(current, temp);
+    sai_statis_t status = applyViewTransition(current, temp);
 
     if (status != SAI_STATUS_SUCCESS)
     {
@@ -4738,6 +4756,13 @@ sai_status_t internalSyncdApplyView()/*{{{*/
         return SAI_STATUS_FAILURE;
     }
 
+    /*
+     * Those operations if any of them fail, then we have inconsistent state.
+     * Everything above is non destructive.
+     *
+     * TODO: split this to 2 methods which only one will be under try/catch
+     */
+
     executeOperationsOnAsic(current, temp);
 
     updateRedisDatabase(current, temp);
@@ -4754,7 +4779,7 @@ sai_status_t syncdApplyView()/*{{{*/
     sai_status_t status = SAI_STATUS_FAILURE;
 
     {
-        SWSS_LOG_TIMER("apply"); // TODO we need this as notice
+        SWSS_LOG_TIMER("apply"); // TODO we need this as notice, we should create timer notice
 
         try
         {
@@ -4860,12 +4885,13 @@ void asic_translate_vid_to_rid_list(/*{{{*/
 
         if (meta == NULL)
         {
-            SWSS_LOG_ERROR("unable to get metadata for object type %x, attribute %d", object_type, attr.id);
+            SWSS_LOG_THROW("unable to get metadata for object type %s, attribute %d",
+                    sai_serialize_object_type(object_type).c_str(),
+                    attr.id);
 
-            // asic will be in inconsistent state at this point
-
-            exit_and_notify(EXIT_FAILURE);
-            throw std::runtime_error("unable to get metadata");
+            /*
+             * Asic will be in inconsistent state at this point
+             */
         }
 
         switch (meta->attrvaluetype)
@@ -4936,16 +4962,30 @@ sai_status_t asic_handle_generic(/*{{{*/
 
     SWSS_LOG_DEBUG("common generic api: %d", api);
 
+    /*
+     * If we will use split for generics we can avoid meta key if we will
+     * generate inside metadata generic pointers for all oid objects + switch
+     * special method.
+     *
+     * And this needs to be executed in sai_meta_apis_query.
+     */
+
+    auto info = sai_all_object_type_infos[object_type];
+
+    sai_object_meta_key_t meta_key;
+
+    meta_key.objecttype = object_type;
+
     switch (api)
     {
         case SAI_COMMON_API_CREATE:
             {
                 SWSS_LOG_DEBUG("generic create for object type %s", sai_serialize_object_type(object_type).c_str());
 
-                create_fn create = common_create[object_type];
+                // TODO we need switch ID
 
                 sai_object_id_t real_object_id;
-                sai_status_t status = create(&real_object_id, attr_count, attr_list);
+                sai_status_t status = info->create(&real_object_id, attr_count, attr_list);
 
                 if (status == SAI_STATUS_SUCCESS)
                 {
@@ -4974,9 +5014,9 @@ sai_status_t asic_handle_generic(/*{{{*/
             {
                 SWSS_LOG_DEBUG("generic remove for object type %s", sai_serialize_object_type(object_type).c_str());
 
-                remove_fn remove = common_remove[object_type];
-
                 sai_object_id_t rid = asic_translate_vid_to_rid(current, temporary, object_id);
+
+                meta_key.objectkey.key.object_id = rid;
 
                 std::string str_vid = sai_serialize_object_id(object_id);
                 std::string str_rid = sai_serialize_object_id(rid);
@@ -4988,18 +5028,18 @@ sai_status_t asic_handle_generic(/*{{{*/
 
                 current.removedVidToRid.erase(object_id);
 
-                return remove(rid);
+                return info->remove(&meta_key);
             }
 
         case SAI_COMMON_API_SET:
             {
                 SWSS_LOG_DEBUG("generic set for object type %s", sai_serialize_object_type(object_type).c_str());
 
-                set_attribute_fn set = common_set_attribute[object_type];
-
                 sai_object_id_t rid = asic_translate_vid_to_rid(current, temporary, object_id);
 
-                return set(rid, attr_list);
+                meta_key.objectkey.key.object_id = rid;
+
+                return info->set(&meta_key, attr_list);
             }
 
         default:
@@ -5021,16 +5061,19 @@ sai_status_t asic_handle_fdb(/*{{{*/
     sai_fdb_entry_t fdb_entry;
     sai_deserialize_fdb_entry(str_object_id, fdb_entry);
 
+    fdb_entry.switch_id = asic_translate_vid_to_rid(current, temporary, fdb_entry.switch_id);
+    fdb_entry.bridge_id = asic_translate_vid_to_rid(current, temporary, fdb_entry.bridge_id);
+
     switch (api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_fdb_api->create_fdb_entry(&fdb_entry, attr_count, attr_list);
+            return sai_metadata_sai_fdb_api->create_fdb_entry(&fdb_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_fdb_api->remove_fdb_entry(&fdb_entry);
+            return sai_metadata_sai_fdb_api->remove_fdb_entry(&fdb_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_fdb_api->set_fdb_entry_attribute(&fdb_entry, attr_list);
+            return sai_metadata_sai_fdb_api->set_fdb_entry_attribute(&fdb_entry, attr_list);
 
         default:
             SWSS_LOG_ERROR("fdb other apis not implemented");
@@ -5051,6 +5094,7 @@ sai_status_t asic_handle_neighbor(/*{{{*/
     sai_neighbor_entry_t neighbor_entry;
     sai_deserialize_neighbor_entry(str_object_id, neighbor_entry);
 
+    neighbor_entry.switch_id = asic_translate_vid_to_rid(current, temporary, neighbor_entry.switch_id);
     neighbor_entry.rif_id = asic_translate_vid_to_rid(current, temporary, neighbor_entry.rif_id);
 
     SWSS_LOG_DEBUG("neighbor: %s", str_object_id.c_str());
@@ -5058,13 +5102,13 @@ sai_status_t asic_handle_neighbor(/*{{{*/
     switch (api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_neighbor_api->create_neighbor_entry(&neighbor_entry, attr_count, attr_list);
+            return sai_metadata_sai_neighbor_api->create_neighbor_entry(&neighbor_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_neighbor_api->remove_neighbor_entry(&neighbor_entry);
+            return sai_metadata_sai_neighbor_api->remove_neighbor_entry(&neighbor_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_neighbor_api->set_neighbor_entry_attribute(&neighbor_entry, attr_list);
+            return sai_metadata_sai_neighbor_api->set_neighbor_entry_attribute(&neighbor_entry, attr_list);
 
         default:
             SWSS_LOG_ERROR("neighbor other apis not implemented");
@@ -5085,6 +5129,7 @@ sai_status_t asic_handle_route(/*{{{*/
     sai_route_entry_t route_entry;
     sai_deserialize_route_entry(str_object_id, route_entry);
 
+    route_entry.switch_id = asic_translate_vid_to_rid(current, temporary, route_entry.switch_id);
     route_entry.vr_id = asic_translate_vid_to_rid(current, temporary, route_entry.vr_id);
 
     SWSS_LOG_DEBUG("route: %s", str_object_id.c_str());
@@ -5092,13 +5137,13 @@ sai_status_t asic_handle_route(/*{{{*/
     switch (api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_route_api->create_route_entry(&route_entry, attr_count, attr_list);
+            return sai_metadata_sai_route_api->create_route_entry(&route_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_route_api->remove_route_entry(&route_entry);
+            return sai_metadata_sai_route_api->remove_route_entry(&route_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_route_api->set_route_entry_attribute(&route_entry, attr_list);
+            return sai_metadata_sai_route_api->set_route_entry_attribute(&route_entry, attr_list);
 
         default:
             SWSS_LOG_ERROR("route other apis not implemented");
@@ -5198,16 +5243,19 @@ sai_status_t asic_process_event(/*{{{*/
 
     if (status != SAI_STATUS_SUCCESS)
     {
-        SWSS_LOG_ERROR("failed to execute api: %s, key: %s, status: %s", op.c_str(), key.c_str(), sai_serialize_status(status).c_str());
-
         for (const auto &v: values)
         {
             SWSS_LOG_ERROR("field: %s, value: %s", fvField(v).c_str(), fvValue(v).c_str());
         }
 
-        // asic here will be in inconsistent state
+        /*
+         * Asic here will be in inconsistent state
+         */
 
-        exit_and_notify(EXIT_FAILURE);
+        SWSS_LOG_THROW("failed to execute api: %s, key: %s, status: %s",
+                op.c_str(),
+                key.c_str(),
+                sai_serialize_status(status).c_str());
     }
 
     return status;
@@ -5240,10 +5288,8 @@ void executeOperationsOnAsic(/*{{{*/
 
                 if (status != SAI_STATUS_SUCCESS)
                 {
-                    SWSS_LOG_ERROR("status of last operation was: %s, ASIC will be in inconsistent state, exiting",
+                    SWSS_LOG_THROW("status of last operation was: %s, ASIC will be in inconsistent state, exiting",
                             sai_serialize_status(status).c_str());
-
-                    exit_and_notify(EXIT_FAILURE);
                 }
             }
         }
@@ -5251,6 +5297,7 @@ void executeOperationsOnAsic(/*{{{*/
         {
             SWSS_LOG_ERROR("Error while executing asic operations, ASIC is in inconsistent state: %s", e.what());
 
+            // TODO change this to throw
             exit_and_notify(EXIT_FAILURE);
         }
     }
