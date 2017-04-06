@@ -74,9 +74,12 @@ void hardReinit();
 //std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetVidToRidMap();
 //std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetRidToVidMap();
 //std::vector<std::string> redisGetAsicStateKeys();
-//void redisClearVidToRidMap();
-//void redisClearRidToVidMap();
-////sai_object_type_t getObjectTypeFromVid(sai_object_id_t sai_object_id);
+
+void redisClearVidToRidMap();
+void redisClearRidToVidMap();
+
+sai_object_type_t getObjectTypeFromVid(
+        _In_ sai_object_id_t sai_object_id);
 
 extern std::shared_ptr<swss::NotificationProducer>  notifications;
 extern std::shared_ptr<swss::RedisClient>   g_redisClient;

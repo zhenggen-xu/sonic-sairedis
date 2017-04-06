@@ -1432,6 +1432,16 @@ sai_status_t notifySyncd(
             local_rid_to_vid.clear();
             local_vid_to_rid.clear();
         }
+        else
+        {
+            /*
+             * Apply view failed. It can fail in 2 ways, eather nothing was
+             * executed, on asic, or asic is inconsistent state then we should
+             * die or hang
+             */
+
+            return status;
+        }
     }
     else
     {
@@ -2389,7 +2399,7 @@ void performWarmRestart()
      * will have need for it.
      */
 
-    auto entries = g_redisClient->keys(ASIC_STATE_TABLE + std::string(":SAI_OBJECT_TYPE_SWITCH"));
+    auto entries = g_redisClient->keys(ASIC_STATE_TABLE + std::string(":SAI_OBJECT_TYPE_SWITCH:*"));
 
     if (entries.size() == 0)
     {
