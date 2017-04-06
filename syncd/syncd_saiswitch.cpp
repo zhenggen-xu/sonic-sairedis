@@ -1266,7 +1266,9 @@ void SaiSwitch::removeDefaultVlanMembers()
 
         if (status != SAI_STATUS_SUCCESS)
         {
-            SWSS_LOG_THROW("Failed to remove vlan member 0x%lx from vlan %d", vm, DEFAULT_VLAN_NUMBER);
+            SWSS_LOG_THROW("Failed to remove vlan member RID %s from vlan RID %s",
+                    sai_serialize_object_id(vm).c_str(),
+                    sai_serialize_object_id(m_default_vlan_rid).c_str());
         }
     }
 }
@@ -1293,6 +1295,110 @@ bool SaiSwitch::isNonCreateRid(
     SWSS_LOG_ENTER();
 
     return m_non_create_rids.find(rid) != m_non_create_rids.end();
+}
+
+std::vector<sai_port_stat_t> SaiSwitch::saiGetSupportedCounters()
+{
+    SWSS_LOG_ENTER();
+
+    auto ports = saiGetPortList();
+
+    if (ports.size() == 0)
+    {
+        SWSS_LOG_THROW("no ports are defined on switch");
+    }
+
+    sai_object_id_t port_rid = ports.at(0);
+
+    std::vector<sai_port_stat_t> supportedCounters;
+
+    for (uint32_t idx = 0; idx < metadata_enum_sai_port_stat_t.valuescount; ++idx)
+    {
+        sai_port_stat_t counter = (sai_port_stat_t)metadata_enum_sai_port_stat_t.values[idx];
+
+        uint64_t value;
+
+        sai_status_t status = sai_metadata_sai_port_api->get_port_stats(port_rid, &counter, 1, &value);
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            const std::string &name = sai_serialize_port_stat(counter);
+
+            SWSS_LOG_WARN("counter %s is not supported on port RID %s: %s",
+                    name.c_str(), port_rid, status);
+
+            continue;
+        }
+
+        supportedCounters.push_back(counter);
+    }
+
+    return supportedCounters;
+}
+
+void SaiSwitch::collectCounters(
+        _In_ swss::Table &countersTable)
+{
+    SWSS_LOG_ENTER();
+
+    if (m_supported_counters.size() == 0)
+    {
+        /*
+         * There are not supported counters :(
+         */
+
+        return;
+    }
+
+    SWSS_LOG_TIMER("get counters");
+
+    uint32_t countersSize = (uint32_t)m_supported_counters.size();
+
+    std::vector<uint64_t> counters;
+
+    counters.resize(countersSize);
+
+    auto ports = saiGetPortList();
+
+    for (auto &port_rid: ports)
+    {
+        sai_status_t status = sai_metadata_sai_port_api->get_port_stats(
+                port_rid,
+                m_supported_counters.data(),
+                countersSize,
+                counters.data());
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_ERROR("failed to collect counters for port RID %s: %s",
+                    sai_serialize_object_id(port_rid).c_str(),
+                    sai_serialize_status(status).c_str());
+            continue;
+        }
+
+        sai_object_id_t vid = translate_rid_to_vid(port_rid, m_switch_vid);
+
+        std::string strPortId = sai_serialize_object_id(vid);
+
+        // for counters, use port vid as printf "%llx" format
+        std::stringstream ss;
+        ss << std::hex << vid;
+        strPortId = ss.str();
+
+        std::vector<swss::FieldValueTuple> values;
+
+        for (size_t idx = 0; idx < counters.size(); idx++)
+        {
+            const std::string &field = sai_serialize_port_stat(m_supported_counters[idx]);
+            const std::string &value = std::to_string(counters[idx]);
+
+            swss::FieldValueTuple fvt(field, value);
+
+            values.push_back(fvt);
+        }
+
+        countersTable.set(strPortId, values, "");
+    }
 }
 
 SaiSwitch::SaiSwitch(
@@ -1332,4 +1438,6 @@ SaiSwitch::SaiSwitch(
      */
 
     buildNonCreateRids();
+
+    m_supported_counters = saiGetSupportedCounters();
 }

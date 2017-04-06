@@ -71,20 +71,14 @@ extern std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;
 
 void hardReinit();
 
-//sai_object_id_t replaceVidToRid(const sai_object_id_t &virtual_object_id);
 //std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetVidToRidMap();
 //std::unordered_map<sai_object_id_t, sai_object_id_t> redisGetRidToVidMap();
 //std::vector<std::string> redisGetAsicStateKeys();
-//sai_object_id_t redisGetDefaultVirtualRouterId();
-//sai_object_id_t redisGetDefaultTrapGroupId();
-//sai_object_id_t redisGetDefaultStpInstanceId();
-//sai_object_id_t redisGetCpuId();
 //void redisClearVidToRidMap();
 //void redisClearRidToVidMap();
+////sai_object_type_t getObjectTypeFromVid(sai_object_id_t sai_object_id);
 
-//extern std::shared_ptr<swss::ProducerTable>         getResponse;
 extern std::shared_ptr<swss::NotificationProducer>  notifications;
-
 extern std::shared_ptr<swss::RedisClient>   g_redisClient;
 
 sai_object_id_t redis_create_virtual_object_id(
@@ -104,17 +98,15 @@ void translate_rid_to_vid_list(
         _In_ uint32_t attr_count,
         _In_ sai_attribute_t *attr_list);
 
-void startCountersThread(int intervalInSeconds);
 void endCountersThread();
+void startCountersThread(
+        _In_ int intervalInSeconds);
 
 std::unordered_map<sai_uint32_t, sai_object_id_t> redisGetLaneMap();
-
-////sai_object_type_t getObjectTypeFromVid(sai_object_id_t sai_object_id);
 
 void start_cli();
 void stop_cli();
 
-//sai_status_t applyViewTransition();
 sai_status_t syncdApplyView();
 
 void check_notifications_pointers(
