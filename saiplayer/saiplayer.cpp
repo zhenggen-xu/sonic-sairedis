@@ -1239,6 +1239,8 @@ int replay(int argc, char **argv)
 
     infile.close();
 
+    SWSS_LOG_NOTICE("finished replaying %s with SUCCESS", filename);
+
     return 0;
 }
 
