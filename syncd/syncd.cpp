@@ -1977,7 +1977,6 @@ sai_status_t processEvent(
          */
 
         check_notifications_pointers(attr_count, attr_list);
-
     }
 
     if (isInitViewMode())
@@ -2367,9 +2366,12 @@ bool isVeryFirstRun()
      *
      * We could use VIDCOUNTER also, but if something is defined in the DB then
      * we assume this is not the first start.
+     *
+     * TODO we need to fix this, since when there will be queue, it will still think
+     * this is first run, let's query HIDDEN ?
      */
 
-    auto keys = g_redisClient->keys("*");
+    auto keys = g_redisClient->keys("*" + std::string(HIDDEN) + "*");
 
     bool firstRun = keys.size() == 0;
 
