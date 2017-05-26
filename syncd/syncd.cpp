@@ -2733,8 +2733,6 @@ int main(int argc, char **argv)
 
     bool warmRestartHint = false;
 
-    start_cli();
-
     try
     {
         SWSS_LOG_NOTICE("before onSyncdStart");
@@ -2818,8 +2816,6 @@ int main(int argc, char **argv)
     }
 
     SWSS_LOG_NOTICE("uninitialize finished");
-
-    stop_cli();
 
     exit(EXIT_SUCCESS);
 }
