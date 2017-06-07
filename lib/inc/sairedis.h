@@ -20,18 +20,8 @@ typedef enum _sai_redis_notify_syncd_t
 
 typedef enum _sai_redis_switch_attr_t
 {
-    /*
-     * NOTE: those attributes will work without actual switch id being present
-     * since those attributes control internal sai redis library. Example
-     * usage:
-     *
-     * sai_switch_api->set_switch_attribute(SAI_NULL_OBJECT_ID, &attr);
-     */
-
     /**
      * @brief Will start or stop recording history file for player
-     *
-     * Flag IS NOT cleared between api initialize/uninitialize.
      *
      * @type bool
      * @flags CREATE_AND_SET
@@ -41,8 +31,6 @@ typedef enum _sai_redis_switch_attr_t
 
     /**
      * @brief Will notify syncd whether to init or apply view
-     *
-     * Flag IS cleared between api initialize/uninitialize.
      *
      * @type sai_redis_notify_syncd_t
      * @flags CREATE_AND_SET
@@ -56,8 +44,6 @@ typedef enum _sai_redis_switch_attr_t
      * not take effect. This is temporary solution until
      * comparison logic will be in place.
      *
-     * Flag IS cleared between api initialize/uninitialize.
-     *
      * @type bool
      * @flags CREATE_AND_SET
      * @default false
@@ -67,8 +53,6 @@ typedef enum _sai_redis_switch_attr_t
     /**
      * @brief Enable redis pipeline
      *
-     * Flag IS NOT cleared between api initialize/uninitialize.
-     *
      * @type bool
      * @flags CREATE_AND_SET
      * @default false
@@ -77,8 +61,6 @@ typedef enum _sai_redis_switch_attr_t
 
     /**
      * @brief Will flush redis pipeline
-     *
-     * Flag IS NOT cleared between api initialize/uninitialize.
      *
      * @type bool
      * @flags CREATE_AND_SET
@@ -113,25 +95,6 @@ typedef enum _sai_redis_switch_attr_t
  * success.
  */
 
-#ifndef sai_bulk_op_type_t
-
-typedef enum _sai_bulk_op_type_t
-{
-    /*
-     * @brief Bulk operation stops on the first failed creation
-     *
-     * Rest of objects will use SAI_STATUS_NON_EXECUTED return status value.
-     */
-    SAI_BULK_OP_TYPE_STOP_ON_ERROR,
-
-    /*
-     * @brief Bulk operation ignores the failures and continues to create other objects
-     */
-    SAI_BULK_OP_TYPE_INGORE_ERROR,
-} sai_bulk_op_type_t;
-
-#endif
-
 #ifndef SAI_STATUS_NOT_EXECUTED
 #define SAI_STATUS_NOT_EXECUTED                     SAI_STATUS_CODE(0x00000017L)
 #endif
@@ -162,7 +125,7 @@ typedef enum _sai_bulk_op_type_t
  */
 sai_status_t sai_bulk_create_route_entry(
         _In_ uint32_t object_count,
-        _In_ const sai_unicast_route_entry_t *route_entry,
+        _In_ const sai_route_entry_t *route_entry,
         _In_ const uint32_t *attr_count,
         _In_ const sai_attribute_t **attr_list,
         _In_ sai_bulk_op_type_t type,
@@ -184,7 +147,7 @@ sai_status_t sai_bulk_create_route_entry(
  */
 sai_status_t sai_bulk_remove_route_entry(
         _In_ uint32_t object_count,
-        _In_ const sai_unicast_route_entry_t *route_entry,
+        _In_ const sai_route_entry_t *route_entry,
         _In_ sai_bulk_op_type_t type,
         _Out_ sai_status_t *object_statuses);
 
@@ -205,7 +168,7 @@ sai_status_t sai_bulk_remove_route_entry(
  */
 sai_status_t sai_bulk_set_route_entry_attribute(
         _In_ uint32_t object_count,
-        _In_ const sai_unicast_route_entry_t *route_entry,
+        _In_ const sai_route_entry_t *route_entry,
         _In_ const sai_attribute_t *attr_list,
         _In_ sai_bulk_op_type_t type,
         _Out_ sai_status_t *object_statuses);
@@ -229,7 +192,7 @@ sai_status_t sai_bulk_set_route_entry_attribute(
  */
 sai_status_t sai_bulk_get_route_entry_attribute(
         _In_ uint32_t object_count,
-        _In_ const sai_unicast_route_entry_t *route_entry,
+        _In_ const sai_route_entry_t *route_entry,
         _In_ const uint32_t *attr_count,
         _Inout_ sai_attribute_t **attr_list,
         _In_ sai_bulk_op_type_t type,
