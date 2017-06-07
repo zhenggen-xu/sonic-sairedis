@@ -54,7 +54,7 @@ void startRecording()
         return;
     }
 
-    recordLine("#|recording to: " + recfile);
+    recordLine("#|recording on: " + recfile);
 
     SWSS_LOG_NOTICE("started recording: %s", recfile.c_str());
 }
