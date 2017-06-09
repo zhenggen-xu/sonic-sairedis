@@ -879,11 +879,11 @@ sai_status_t handle_bulk_route(
 {
     SWSS_LOG_ENTER();
 
-    std::vector<sai_unicast_route_entry_t> routes;
+    std::vector<sai_route_entry_t> routes;
 
     for (size_t i = 0; i < object_ids.size(); ++i)
     {
-        sai_unicast_route_entry_t route_entry;
+        sai_route_entry_t route_entry;
         sai_deserialize_route_entry(object_ids[i], route_entry);
 
         route_entry.vr_id = translate_local_to_redis(route_entry.vr_id);
@@ -1053,7 +1053,7 @@ void processBulk(
 
     switch (object_type)
     {
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
             status = handle_bulk_route(object_ids, api, attributes, statuses);
             break;
 
