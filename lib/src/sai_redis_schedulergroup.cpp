@@ -12,6 +12,7 @@
  */
 sai_status_t redis_create_scheduler_group(
         _Out_ sai_object_id_t *scheduler_group_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -22,6 +23,7 @@ sai_status_t redis_create_scheduler_group(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_SCHEDULER_GROUP,
             scheduler_group_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -156,6 +158,4 @@ const sai_scheduler_group_api_t redis_scheduler_group_api = {
     redis_remove_scheduler_group,
     redis_set_scheduler_group_attribute,
     redis_get_scheduler_group_attribute,
-    redis_add_child_object_to_group,
-    redis_remove_child_object_from_group,
 };

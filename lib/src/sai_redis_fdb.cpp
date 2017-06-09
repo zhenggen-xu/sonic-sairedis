@@ -105,19 +105,17 @@ sai_status_t redis_get_fdb_entry_attribute(
             &redis_generic_get_fdb_entry);
 }
 
-/**
- * Routine Description:
- *    @brief Remove all FDB entries by attribute set in sai_fdb_flush_attr
+/*
+ * @brief Remove all FDB entries by attribute set in sai_fdb_flush_attr
  *
- * Arguments:
- *    @param[in] attr_count - number of attributes
- *    @param[in] attr_list - array of attributes
+ * @param[in] switch_id Switch object id
+ * @param[in] attr_count Number of attributes
+ * @param[in] attr_list Array of attributes
  *
- * Return Values:
- *    @return SAI_STATUS_SUCCESS on success
- *            Failure status code on error
+ * @return #SAI_STATUS_SUCCESS on success Failure status code on error
  */
 sai_status_t redis_flush_fdb_entries(
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {

@@ -83,32 +83,9 @@ sai_status_t sai_log_set(
 
     SWSS_LOG_ENTER();
 
-    switch (log_level)
-    {
-        case SAI_LOG_DEBUG:
-            break;
+    SWSS_LOG_ERROR("not implemented");
 
-        case SAI_LOG_INFO:
-            break;
-
-        case SAI_LOG_NOTICE:
-            break;
-
-        case SAI_LOG_WARN:
-            break;
-
-        case SAI_LOG_ERROR:
-            break;
-
-        case SAI_LOG_CRITICAL:
-            break;
-
-        default:
-            SWSS_LOG_ERROR("Invalid log level %d", log_level);
-            return SAI_STATUS_INVALID_PARAMETER;
-    }
-
-    return SAI_STATUS_SUCCESS;
+    return SAI_STATUS_NOT_IMPLEMENTED;
 }
 
 sai_status_t sai_api_query(
@@ -132,7 +109,7 @@ sai_status_t sai_api_query(
     }
 
     switch (sai_api_id) {
-        case SAI_API_BUFFERS:
+        case SAI_API_BUFFER:
             *(const sai_buffer_api_t**)api_method_table = &redis_buffer_api;
             return SAI_STATUS_SUCCESS;
 
@@ -188,15 +165,15 @@ sai_status_t sai_api_query(
             *(const sai_acl_api_t**)api_method_table = &redis_acl_api;
             return SAI_STATUS_SUCCESS;
 
-        case SAI_API_HOST_INTERFACE:
-            *(const sai_hostif_api_t**)api_method_table = &redis_host_interface_api;
+        case SAI_API_HOSTIF:
+            *(const sai_hostif_api_t**)api_method_table = &redis_hostif_api;
             return SAI_STATUS_SUCCESS;
 
         case SAI_API_POLICER:
             *(const sai_policer_api_t**)api_method_table = &redis_policer_api;
             return SAI_STATUS_SUCCESS;
 
-        case SAI_API_QOS_MAPS:
+        case SAI_API_QOS_MAP:
             *(const sai_qos_map_api_t**)api_method_table = &redis_qos_map_api;
             return SAI_STATUS_SUCCESS;
 

@@ -15,6 +15,7 @@
  */
 sai_status_t redis_create_router_interface(
         _Out_ sai_object_id_t* rif_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -25,6 +26,7 @@ sai_status_t redis_create_router_interface(
     return meta_sai_create_oid(
             SAI_OBJECT_TYPE_ROUTER_INTERFACE,
             rif_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);

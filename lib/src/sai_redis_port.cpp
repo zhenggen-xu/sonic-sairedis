@@ -1,6 +1,55 @@
 #include "sai_redis.h"
 
 /**
+ * @brief Create port
+ *
+ * @param[out] port_id Port id
+ * @param[in] switch_id Switch id
+ * @param[in] attr_count Number of attributes
+ * @param[in] attr_list Array of attributes
+ *
+ * @return #SAI_STATUS_SUCCESS on success Failure status code on error
+ */
+sai_status_t redis_create_port(
+        _Out_ sai_object_id_t *port_id,
+        _In_ sai_object_id_t switch_id,
+        _In_ uint32_t attr_count,
+        _In_ const sai_attribute_t *attr_list)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    return meta_sai_create_oid(
+            SAI_OBJECT_TYPE_PORT,
+            port_id,
+            switch_id,
+            attr_count,
+            attr_list,
+            &redis_generic_create);
+}
+
+/**
+ * @brief Remove port
+ *
+ * @param[in] port_id Port id
+ *
+ * @return #SAI_STATUS_SUCCESS on success Failure status code on error
+ */
+sai_status_t redis_remove_port(
+        _In_ sai_object_id_t port_id)
+{
+    std::lock_guard<std::mutex> lock(g_apimutex);
+
+    SWSS_LOG_ENTER();
+
+    return meta_sai_remove_oid(
+            SAI_OBJECT_TYPE_PORT,
+            port_id,
+            &redis_generic_remove);
+}
+
+/**
  * Routine Description:
  *   @brief Set port attribute value.
  *
@@ -73,7 +122,7 @@ sai_status_t redis_get_port_attribute(
  */
 sai_status_t redis_get_port_stats(
         _In_ sai_object_id_t port_id,
-        _In_ const sai_port_stat_counter_t *counter_ids,
+        _In_ const sai_port_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
         _Out_ uint64_t* counters)
 {
@@ -97,7 +146,7 @@ sai_status_t redis_get_port_stats(
  */
 sai_status_t redis_clear_port_stats(
         _In_ sai_object_id_t port_id,
-        _In_ const sai_port_stat_counter_t *counter_ids,
+        _In_ const sai_port_stat_t *counter_ids,
         _In_ uint32_t number_of_counters)
 {
     SWSS_LOG_ENTER();
@@ -128,6 +177,8 @@ sai_status_t redis_clear_port_all_stats(
  * @brief Port methods table retrieved with sai_api_query()
  */
 const sai_port_api_t redis_port_api = {
+    redis_create_port,
+    redis_remove_port,
     redis_set_port_attribute,
     redis_get_port_attribute,
     redis_get_port_stats,

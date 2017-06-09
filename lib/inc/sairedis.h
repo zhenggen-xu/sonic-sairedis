@@ -27,7 +27,7 @@ typedef enum _sai_redis_switch_attr_t
      * @flags CREATE_AND_SET
      * @default true
      */
-    SAI_REDIS_SWITCH_ATTR_RECORD = SAI_SWITCH_ATTR_CUSTOM_RANGE_BASE,
+    SAI_REDIS_SWITCH_ATTR_RECORD = SAI_SWITCH_ATTR_CUSTOM_RANGE_START,
 
     /**
      * @brief Will notify syncd whether to init or apply view

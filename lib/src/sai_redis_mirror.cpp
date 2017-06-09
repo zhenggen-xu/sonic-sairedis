@@ -11,6 +11,7 @@
  */
 sai_status_t redis_create_mirror_session(
         _Out_ sai_object_id_t *session_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
@@ -19,8 +20,9 @@ sai_status_t redis_create_mirror_session(
     SWSS_LOG_ENTER();
 
     return meta_sai_create_oid(
-            SAI_OBJECT_TYPE_MIRROR,
+            SAI_OBJECT_TYPE_MIRROR_SESSION,
             session_id,
+            switch_id,
             attr_count,
             attr_list,
             &redis_generic_create);
@@ -41,7 +43,7 @@ sai_status_t redis_remove_mirror_session(
     SWSS_LOG_ENTER();
 
     return meta_sai_remove_oid(
-            SAI_OBJECT_TYPE_MIRROR,
+            SAI_OBJECT_TYPE_MIRROR_SESSION,
             session_id,
             &redis_generic_remove);
 }
@@ -63,7 +65,7 @@ sai_status_t redis_set_mirror_session_attribute(
     SWSS_LOG_ENTER();
 
     return meta_sai_set_oid(
-            SAI_OBJECT_TYPE_MIRROR,
+            SAI_OBJECT_TYPE_MIRROR_SESSION,
             session_id,
             attr,
             &redis_generic_set);
@@ -88,7 +90,7 @@ sai_status_t redis_get_mirror_session_attribute(
     SWSS_LOG_ENTER();
 
     return meta_sai_get_oid(
-            SAI_OBJECT_TYPE_MIRROR,
+            SAI_OBJECT_TYPE_MIRROR_SESSION,
             session_id,
             attr_count,
             attr_list,
