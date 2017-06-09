@@ -147,8 +147,6 @@ extern sai_virtual_router_api_t     *sai_router_api;
 extern sai_vlan_api_t               *sai_vlan_api;
 extern sai_wred_api_t               *sai_wred_api;
 
-extern sai_switch_notification_t switch_notifications;
-
 void initialize_common_api_pointers();
 void populate_sai_apis();
 

@@ -70,18 +70,21 @@ void exit_and_notify(int status)
     exit(status);
 }
 
-void sai_diag_shell()
+void sai_diag_shell(
+        _In_ sai_object_id_t switch_id)
 {
     SWSS_LOG_ENTER();
 
     sai_status_t status;
+
+    // TODO we need switch id
 
     while (true)
     {
         sai_attribute_t attr;
         attr.id = SAI_SWITCH_ATTR_SWITCH_SHELL_ENABLE;
         attr.value.booldata = true;
-        status = sai_switch_api->set_switch_attribute(&attr);
+        status = sai_switch_api->set_switch_attribute(switch_id, &attr);
         if (status != SAI_STATUS_SUCCESS)
         {
             SWSS_LOG_ERROR("Failed to enable switch shell %d", status);
@@ -108,8 +111,6 @@ sai_object_id_t redis_create_virtual_object_id(
 
 std::unordered_map<sai_object_id_t, sai_object_id_t> local_rid_to_vid;
 std::unordered_map<sai_object_id_t, sai_object_id_t> local_vid_to_rid;
-
-std::set<sai_object_id_t> floating_vid_set;
 
 void save_rid_and_vid_to_local(
         _In_ sai_object_id_t rid,
@@ -218,7 +219,7 @@ void translate_rid_to_vid_list(
     {
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -226,29 +227,29 @@ void translate_rid_to_vid_list(
             exit_and_notify(EXIT_FAILURE);
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 attr.value.oid = translate_rid_to_vid(attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 translate_list_rid_to_vid(attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 attr.value.aclfield.data.oid = translate_rid_to_vid(attr.value.aclfield.data.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 translate_list_rid_to_vid(attr.value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 attr.value.aclaction.parameter.oid = translate_rid_to_vid(attr.value.aclaction.parameter.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 translate_list_rid_to_vid(attr.value.aclaction.parameter.objlist);
                 break;
 
@@ -329,7 +330,7 @@ void translate_vid_to_rid_list(
     {
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -337,29 +338,29 @@ void translate_vid_to_rid_list(
             exit_and_notify(EXIT_FAILURE);
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 attr.value.oid = translate_vid_to_rid(attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 translate_list_vid_to_rid(attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 attr.value.aclfield.data.oid = translate_vid_to_rid(attr.value.aclfield.data.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 translate_list_vid_to_rid(attr.value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 attr.value.aclaction.parameter.oid = translate_vid_to_rid(attr.value.aclaction.parameter.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 translate_list_vid_to_rid(attr.value.aclaction.parameter.objlist);
                 break;
 
@@ -449,7 +450,7 @@ void snoop_get_response(
     {
         const sai_attribute_t &attr = attr_list[idx];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         if (meta == NULL)
         {
@@ -460,29 +461,29 @@ void snoop_get_response(
         // we should snoop oid values even if they are readonly
         // we just note in temp view that those objects exist on switch
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 snoop_get_oid(attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 snoop_get_oid_list(attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
                 snoop_get_oid(attr.value.aclfield.data.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
                 snoop_get_oid_list(attr.value.aclfield.data.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
                 snoop_get_oid(attr.value.aclaction.parameter.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
                 snoop_get_oid_list(attr.value.aclaction.parameter.objlist);
                 break;
 
@@ -645,6 +646,8 @@ service_method_table_t test_services = {
     profile_get_next_value
 };
 
+// TODO we need to use functions from metadata
+
 sai_status_t handle_generic(
         _In_ sai_object_type_t object_type,
         _In_ std::string &str_object_id,
@@ -795,34 +798,6 @@ sai_status_t handle_fdb(
     }
 }
 
-sai_status_t handle_switch(
-        _In_ std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    switch(api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_REMOVE:
-            return SAI_STATUS_NOT_SUPPORTED;
-
-        case SAI_COMMON_API_SET:
-            return sai_switch_api->set_switch_attribute(attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_switch_api->get_switch_attribute(attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("switch other apis not implemented");
-            exit_and_notify(EXIT_FAILURE);
-    }
-}
-
 sai_status_t handle_neighbor(
         _In_ std::string &str_object_id,
         _In_ sai_common_api_t api,
@@ -845,10 +820,10 @@ sai_status_t handle_neighbor(
             return sai_neighbor_api->remove_neighbor_entry(&neighbor_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_neighbor_api->set_neighbor_attribute(&neighbor_entry, attr_list);
+            return sai_neighbor_api->set_neighbor_entry_attribute(&neighbor_entry, attr_list);
 
         case SAI_COMMON_API_GET:
-            return sai_neighbor_api->get_neighbor_attribute(&neighbor_entry, attr_count, attr_list);
+            return sai_neighbor_api->get_neighbor_entry_attribute(&neighbor_entry, attr_count, attr_list);
 
         default:
             SWSS_LOG_ERROR("neighbor other apis not implemented");
@@ -864,7 +839,7 @@ sai_status_t handle_route(
 {
     SWSS_LOG_ENTER();
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
     sai_deserialize_route_entry(str_object_id, route_entry);
 
     route_entry.vr_id = translate_vid_to_rid(route_entry.vr_id);
@@ -874,75 +849,19 @@ sai_status_t handle_route(
     switch(api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_route_api->create_route(&route_entry, attr_count, attr_list);
+            return sai_route_api->create_route_entry(&route_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_route_api->remove_route(&route_entry);
+            return sai_route_api->remove_route_entry(&route_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_route_api->set_route_attribute(&route_entry, attr_list);
+            return sai_route_api->set_route_entry_attribute(&route_entry, attr_list);
 
         case SAI_COMMON_API_GET:
-            return sai_route_api->get_route_attribute(&route_entry, attr_count, attr_list);
+            return sai_route_api->get_route_entry_attribute(&route_entry, attr_count, attr_list);
 
         default:
             SWSS_LOG_ERROR("route other apis not implemented");
-            exit_and_notify(EXIT_FAILURE);
-    }
-}
-
-sai_status_t handle_vlan(
-        _In_ std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_vlan_id_t vlan_id;
-    sai_deserialize_vlan_id(str_object_id, vlan_id);
-
-    switch(api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return sai_vlan_api->create_vlan(vlan_id);
-
-        case SAI_COMMON_API_REMOVE:
-            return sai_vlan_api->remove_vlan(vlan_id);
-
-        case SAI_COMMON_API_SET:
-            return sai_vlan_api->set_vlan_attribute(vlan_id, attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_vlan_api->get_vlan_attribute(vlan_id, attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("vlan other apis not implemented");
-            exit_and_notify(EXIT_FAILURE);
-    }
-}
-
-sai_status_t handle_trap(
-        _In_ std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_hostif_trap_id_t trap_id;
-    sai_deserialize_hostif_trap_id(str_object_id, trap_id);
-
-    switch(api)
-    {
-        case SAI_COMMON_API_SET:
-            return sai_hostif_api->set_trap_attribute(trap_id, attr_list);
-
-        case SAI_COMMON_API_GET:
-            return sai_hostif_api->get_trap_attribute(trap_id, attr_count, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("trap other apis not implemented");
             exit_and_notify(EXIT_FAILURE);
     }
 }
@@ -1005,8 +924,6 @@ sai_status_t notifySyncd(const std::string& op)
             // we set init to false instead of true
             g_asicInitViewMode = false;
 
-            floating_vid_set.clear();
-
             clearTempView();
         }
         else if (op == SYNCD_APPLY_VIEW)
@@ -1037,8 +954,6 @@ sai_status_t notifySyncd(const std::string& op)
 
         g_asicInitViewMode = true;
 
-        floating_vid_set.clear();
-
         clearTempView();
 
         SWSS_LOG_WARN("syncd switched to INIT VIEW mode, all op will be saved to TEMP view");
@@ -1063,7 +978,6 @@ sai_status_t notifySyncd(const std::string& op)
              * redis.
              */
 
-            floating_vid_set.clear();
             local_rid_to_vid.clear();
             local_vid_to_rid.clear();
         }
@@ -1096,14 +1010,14 @@ sai_status_t processEventInInitViewMode(
 
     if (api == SAI_COMMON_API_CREATE)
     {
+        // TODO id non id 
+
         switch (object_type)
         {
-            case SAI_OBJECT_TYPE_FDB:
-            case SAI_OBJECT_TYPE_NEIGHBOR:
-            case SAI_OBJECT_TYPE_ROUTE:
-            case SAI_OBJECT_TYPE_TRAP:
-            case SAI_OBJECT_TYPE_SWITCH:
-            case SAI_OBJECT_TYPE_VLAN:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+            case SAI_OBJECT_TYPE_SWITCH: // TODO for this should be special ? in redis ?
 
                 // we assume create of those non object id object types will succeed
 
@@ -1121,11 +1035,6 @@ sai_status_t processEventInInitViewMode(
                     SWSS_LOG_DEBUG("generic create (init view) for %s, floating VID: %s",
                                    sai_serialize_object_type(object_type).c_str(),
                                    sai_serialize_object_id(object_id).c_str());
-
-                    // floating vid set will contain all created objects
-                    // from TEMP asic view which don't have real id assigned
-
-                    floating_vid_set.insert(object_id);
                 }
 
                 break;
@@ -1140,10 +1049,10 @@ sai_status_t processEventInInitViewMode(
 
         switch (object_type)
         {
-            case SAI_OBJECT_TYPE_FDB:
-            case SAI_OBJECT_TYPE_NEIGHBOR:
-            case SAI_OBJECT_TYPE_ROUTE:
-            case SAI_OBJECT_TYPE_TRAP:
+            // TODO id non id
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
 
                 // those object's are user created, so if user created ROUTE
                 // he passed some attributes, there is no sense to support GET
@@ -1153,21 +1062,6 @@ sai_status_t processEventInInitViewMode(
                 SWSS_LOG_ERROR("get is not supported on %s in init view mode", sai_serialize_object_type(object_type).c_str());
 
                 status = SAI_STATUS_NOT_SUPPORTED;
-                break;
-
-            case SAI_OBJECT_TYPE_SWITCH:
-                status = sai_switch_api->get_switch_attribute(attr_count, attr_list);
-                break;
-
-            case SAI_OBJECT_TYPE_VLAN:
-
-                {
-                    sai_vlan_id_t vlan_id;
-                    sai_deserialize_vlan_id(str_object_id, vlan_id);
-
-                    status = sai_vlan_api->get_vlan_attribute(vlan_id, attr_count, attr_list);
-                }
-
                 break;
 
             default:
@@ -1439,28 +1333,16 @@ sai_status_t processEvent(swss::ConsumerTable &consumer)
     sai_status_t status;
     switch (object_type)
     {
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
             status = handle_fdb(str_object_id, api, attr_count, attr_list);
             break;
 
-        case SAI_OBJECT_TYPE_SWITCH:
-            status = handle_switch(str_object_id, api, attr_count, attr_list);
-            break;
-
-        case SAI_OBJECT_TYPE_NEIGHBOR:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
             status = handle_neighbor(str_object_id, api, attr_count, attr_list);
             break;
 
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
             status = handle_route(str_object_id, api, attr_count, attr_list);
-            break;
-
-        case SAI_OBJECT_TYPE_VLAN:
-            status = handle_vlan(str_object_id, api, attr_count, attr_list);
-            break;
-
-        case SAI_OBJECT_TYPE_TRAP:
-            status = handle_trap(str_object_id, api, attr_count, attr_list);
             break;
 
         default:
@@ -1782,12 +1664,12 @@ void saiLoglevelNotify(std::string apiStr, std::string prioStr)
     using namespace swss;
 
     static const std::map<std::string, sai_log_level_t> saiLoglevelMap = {
-        { "SAI_LOG_CRITICAL", SAI_LOG_CRITICAL },
-        { "SAI_LOG_ERROR", SAI_LOG_ERROR },
-        { "SAI_LOG_WARN", SAI_LOG_WARN },
-        { "SAI_LOG_NOTICE", SAI_LOG_NOTICE },
-        { "SAI_LOG_INFO", SAI_LOG_INFO },
-        { "SAI_LOG_DEBUG", SAI_LOG_DEBUG },
+        { "SAI_LOG_LEVEL_CRITICAL", SAI_LOG_LEVEL_CRITICAL },
+        { "SAI_LOG_LEVEL_ERROR", SAI_LOG_LEVEL_ERROR },
+        { "SAI_LOG_LEVEL_WARN", SAI_LOG_LEVEL_WARN },
+        { "SAI_LOG_LEVEL_NOTICE", SAI_LOG_LEVEL_NOTICE },
+        { "SAI_LOG_LEVEL_INFO", SAI_LOG_LEVEL_INFO },
+        { "SAI_LOG_LEVEL_DEBUG", SAI_LOG_LEVEL_DEBUG },
     };
 
     if (saiLoglevelMap.find(prioStr) == saiLoglevelMap.end())
@@ -1823,7 +1705,7 @@ int main(int argc, char **argv)
 
     for (const auto& i : saiApiMap)
     {
-        swss::Logger::linkToDb(i.first, saiLoglevelNotify, "SAI_LOG_NOTICE");
+        swss::Logger::linkToDb(i.first, saiLoglevelNotify, "SAI_LOG_LEVEL_NOTICE");
     }
     swss::Logger::linkToDbNative("syncd");
 
@@ -1889,25 +1771,19 @@ int main(int argc, char **argv)
         exit_and_notify(EXIT_FAILURE);
     }
 
+    // TODO populate inside metadata
+
     populate_sai_apis();
 
     initialize_common_api_pointers();
 
-    SWSS_LOG_NOTICE("starting initializing ASIC");
-    status = sai_switch_api->initialize_switch(0, "", "", &switch_notifications);
-    SWSS_LOG_NOTICE("finished initializing ASIC");
-
-    if (status != SAI_STATUS_SUCCESS)
-    {
-        SWSS_LOG_ERROR("fail to sai_initialize_switch: %d", status);
-        exit_and_notify(EXIT_FAILURE);
-    }
+    // TODO user should create switch from OA, or should we create it here?
 
     if (options.diagShell)
     {
         SWSS_LOG_NOTICE("starting diag shell thread");
 
-        std::thread diag_shell_thread = std::thread(sai_diag_shell);
+        std::thread diag_shell_thread = std::thread(sai_diag_shell, SAI_NULL_OBJECT_ID); // TODO actual switch id
         diag_shell_thread.detach();
     }
 
@@ -1989,8 +1865,6 @@ int main(int argc, char **argv)
             warmRestartHint = false;
         }
     }
-
-    sai_switch_api->shutdown_switch(warmRestartHint);
 
     SWSS_LOG_NOTICE("calling api uninitialize");
 

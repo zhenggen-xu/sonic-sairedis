@@ -3,7 +3,7 @@
 #include "syncd.h"
 
 void collectCounters(swss::Table &countersTable,
-                     const std::vector<sai_port_stat_counter_t> &supportedCounters)
+                     const std::vector<sai_port_stat_t> &supportedCounters)
 {
     // collect counters should be under mutex
     // sice configuration can change and we
@@ -55,17 +55,17 @@ void collectCounters(swss::Table &countersTable,
     }
 }
 
-std::vector<sai_port_stat_counter_t> getSupportedCounters(sai_object_id_t portId)
+std::vector<sai_port_stat_t> getSupportedCounters(sai_object_id_t portId)
 {
     SWSS_LOG_ENTER();
 
-    std::vector<sai_port_stat_counter_t> supportedCounters;
+    std::vector<sai_port_stat_t> supportedCounters;
 
     for (int idx = SAI_PORT_STAT_IF_IN_OCTETS;
          idx <= SAI_PORT_STAT_ETHER_OUT_PKTS_9217_TO_16383_OCTETS;
          ++idx)
     {
-        sai_port_stat_counter_t counter = (sai_port_stat_counter_t)idx;
+        sai_port_stat_t counter = (sai_port_stat_t)idx;
 
         uint64_t value;
 

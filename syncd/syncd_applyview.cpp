@@ -81,14 +81,14 @@ class SaiAttr
 
             sai_deserialize_attr_value(str_attr_value, *m_meta, m_attr, false);
 
-            m_is_object_id_attr = m_meta->allowedobjecttypes.size() > 0;
+            m_is_object_id_attr = m_meta->allowedobjecttypeslength > 0;
         }/*}}}*/
 
         ~SaiAttr()/*{{{*/
         {
             SWSS_LOG_ENTER();
 
-            sai_deserialize_free_attribute_value(m_meta->serializationtype, m_attr);
+            sai_deserialize_free_attribute_value(m_meta->attrvaluetype, m_attr);
         }/*}}}*/
 
         sai_attribute_t* getRWSaiAttr()/*{{{*/
@@ -149,19 +149,19 @@ class SaiAttr
              * since when attribute is disabled then parameter can be garbage.
              */
 
-            switch (m_meta->serializationtype)
+            switch (m_meta->attrvaluetype)
             {
-                case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+                case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                     count = 1;
                     objectIdList = &attr.value.oid;
                     break;
 
-                case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+                case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                     count = attr.value.objlist.count;
                     objectIdList = attr.value.objlist.list;
                     break;
 
-                case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+                case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
 
                     if (attr.value.aclfield.enable)
                     {
@@ -171,7 +171,7 @@ class SaiAttr
 
                     break;
 
-                case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+                case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
 
                     if (attr.value.aclfield.enable)
                     {
@@ -181,7 +181,7 @@ class SaiAttr
 
                     break;
 
-                case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+                case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
 
                     if (attr.value.aclaction.enable)
                     {
@@ -191,7 +191,7 @@ class SaiAttr
 
                     break;
 
-                case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+                case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
 
                     if (attr.value.aclaction.enable)
                     {
@@ -305,7 +305,7 @@ class SaiObj
 
         sai_object_type_t getObjectType() const/*{{{*/
         {
-            return meta_key.object_type;
+            return meta_key.objecttype;
         }/*}}}*/
 
         void setAttr(/*{{{*/
@@ -324,7 +324,7 @@ class SaiObj
         {
             if (oidObject)
             {
-                return meta_key.key.object_id;
+                return meta_key.objectkey.key.object_id;
             }
 
             SWSS_LOG_ERROR("object %s it not object id type", str_object_id.c_str());
@@ -387,21 +387,21 @@ class AsicView
                 o->str_object_type  = key.first.substr(0, start);
                 o->str_object_id    = key.first.substr(start + 1);
 
-                sai_deserialize_object_type(o->str_object_type, o->meta_key.object_type);
+                sai_deserialize_object_type(o->str_object_type, o->meta_key.objecttype);
 
-                switch (o->meta_key.object_type)
+                switch (o->meta_key.objecttype)
                 {
                     case SAI_OBJECT_TYPE_SWITCH:
                         soSwitches[o->str_object_id] = o;
                         break;
 
-                    case SAI_OBJECT_TYPE_FDB:
-                        sai_deserialize_fdb_entry(o->str_object_id, o->meta_key.key.fdb_entry);
+                    case SAI_OBJECT_TYPE_FDB_ENTRY:
+                        sai_deserialize_fdb_entry(o->str_object_id, o->meta_key.objectkey.key.fdb_entry);
                         soFdbs[o->str_object_id] = o;
                         break;
 
-                    case SAI_OBJECT_TYPE_NEIGHBOR:
-                        sai_deserialize_neighbor_entry(o->str_object_id, o->meta_key.key.neighbor_entry);
+                    case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+                        sai_deserialize_neighbor_entry(o->str_object_id, o->meta_key.objectkey.key.neighbor_entry);
                         soNeighbors[o->str_object_id] = o;
 
                         /*
@@ -411,12 +411,12 @@ class AsicView
                          * object ids.
                          */
 
-                        m_vidReference[o->meta_key.key.neighbor_entry.rif_id] += 1;
+                        m_vidReference[o->meta_key.objectkey.key.neighbor_entry.rif_id] += 1;
 
                         break;
 
-                    case SAI_OBJECT_TYPE_ROUTE:
-                        sai_deserialize_route_entry(o->str_object_id, o->meta_key.key.route_entry);
+                    case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+                        sai_deserialize_route_entry(o->str_object_id, o->meta_key.objectkey.key.route_entry);
                         soRoutes[o->str_object_id] = o;
 
                         /*
@@ -424,24 +424,14 @@ class AsicView
                          * increase vid reference.
                          */
 
-                        m_vidReference[o->meta_key.key.route_entry.vr_id] += 1;
+                        m_vidReference[o->meta_key.objectkey.key.route_entry.vr_id] += 1;
 
-                        break;
-
-                    case SAI_OBJECT_TYPE_VLAN:
-                        sai_deserialize_vlan_id(o->str_object_id, o->meta_key.key.vlan_id);
-                        soVlans[o->str_object_id] = o;
-                        break;
-
-                    case SAI_OBJECT_TYPE_TRAP:
-                        sai_deserialize_hostif_trap_id(o->str_object_id, o->meta_key.key.trap_id);
-                        soTraps[o->str_object_id] = o;
                         break;
 
                     default:
-                        sai_deserialize_object_id(o->str_object_id, o->meta_key.key.object_id);
+                        sai_deserialize_object_id(o->str_object_id, o->meta_key.objectkey.key.object_id);
                         soOids[o->str_object_id] = o;
-                        oOids[o->meta_key.key.object_id] = o;
+                        oOids[o->meta_key.objectkey.key.object_id] = o;
 
                         /*
                          * From SAI 1.0 this will be in metadata.
@@ -458,13 +448,13 @@ class AsicView
                          * vidReference is it has not been set yet at all.
                          */
 
-                        m_vidReference[o->meta_key.key.object_id] += 0;
+                        m_vidReference[o->meta_key.objectkey.key.object_id] += 0;
 
                         break;
                 }
 
                 soAll[o->str_object_id] = o;
-                sotAll[o->meta_key.object_type][o->str_object_id] = o;
+                sotAll[o->meta_key.objecttype][o->str_object_id] = o;
 
                 populateAttributes(o, key.second);
             }
@@ -480,85 +470,11 @@ class AsicView
 
                 soAll[o->str_object_id] = o;
                 soSwitches[o->str_object_id] = o;
-                sotAll[o->meta_key.object_type][o->str_object_id] = o;
+                sotAll[o->meta_key.objecttype][o->str_object_id] = o;
             }
 
-            {
-                // VLAN 1 also needs to be present
+            // TODO VLAN 1 also needs to be present (create it)
 
-                std::shared_ptr<SaiObj> o = std::make_shared<SaiObj>();
-
-                o->str_object_type  = sai_serialize_object_type(SAI_OBJECT_TYPE_VLAN);
-                o->str_object_id    = sai_serialize_vlan_id(1);
-
-                o->meta_key.object_type = SAI_OBJECT_TYPE_VLAN;
-                o->meta_key.key.vlan_id = 1;
-
-                if (soVlans.find(o->str_object_id) == soVlans.end())
-                {
-                    /*
-                     * Vlan 1 don't exist in current view, save it as default
-                     */
-
-                    soVlans[o->str_object_id] = o;
-                    soAll[o->str_object_id] = o;
-                    sotAll[o->meta_key.object_type][o->str_object_id] = o;
-                }
-            }
-
-            {
-                // create all default traps in both views
-
-                for (int index = 0; metadata_enum_sai_hostif_trap_type_t.valuesnames[index] != NULL; ++index)
-                {
-                    sai_hostif_trap_id_t trap_id = (sai_hostif_trap_id_t)metadata_enum_sai_hostif_trap_type_t.values[index];
-
-                    std::shared_ptr<SaiObj> o = std::make_shared<SaiObj>();
-
-                    o->str_object_type  = sai_serialize_object_type(SAI_OBJECT_TYPE_TRAP);
-                    o->str_object_id    = sai_serialize_hostif_trap_id(trap_id);
-
-                    o->meta_key.object_type = SAI_OBJECT_TYPE_TRAP;
-                    o->meta_key.key.trap_id = trap_id;
-
-                    if (soTraps.find(o->str_object_id) == soTraps.end())
-                    {
-                        soTraps[o->str_object_id] = o;
-                        soAll[o->str_object_id] = o;
-                        sotAll[o->meta_key.object_type][o->str_object_id] = o;
-                    }
-                }
-            }
-
-        }/*}}}*/
-
-        std::shared_ptr<SaiObj> createTrapObject(/*{{{*/
-                _In_ const std::string &str_object_type,
-                _In_ const std::string &str_object_id)
-        {
-            SWSS_LOG_ENTER();
-
-            std::shared_ptr<SaiObj> o = std::make_shared<SaiObj>();
-
-            o->str_object_type  = str_object_type;
-            o->str_object_id    = str_object_id;
-
-            sai_deserialize_object_type(o->str_object_type, o->meta_key.object_type);
-
-            sai_deserialize_hostif_trap_id(o->str_object_id, o->meta_key.key.trap_id);
-            soTraps[o->str_object_id] = o;
-
-            if (soAll.find(o->str_object_id) != soAll.end())
-            {
-                SWSS_LOG_ERROR("FATAL: trap %s already exists in current view", o->str_object_id.c_str());
-
-                throw std::runtime_error("FATAL: trap already exists in current view");
-            }
-
-            soAll[o->str_object_id] = o;
-            sotAll[o->meta_key.object_type][o->str_object_id] = o;
-
-            return o;
         }/*}}}*/
 
         void releaseVidReference(/*{{{*/
@@ -666,8 +582,6 @@ class AsicView
         StrObjectIdToSaiObjectHash soFdbs;
         StrObjectIdToSaiObjectHash soNeighbors;
         StrObjectIdToSaiObjectHash soRoutes;
-        StrObjectIdToSaiObjectHash soVlans;
-        StrObjectIdToSaiObjectHash soTraps;
         StrObjectIdToSaiObjectHash soOids;
         StrObjectIdToSaiObjectHash soAll;
 
@@ -791,18 +705,18 @@ class AsicView
             o->str_object_type  = sai_serialize_object_type(object_type);
             o->str_object_id    = sai_serialize_object_id(vid);
 
-            o->meta_key.object_type = object_type;
-            o->meta_key.key.object_id = vid;
+            o->meta_key.objecttype = object_type;
+            o->meta_key.objectkey.key.object_id = vid;
 
             soOids[o->str_object_id] = o;
-            oOids[o->meta_key.key.object_id] = o;
+            oOids[o->meta_key.objectkey.key.object_id] = o;
 
             o->oidObject = true;
 
-            m_vidReference[o->meta_key.key.object_id] += 0;
+            m_vidReference[o->meta_key.objectkey.key.object_id] += 0;
 
             soAll[o->str_object_id] = o;
-            sotAll[o->meta_key.object_type][o->str_object_id] = o;
+            sotAll[o->meta_key.objecttype][o->str_object_id] = o;
 
             ridToVid[rid] = vid;
             vidToRid[vid] = rid;
@@ -859,12 +773,12 @@ class AsicView
             }
 
             soOids[currentObj->str_object_id] = currentObj;
-            oOids[currentObj->meta_key.key.object_id] = currentObj;
+            oOids[currentObj->meta_key.objectkey.key.object_id] = currentObj;
 
-            m_vidReference[currentObj->meta_key.key.object_id] += 0;
+            m_vidReference[currentObj->meta_key.objectkey.key.object_id] += 0;
 
             soAll[currentObj->str_object_id] = currentObj;
-            sotAll[currentObj->meta_key.object_type][currentObj->str_object_id] = currentObj;
+            sotAll[currentObj->meta_key.objecttype][currentObj->str_object_id] = currentObj;
 
             /*
              * This method will generate ASIC create operation on current
@@ -923,13 +837,13 @@ class AsicView
 
             switch (currentObj->getObjectType())
             {
-                case SAI_OBJECT_TYPE_FDB:
-                    sai_deserialize_fdb_entry(currentObj->str_object_id, currentObj->meta_key.key.fdb_entry);
+                case SAI_OBJECT_TYPE_FDB_ENTRY:
+                    sai_deserialize_fdb_entry(currentObj->str_object_id, currentObj->meta_key.objectkey.key.fdb_entry);
                     soFdbs[currentObj->str_object_id] = currentObj;
                     break;
 
-                case SAI_OBJECT_TYPE_NEIGHBOR:
-                    sai_deserialize_neighbor_entry(currentObj->str_object_id, currentObj->meta_key.key.neighbor_entry);
+                case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+                    sai_deserialize_neighbor_entry(currentObj->str_object_id, currentObj->meta_key.objectkey.key.neighbor_entry);
                     soNeighbors[currentObj->str_object_id] = currentObj;
 
                     /*
@@ -939,12 +853,12 @@ class AsicView
                      * object ids.
                      */
 
-                    m_vidReference[currentObj->meta_key.key.neighbor_entry.rif_id] += 1;
+                    m_vidReference[currentObj->meta_key.objectkey.key.neighbor_entry.rif_id] += 1;
 
                     break;
 
-                case SAI_OBJECT_TYPE_ROUTE:
-                    sai_deserialize_route_entry(currentObj->str_object_id, currentObj->meta_key.key.route_entry);
+                case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+                    sai_deserialize_route_entry(currentObj->str_object_id, currentObj->meta_key.objectkey.key.route_entry);
                     soRoutes[currentObj->str_object_id] = currentObj;
 
                     /*
@@ -952,13 +866,8 @@ class AsicView
                      * increase vid reference.
                      */
 
-                    m_vidReference[currentObj->meta_key.key.route_entry.vr_id] += 1;
+                    m_vidReference[currentObj->meta_key.objectkey.key.route_entry.vr_id] += 1;
 
-                    break;
-
-                case SAI_OBJECT_TYPE_VLAN:
-                    sai_deserialize_vlan_id(currentObj->str_object_id, currentObj->meta_key.key.vlan_id);
-                    soVlans[currentObj->str_object_id] = currentObj;
                     break;
 
                 default:
@@ -972,7 +881,7 @@ class AsicView
             // TODO fix this
 
             soAll[currentObj->str_object_id] = currentObj;
-            sotAll[currentObj->meta_key.object_type][currentObj->str_object_id] = currentObj;
+            sotAll[currentObj->meta_key.objecttype][currentObj->str_object_id] = currentObj;
 
             /*
              * This method will generate ASIC create operation on current
@@ -1033,13 +942,13 @@ class AsicView
 
             switch (currentObj->getObjectType())
             {
-                case SAI_OBJECT_TYPE_FDB:
+                case SAI_OBJECT_TYPE_FDB_ENTRY:
 
                     soFdbs.erase(currentObj->str_object_id);
 
                     break;
 
-                case SAI_OBJECT_TYPE_NEIGHBOR:
+                case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
 
                     /*
                      * Since neighbor struct object contains RIF ID, we
@@ -1050,11 +959,11 @@ class AsicView
 
                     soNeighbors.erase(currentObj->str_object_id);
 
-                    m_vidReference[currentObj->meta_key.key.neighbor_entry.rif_id] -= 1;
+                    m_vidReference[currentObj->meta_key.objectkey.key.neighbor_entry.rif_id] -= 1;
 
                     break;
 
-                case SAI_OBJECT_TYPE_ROUTE:
+                case SAI_OBJECT_TYPE_ROUTE_ENTRY:
 
                     /*
                      * Since route struct object contains VR ID, we need to
@@ -1063,13 +972,7 @@ class AsicView
 
                     soRoutes.erase(currentObj->str_object_id);
 
-                    m_vidReference[currentObj->meta_key.key.route_entry.vr_id] -= 1;
-
-                    break;
-
-                case SAI_OBJECT_TYPE_VLAN:
-
-                    soVlans.erase(currentObj->str_object_id);
+                    m_vidReference[currentObj->meta_key.objectkey.key.route_entry.vr_id] -= 1;
 
                     break;
 
@@ -1082,7 +985,7 @@ class AsicView
             }
 
             soAll.erase(currentObj->str_object_id);
-            sotAll[currentObj->meta_key.object_type].erase(currentObj->str_object_id);
+            sotAll[currentObj->meta_key.objecttype].erase(currentObj->str_object_id);
 
             /*
              * Generate asic commands.
@@ -1117,12 +1020,12 @@ class AsicView
              */
 
             soOids.erase(currentObj->str_object_id);
-            oOids.erase(currentObj->meta_key.key.object_id);
+            oOids.erase(currentObj->meta_key.objectkey.key.object_id);
 
-            m_vidReference[currentObj->meta_key.key.object_id] -= 1;
+            m_vidReference[currentObj->meta_key.objectkey.key.object_id] -= 1;
 
             soAll.erase(currentObj->str_object_id);
-            sotAll[currentObj->meta_key.object_type].erase(currentObj->str_object_id);
+            sotAll[currentObj->meta_key.objecttype].erase(currentObj->str_object_id);
 
             /*
              * Clear object also from rid/vid maps.
@@ -1226,8 +1129,8 @@ class AsicView
 
             sw->str_object_id        = sai_serialize_object_id(object_id);
             sw->str_object_type      = "SAI_OBJECT_TYPE_SWITCH";
-            sw->meta_key.object_type = SAI_OBJECT_TYPE_SWITCH;
-            sw->meta_key.key.object_id = object_id;
+            sw->meta_key.objecttype = SAI_OBJECT_TYPE_SWITCH;
+            sw->meta_key.objectkey.key.object_id = object_id;
 
             return sw;
         }/*}}}*/
@@ -2086,7 +1989,7 @@ std::shared_ptr<SaiObj> findCurrentBestMatchForNeighborEntry(/*{{{*/
      * on this data should be read only.
      */
 
-    sai_neighbor_entry_t ne = temporaryObj->meta_key.key.neighbor_entry;
+    sai_neighbor_entry_t ne = temporaryObj->meta_key.objectkey.key.neighbor_entry;
 
     sai_object_id_t temporaryRouterInterfaceVid = ne.rif_id;
 
@@ -2202,7 +2105,7 @@ std::shared_ptr<SaiObj> findCurrentBestMatchForRouteEntry(/*{{{*/
      * on this data should be read only.
      */
 
-    sai_unicast_route_entry_t re = temporaryObj->meta_key.key.route_entry;
+    sai_route_entry_t re = temporaryObj->meta_key.objectkey.key.route_entry;
 
     sai_object_id_t temporaryVirtualRouterVid = re.vr_id;
 
@@ -2349,7 +2252,7 @@ std::shared_ptr<SaiObj> findCurrentBestMatchForFdbEntry(/*{{{*/
      * will change in SAI 1.0 since oids are added there.
      */
 
-    sai_fdb_entry_t fe = temporaryObj->meta_key.key.fdb_entry;
+    sai_fdb_entry_t fe = temporaryObj->meta_key.objectkey.key.fdb_entry;
 
     std::string str_fdb_entry = sai_serialize_fdb_entry(fe);
 
@@ -2387,110 +2290,6 @@ std::shared_ptr<SaiObj> findCurrentBestMatchForFdbEntry(/*{{{*/
             str_fdb_entry.c_str(), currentFdbObj->getObjectStatus() );
 
     throw std::runtime_error("found fdb entry in current view, but it status was processed");
-}/*}}}*/
-
-std::shared_ptr<SaiObj> findCurrentBestMatchForTrap(/*{{{*/
-        _In_ const AsicView &currentView,
-        _In_ const AsicView &temporaryView,
-        _In_ const std::shared_ptr<SaiObj> temporaryObj)
-{
-    SWSS_LOG_ENTER();
-
-    /*
-     * For traps in 0.9.4 traps are enum values, and we have
-     * their exact names so we can do direct dictionary lookup.
-     */
-
-    sai_hostif_trap_id_t trap_id = temporaryObj->meta_key.key.trap_id;
-
-    std::string str_trap_id = sai_serialize_hostif_trap_id(trap_id);
-
-    /*
-     * Now when we have serialized trap id, we can do dictionary lookup for trap.
-     */
-
-    auto currentTrapIt = currentView.soTraps.find(str_trap_id);
-
-    if (currentTrapIt == currentView.soTraps.end())
-    {
-        SWSS_LOG_WARN("unable to find trap id %s in current asic view", str_trap_id.c_str());
-
-        return nullptr;
-    }
-
-    /*
-     * We found the same trap id in current view! Just one extra check
-     * of object status if it's not processed yet.
-     */
-
-    auto currentTrapObj = currentTrapIt->second;
-
-    if (currentTrapObj->getObjectStatus() == SAI_OBJECT_STATUS_NOT_PROCESSED)
-    {
-        return currentTrapObj;
-    }
-
-    /*
-     * If we are here, that means this trap was already processed, which
-     * can indicate a bug or somehow duplicated entries.
-     */
-
-    SWSS_LOG_ERROR("found trap id %s in current view, but it status is %d, FATAL",
-            str_trap_id.c_str(), currentTrapObj->getObjectStatus());
-
-    throw std::runtime_error("found trap id in current view, but it status was processed");
-}/*}}}*/
-
-std::shared_ptr<SaiObj> findCurrentBestMatchForVlan(/*{{{*/
-        _In_ const AsicView &currentView,
-        _In_ const AsicView &temporaryView,
-        _In_ const std::shared_ptr<SaiObj> temporaryObj)
-{
-    SWSS_LOG_ENTER();
-
-    /*
-     * For vlan in 0.9.4 vlans are numbers values, and we have
-     * their exact values so we can do direct dictionary lookup.
-     */
-
-    sai_vlan_id_t vlan_id = temporaryObj->meta_key.key.vlan_id;
-
-    std::string str_vlan_id = sai_serialize_vlan_id(vlan_id);
-
-    /*
-     * Now when we have serialized vlan id, we can do dictionary lookup for vlan.
-     */
-
-    auto currentVlanIt = currentView.soVlans.find(str_vlan_id);
-
-    if (currentVlanIt == currentView.soVlans.end())
-    {
-        SWSS_LOG_DEBUG("unable to find vlan id %s in current asic view", str_vlan_id.c_str());
-
-        return nullptr;
-    }
-
-    /*
-     * We found the same vlan id in current view! Just one extra check
-     * of object status if it's not processed yet.
-     */
-
-    auto currentVlanObj = currentVlanIt->second;
-
-    if (currentVlanObj->getObjectStatus() == SAI_OBJECT_STATUS_NOT_PROCESSED)
-    {
-        return currentVlanObj;
-    }
-
-    /*
-     * If we are here, that means this vlan was already processed, which
-     * can indicate a bug or somehow duplicated entries.
-     */
-
-    SWSS_LOG_ERROR("found vlan id %s in current view, but it status is %d, FATAL",
-            str_vlan_id.c_str(), currentVlanObj->getObjectStatus());
-
-    throw std::runtime_error("found vlan id in current view, but it status was processed");
 }/*}}}*/
 
 std::shared_ptr<SaiObj> findCurrentBestMatch(/*{{{*/
@@ -2534,25 +2333,21 @@ std::shared_ptr<SaiObj> findCurrentBestMatch(/*{{{*/
          * Non object id cases
          */
 
-        case SAI_OBJECT_TYPE_NEIGHBOR:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
             return findCurrentBestMatchForNeighborEntry(currentView, temporaryView, temporaryObj);
 
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
             return findCurrentBestMatchForRouteEntry(currentView, temporaryView, temporaryObj);
 
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
             return findCurrentBestMatchForFdbEntry(currentView, temporaryView, temporaryObj);
 
         case SAI_OBJECT_TYPE_SWITCH:
             return findCurrentBestMatchForSwitch(currentView, temporaryView, temporaryObj);
 
-        case SAI_OBJECT_TYPE_TRAP:
-            return findCurrentBestMatchForTrap(currentView, temporaryView, temporaryObj);
-
-        case SAI_OBJECT_TYPE_VLAN:
-            return findCurrentBestMatchForVlan(currentView, temporaryView, temporaryObj);
-
         default:
+
+            // TODO check for oid
 
             /*
              * Here we support only object id object types.
@@ -2634,10 +2429,10 @@ void procesObjectAttributesForViewTransition(/*{{{*/
 
     switch (temporaryObj->getObjectType())
     {
-        case SAI_OBJECT_TYPE_NEIGHBOR:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
 
             {
-                sai_object_id_t vid = temporaryObj->meta_key.key.neighbor_entry.rif_id;
+                sai_object_id_t vid = temporaryObj->meta_key.objectkey.key.neighbor_entry.rif_id;
 
                 auto structObject = temporaryView.oOids.at(vid);
 
@@ -2648,10 +2443,10 @@ void procesObjectAttributesForViewTransition(/*{{{*/
 
             break;
 
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
 
             {
-                sai_object_id_t vid = temporaryObj->meta_key.key.route_entry.vr_id;
+                sai_object_id_t vid = temporaryObj->meta_key.objectkey.key.route_entry.vr_id;
 
                 auto structObject = temporaryView.oOids.at(vid);
 
@@ -2662,10 +2457,10 @@ void procesObjectAttributesForViewTransition(/*{{{*/
 
             break;
 
-        case SAI_OBJECT_TYPE_TRAP:
         case SAI_OBJECT_TYPE_SWITCH:
-        case SAI_OBJECT_TYPE_VLAN:
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
+
+            // TODO support translation for fdb
 
             {
                 /*
@@ -2858,9 +2653,9 @@ void removeExistingObjectFromCurrentView(/*{{{*/
 
     switch (currentObj->getObjectType())
     {
-        case SAI_OBJECT_TYPE_NEIGHBOR:
-        case SAI_OBJECT_TYPE_FDB:
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
 
             /*
              * For ROUTE/FDB/NEIGHBOR we don't need to worry about dependencies
@@ -2878,10 +2673,11 @@ void removeExistingObjectFromCurrentView(/*{{{*/
 
         case SAI_OBJECT_TYPE_VLAN:
 
-            if (currentObj->meta_key.key.vlan_id == 1)
+            if (false)
             {
                 /*
-                 * VLAN 1 can't be removed.
+                 * TODO VLAN 1 can't be removed.
+                 * Check for vlan 1 in attributes of object
                  */
 
                 bringNonRemovableObjectToDefaultState(currentView, temporaryView, currentObj);
@@ -2897,19 +2693,13 @@ void removeExistingObjectFromCurrentView(/*{{{*/
             return;
 
         case SAI_OBJECT_TYPE_SWITCH:
-        case SAI_OBJECT_TYPE_TRAP:
-
-            /*
-             * All traps are inserted so we should alwasy find current best
-             * match.
-             */
 
             bringNonRemovableObjectToDefaultState(currentView, temporaryView, currentObj);
             return;
 
         case SAI_OBJECT_TYPE_SCHEDULER:
         case SAI_OBJECT_TYPE_POLICER:
-        case SAI_OBJECT_TYPE_QOS_MAPS:
+        case SAI_OBJECT_TYPE_QOS_MAP:
         case SAI_OBJECT_TYPE_NEXT_HOP_GROUP:
         case SAI_OBJECT_TYPE_BUFFER_POOL:
         case SAI_OBJECT_TYPE_WRED:
@@ -2917,7 +2707,7 @@ void removeExistingObjectFromCurrentView(/*{{{*/
         case SAI_OBJECT_TYPE_NEXT_HOP:
         case SAI_OBJECT_TYPE_ROUTER_INTERFACE:
         case SAI_OBJECT_TYPE_ACL_ENTRY:
-        case SAI_OBJECT_TYPE_HOST_INTERFACE:
+        case SAI_OBJECT_TYPE_HOSTIF:
         case SAI_OBJECT_TYPE_ACL_TABLE:
 
             currentView.asicRemoveObject(currentObj);
@@ -2936,7 +2726,7 @@ void removeExistingObjectFromCurrentView(/*{{{*/
              * for queu schedulers etc.
              */
 
-        case SAI_OBJECT_TYPE_TRAP_GROUP:
+        case SAI_OBJECT_TYPE_HOSTIF_TRAP_GROUP:
         case SAI_OBJECT_TYPE_VIRTUAL_ROUTER:
 
             if (currentView.vidToRid.at(currentObj->getVid()) == currentView.defaultVirtualRouterRid ||
@@ -2965,7 +2755,7 @@ void removeExistingObjectFromCurrentView(/*{{{*/
 
         case SAI_OBJECT_TYPE_PORT:
         case SAI_OBJECT_TYPE_QUEUE:
-        case SAI_OBJECT_TYPE_PRIORITY_GROUP:
+        case SAI_OBJECT_TYPE_INGRESS_PRIORITY_GROUP:
         case SAI_OBJECT_TYPE_SCHEDULER_GROUP:
             bringNonRemovableObjectToDefaultState(currentView, temporaryView, currentObj);
             return;
@@ -3109,19 +2899,19 @@ std::shared_ptr<SaiAttr> translateTemporaryVidsToCurrentVids(/*{{{*/
 
     auto &at = *attr->getRWSaiAttr();
 
-    switch (attr->getAttrMetadata()->serializationtype)
+    switch (attr->getAttrMetadata()->attrvaluetype)
     {
-        case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
             count = 1;
             objectIdList = &at.value.oid;
             break;
 
-        case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
             count = at.value.objlist.count;
             objectIdList = at.value.objlist.list;
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
 
             if (at.value.aclfield.enable)
             {
@@ -3131,7 +2921,7 @@ std::shared_ptr<SaiAttr> translateTemporaryVidsToCurrentVids(/*{{{*/
 
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
 
             if (at.value.aclfield.enable)
             {
@@ -3141,7 +2931,7 @@ std::shared_ptr<SaiAttr> translateTemporaryVidsToCurrentVids(/*{{{*/
 
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
 
             if (at.value.aclaction.enable)
             {
@@ -3151,7 +2941,7 @@ std::shared_ptr<SaiAttr> translateTemporaryVidsToCurrentVids(/*{{{*/
 
             break;
 
-        case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+        case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
 
             if (at.value.aclaction.enable)
             {
@@ -3449,7 +3239,7 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
 
     switch (temporaryObj->getObjectType())
     {
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
 
             /*
              * Since ROUTE object contains OID inside struct, this OID may
@@ -3458,7 +3248,7 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
              */
 
             {
-                sai_object_id_t vid = currentObj->meta_key.key.route_entry.vr_id;
+                sai_object_id_t vid = currentObj->meta_key.objectkey.key.route_entry.vr_id;
 
                 vid = translateTemporaryVidToCurrentVid(currentView, temporaryView, vid);
 
@@ -3467,17 +3257,17 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
                  * to update string as well.
                  */
 
-                currentObj->meta_key.key.route_entry.vr_id = vid;
+                currentObj->meta_key.objectkey.key.route_entry.vr_id = vid;
 
                 // TODO this needs to be done in more generic way
-                currentObj->str_object_id = sai_serialize_route_entry(currentObj->meta_key.key.route_entry);
+                currentObj->str_object_id = sai_serialize_route_entry(currentObj->meta_key.objectkey.key.route_entry);
 
                 currentView.bindNewVidReference(vid);
             }
 
             break;
 
-        case SAI_OBJECT_TYPE_NEIGHBOR:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
 
             /*
              * Since NEIGHBOR object contains OID inside struct, this OID may
@@ -3486,7 +3276,7 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
              */
 
             {
-                sai_object_id_t vid = currentObj->meta_key.key.neighbor_entry.rif_id;
+                sai_object_id_t vid = currentObj->meta_key.objectkey.key.neighbor_entry.rif_id;
 
                 vid = translateTemporaryVidToCurrentVid(currentView, temporaryView, vid);
 
@@ -3495,17 +3285,17 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
                  * to update string as well.
                  */
 
-                currentObj->meta_key.key.neighbor_entry.rif_id = vid;
+                currentObj->meta_key.objectkey.key.neighbor_entry.rif_id = vid;
 
                 // TODO this needs to be done in more generic way
-                currentObj->str_object_id = sai_serialize_neighbor_entry(currentObj->meta_key.key.neighbor_entry);
+                currentObj->str_object_id = sai_serialize_neighbor_entry(currentObj->meta_key.objectkey.key.neighbor_entry);
 
                 currentView.bindNewVidReference(vid);
             }
 
             break;
 
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
         case SAI_OBJECT_TYPE_VLAN:
 
             /*
@@ -3578,42 +3368,6 @@ void createNewNonOidObjectFromTemporaryObject(/*{{{*/
     temporaryObj->setObjectStatus(SAI_OBJECT_STATUS_FINAL);
 }/*}}}*/
 
-void createTrapAndSetAttributes(/*{{{*/
-        _In_ AsicView &currentView,
-        _In_ AsicView &temporaryView,
-        _In_ std::shared_ptr<SaiObj> &temporaryObj)
-{
-    SWSS_LOG_ENTER();
-
-    if (temporaryObj->getObjectType() != SAI_OBJECT_TYPE_TRAP)
-    {
-        SWSS_LOG_ERROR("expected TRAP, got %s:%s",
-                temporaryObj->str_object_type.c_str(),
-                temporaryObj->str_object_id.c_str());
-
-        throw std::runtime_error("expected TRAP object");
-    }
-
-    /*
-     * Ok since traps exist in 0.9.4 SAI then we don't create them we can just
-     * set all attributes, but since we don't populate trap objects directly,
-     * we need to create in current view empty trap object that will represent
-     * temporary object trap.
-     */
-
-    const auto &currentObj = currentView.createTrapObject(
-            temporaryObj->str_object_type,
-            temporaryObj->str_object_id);
-
-    for(const auto &it: temporaryObj->getAllAttributes())
-    {
-        setAttributeOnCurrentObject(currentView, temporaryView, currentObj, it.second);
-    }
-
-    currentObj->setObjectStatus(SAI_OBJECT_STATUS_FINAL);
-    temporaryObj->setObjectStatus(SAI_OBJECT_STATUS_FINAL);
-}/*}}}*/
-
 /**
  * @brief Create new object from temporary object
  *
@@ -3645,19 +3399,21 @@ void createNewObjectFromTemporaryObject(/*{{{*/
          * exist.
          */
 
-        case SAI_OBJECT_TYPE_TRAP_GROUP:
+        case SAI_OBJECT_TYPE_HOSTIF_TRAP:
+        case SAI_OBJECT_TYPE_HOSTIF_TRAP_GROUP:
         case SAI_OBJECT_TYPE_POLICER:
         case SAI_OBJECT_TYPE_SCHEDULER:
         case SAI_OBJECT_TYPE_WRED:
         case SAI_OBJECT_TYPE_ACL_TABLE:
         case SAI_OBJECT_TYPE_ACL_ENTRY:
-        case SAI_OBJECT_TYPE_QOS_MAPS:
+        case SAI_OBJECT_TYPE_QOS_MAP:
         case SAI_OBJECT_TYPE_ROUTER_INTERFACE:
         case SAI_OBJECT_TYPE_NEXT_HOP:
         case SAI_OBJECT_TYPE_NEXT_HOP_GROUP:
-        case SAI_OBJECT_TYPE_HOST_INTERFACE:
+        case SAI_OBJECT_TYPE_HOSTIF:
         case SAI_OBJECT_TYPE_BUFFER_POOL:
         case SAI_OBJECT_TYPE_BUFFER_PROFILE:
+        case SAI_OBJECT_TYPE_VLAN:  // vlan 1 can't be created since it exist by default
 
             createNewOidObjectFromTemporaryObject(currentView, temporaryView, temporaryObj);
             return;
@@ -3665,28 +3421,16 @@ void createNewObjectFromTemporaryObject(/*{{{*/
         case SAI_OBJECT_TYPE_PORT:
         case SAI_OBJECT_TYPE_SWITCH:
         case SAI_OBJECT_TYPE_VIRTUAL_ROUTER:
-        case SAI_OBJECT_TYPE_STP_INSTANCE:
+        case SAI_OBJECT_TYPE_STP:
         case SAI_OBJECT_TYPE_QUEUE:
-        case SAI_OBJECT_TYPE_PRIORITY_GROUP:
+        case SAI_OBJECT_TYPE_INGRESS_PRIORITY_GROUP:
         case SAI_OBJECT_TYPE_SCHEDULER_GROUP:
             break;
 
-        case SAI_OBJECT_TYPE_TRAP:
 
-            /*
-             * Traps in 0.9.4 exists, and they can be only set, there is no
-             * create for them.
-             *
-             * All traps are defined right away in both views so we should never hit this
-             */
-
-            // createTrapAndSetAttributes(currentView, temporaryView, temporaryObj);
-            break;
-
-        case SAI_OBJECT_TYPE_VLAN:  // vlan 1 can't be created since it exist by default
-        case SAI_OBJECT_TYPE_ROUTE:
-        case SAI_OBJECT_TYPE_NEIGHBOR:
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
 
             createNewNonOidObjectFromTemporaryObject(currentView, temporaryView, temporaryObj);
             return;
@@ -3813,24 +3557,24 @@ std::shared_ptr<SaiAttr> getSaiAttrFromDefaultValue(/*{{{*/
              * only primitives can be supported on CONST
              */
 
-            switch (meta.serializationtype)
+            switch (meta.attrvaluetype)
             {
-                case SAI_SERIALIZATION_TYPE_BOOL:
-                case SAI_SERIALIZATION_TYPE_UINT8:
-                case SAI_SERIALIZATION_TYPE_INT8:
-                case SAI_SERIALIZATION_TYPE_UINT16:
-                case SAI_SERIALIZATION_TYPE_INT16:
-                case SAI_SERIALIZATION_TYPE_UINT32:
-                case SAI_SERIALIZATION_TYPE_INT32:
-                case SAI_SERIALIZATION_TYPE_UINT64:
-                case SAI_SERIALIZATION_TYPE_INT64:
-                case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+                case SAI_ATTR_VALUE_TYPE_BOOL:
+                case SAI_ATTR_VALUE_TYPE_UINT8:
+                case SAI_ATTR_VALUE_TYPE_INT8:
+                case SAI_ATTR_VALUE_TYPE_UINT16:
+                case SAI_ATTR_VALUE_TYPE_INT16:
+                case SAI_ATTR_VALUE_TYPE_UINT32:
+                case SAI_ATTR_VALUE_TYPE_INT32:
+                case SAI_ATTR_VALUE_TYPE_UINT64:
+                case SAI_ATTR_VALUE_TYPE_INT64:
+                case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
 
                     {
                         sai_attribute_t attr;
 
                         attr.id = meta.attrid;
-                        attr.value = meta.defaultvalue;
+                        attr.value = *meta.defaultvalue;
 
                         std::string str_attr_value = sai_serialize_attr_value(meta, attr, false);
 
@@ -3839,7 +3583,7 @@ std::shared_ptr<SaiAttr> getSaiAttrFromDefaultValue(/*{{{*/
 
                 default:
 
-                    SWSS_LOG_ERROR("serialization type %d is not supported yet, FIXME", meta.serializationtype);
+                    SWSS_LOG_ERROR("serialization type %d is not supported yet, FIXME", meta.attrvaluetype);
                     break;
             }
 
@@ -3859,31 +3603,32 @@ std::shared_ptr<SaiAttr> getSaiAttrFromDefaultValue(/*{{{*/
              * and attribute id, and auto select from attr value.
              */
 
-            if (meta.objecttype == SAI_OBJECT_TYPE_TRAP && meta.attrid == SAI_HOSTIF_TRAP_ATTR_TRAP_GROUP)
-            {
-                /*
-                 * Default trap group is set on traps by default, so to bring them to
-                 * default state we need to explicitly set this.
-                 */
+            // TODO double check that, since this may be not required
+            //if (meta.objecttype == SAI_OBJECT_TYPE_TRAP && meta.attrid == SAI_HOSTIF_TRAP_ATTR_TRAP_GROUP)
+            //{
+            //    /*
+            //     * Default trap group is set on traps by default, so to bring them to
+            //     * default state we need to explicitly set this.
+            //     */
 
-                const auto &tg = currentView.ridToVid.find(currentView.defaultTrapGroupRid);
+            //    const auto &tg = currentView.ridToVid.find(currentView.defaultTrapGroupRid);
 
-                if (tg == currentView.ridToVid.end())
-                {
-                    SWSS_LOG_ERROR("default trap group RID 0x%lx don't exist in current view", currentView.defaultTrapGroupRid);
+            //    if (tg == currentView.ridToVid.end())
+            //    {
+            //        SWSS_LOG_ERROR("default trap group RID 0x%lx don't exist in current view", currentView.defaultTrapGroupRid);
 
-                    throw std::runtime_error("default trap group don't exist in current view");
-                }
+            //        throw std::runtime_error("default trap group don't exist in current view");
+            //    }
 
-                sai_attribute_t at;
+            //    sai_attribute_t at;
 
-                at.id = meta.attrid;
-                at.value.oid = tg->second; // default trap group VID
+            //    at.id = meta.attrid;
+            //    at.value.oid = tg->second; // default trap group VID
 
-                std::string str_attr_value = sai_serialize_attr_value(meta, at, false);
+            //    std::string str_attr_value = sai_serialize_attr_value(meta, at, false);
 
-                return std::make_shared<SaiAttr>(meta.attridname, str_attr_value);
-            }
+            //    return std::make_shared<SaiAttr>(meta.attridname, str_attr_value);
+            //}
 
             SWSS_LOG_ERROR("default value type %d is not supported yet for %s, FIXME",
                     meta.defaultvaluetype,
@@ -4042,7 +3787,7 @@ bool performObjectSetTransition(/*{{{*/
          * expand this logic in the future.
          */
 
-        bool conditional = meta->conditions.size() > 0;
+        bool conditional = meta->conditionslength > 0;
 
         /*
          * If attribute is CREATE_AND_SET and not conditional then it's
@@ -4128,7 +3873,8 @@ bool performObjectSetTransition(/*{{{*/
          * just as sanity check.
          */
 
-        bool conditional = meta->conditions.size() > 0;
+        // TODO use isconditional
+        bool conditional = meta->conditionslength > 0;
 
         if (conditional || HAS_FLAG_MANDATORY_ON_CREATE(meta->flags))
         {
@@ -4440,12 +4186,11 @@ void processObjectForViewTransition(/*{{{*/
 
         switch (temporaryObj->getObjectType())
         {
-            case SAI_OBJECT_TYPE_ROUTE:
-            case SAI_OBJECT_TYPE_FDB:
-            case SAI_OBJECT_TYPE_NEIGHBOR:
-            case SAI_OBJECT_TYPE_VLAN: // may be not possible may have dependencies
-            case SAI_OBJECT_TYPE_SWITCH: // switch can't be removed
-            case SAI_OBJECT_TYPE_TRAP: // traps are always defined and should only support set
+            case SAI_OBJECT_TYPE_ROUTE_ENTRY:
+            case SAI_OBJECT_TYPE_FDB_ENTRY:
+            case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
+            //case SAI_OBJECT_TYPE_VLAN: // may be not possible may have dependencies TODO revisit, have KEY
+            case SAI_OBJECT_TYPE_SWITCH: // switch can't be removed, now it can but it will be special case
 
                 removeExistingObjectFromCurrentView(currentView, temporaryView, currentBestMatch);
                 break;
@@ -5107,7 +4852,7 @@ void asic_translate_vid_to_rid_list(/*{{{*/
     {
         sai_attribute_t &attr = attr_list[i];
 
-        auto meta = get_attribute_metadata(object_type, attr.id);
+        auto meta = sai_metadata_get_attr_metadata(object_type, attr.id);
 
         // this should not happen we should get list right away from SaiAttr
 
@@ -5121,17 +4866,17 @@ void asic_translate_vid_to_rid_list(/*{{{*/
             throw std::runtime_error("unable to get metadata");
         }
 
-        switch (meta->serializationtype)
+        switch (meta->attrvaluetype)
         {
-            case SAI_SERIALIZATION_TYPE_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_ID:
                 attr.value.oid = asic_translate_vid_to_rid(current, temporary, attr.value.oid);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_OBJECT_LIST:
                 asic_translate_list_vid_to_rid(current, temporary, attr.value.objlist);
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_ID:
 
                 if (attr.value.aclfield.enable)
                 {
@@ -5140,7 +4885,7 @@ void asic_translate_vid_to_rid_list(/*{{{*/
 
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
 
                 if (attr.value.aclfield.enable)
                 {
@@ -5149,7 +4894,7 @@ void asic_translate_vid_to_rid_list(/*{{{*/
 
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_ID:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_ID:
 
                 if (attr.value.aclaction.enable)
                 {
@@ -5158,7 +4903,7 @@ void asic_translate_vid_to_rid_list(/*{{{*/
 
                 break;
 
-            case SAI_SERIALIZATION_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
+            case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
 
                 if (attr.value.aclaction.enable)
                 {
@@ -5291,27 +5036,6 @@ sai_status_t asic_handle_fdb(/*{{{*/
     }
 }/*}}}*/
 
-sai_status_t asic_handle_switch(/*{{{*/
-        _In_ const AsicView &current,
-        _In_ const AsicView &temporary,
-        _In_ const std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ const sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    switch (api)
-    {
-        case SAI_COMMON_API_SET:
-            return sai_switch_api->set_switch_attribute(attr_list);
-
-        default:
-            SWSS_LOG_ERROR("switch other apis not implemented");
-            return SAI_STATUS_FAILURE;
-    }
-}/*}}}*/
-
 sai_status_t asic_handle_neighbor(/*{{{*/
         _In_ const AsicView &current,
         _In_ const AsicView &temporary,
@@ -5338,7 +5062,7 @@ sai_status_t asic_handle_neighbor(/*{{{*/
             return sai_neighbor_api->remove_neighbor_entry(&neighbor_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_neighbor_api->set_neighbor_attribute(&neighbor_entry, attr_list);
+            return sai_neighbor_api->set_neighbor_entry_attribute(&neighbor_entry, attr_list);
 
         default:
             SWSS_LOG_ERROR("neighbor other apis not implemented");
@@ -5356,7 +5080,7 @@ sai_status_t asic_handle_route(/*{{{*/
 {
     SWSS_LOG_ENTER();
 
-    sai_unicast_route_entry_t route_entry;
+    sai_route_entry_t route_entry;
     sai_deserialize_route_entry(str_object_id, route_entry);
 
     route_entry.vr_id = asic_translate_vid_to_rid(current, temporary, route_entry.vr_id);
@@ -5366,70 +5090,16 @@ sai_status_t asic_handle_route(/*{{{*/
     switch (api)
     {
         case SAI_COMMON_API_CREATE:
-            return sai_route_api->create_route(&route_entry, attr_count, attr_list);
+            return sai_route_api->create_route_entry(&route_entry, attr_count, attr_list);
 
         case SAI_COMMON_API_REMOVE:
-            return sai_route_api->remove_route(&route_entry);
+            return sai_route_api->remove_route_entry(&route_entry);
 
         case SAI_COMMON_API_SET:
-            return sai_route_api->set_route_attribute(&route_entry, attr_list);
+            return sai_route_api->set_route_entry_attribute(&route_entry, attr_list);
 
         default:
             SWSS_LOG_ERROR("route other apis not implemented");
-            return SAI_STATUS_FAILURE;
-    }
-}/*}}}*/
-
-sai_status_t asic_handle_vlan(/*{{{*/
-        _In_ const AsicView &current,
-        _In_ const AsicView &temporary,
-        _In_ const std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ const sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_vlan_id_t vlan_id;
-    sai_deserialize_vlan_id(str_object_id, vlan_id);
-
-    switch (api)
-    {
-        case SAI_COMMON_API_CREATE:
-            return sai_vlan_api->create_vlan(vlan_id);
-
-        case SAI_COMMON_API_REMOVE:
-            return sai_vlan_api->remove_vlan(vlan_id);
-
-        case SAI_COMMON_API_SET:
-            return sai_vlan_api->set_vlan_attribute(vlan_id, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("vlan other apis not implemented");
-            return SAI_STATUS_FAILURE;
-    }
-}/*}}}*/
-
-sai_status_t asic_handle_trap(/*{{{*/
-        _In_ const AsicView &current,
-        _In_ const AsicView &temporary,
-        _In_ std::string &str_object_id,
-        _In_ sai_common_api_t api,
-        _In_ uint32_t attr_count,
-        _In_ sai_attribute_t *attr_list)
-{
-    SWSS_LOG_ENTER();
-
-    sai_hostif_trap_id_t trap_id;
-    sai_deserialize_hostif_trap_id(str_object_id, trap_id);
-
-    switch (api)
-    {
-        case SAI_COMMON_API_SET:
-            return sai_hostif_api->set_trap_attribute(trap_id, attr_list);
-
-        default:
-            SWSS_LOG_ERROR("trap other apis not implemented");
             return SAI_STATUS_FAILURE;
     }
 }/*}}}*/
@@ -5506,31 +5176,20 @@ sai_status_t asic_process_event(/*{{{*/
 
     switch (object_type)
     {
-        case SAI_OBJECT_TYPE_FDB:
+        case SAI_OBJECT_TYPE_FDB_ENTRY:
             status = asic_handle_fdb(current, temporary, str_object_id, api, attr_count, attr_list);
             break;
 
-        case SAI_OBJECT_TYPE_SWITCH:
-            status = asic_handle_switch(current, temporary, str_object_id, api, attr_count, attr_list);
-            break;
-
-        case SAI_OBJECT_TYPE_NEIGHBOR:
+        case SAI_OBJECT_TYPE_NEIGHBOR_ENTRY:
             status = asic_handle_neighbor(current, temporary, str_object_id, api, attr_count, attr_list);
             break;
 
-        case SAI_OBJECT_TYPE_ROUTE:
+        case SAI_OBJECT_TYPE_ROUTE_ENTRY:
             status = asic_handle_route(current, temporary, str_object_id, api, attr_count, attr_list);
             break;
 
-        case SAI_OBJECT_TYPE_VLAN:
-            status = asic_handle_vlan(current, temporary, str_object_id, api, attr_count, attr_list);
-            break;
-
-        case SAI_OBJECT_TYPE_TRAP:
-            status = asic_handle_trap(current, temporary, str_object_id, api, attr_count, attr_list);
-            break;
-
         default:
+            // TODO check for non id
             status = asic_handle_generic(current, temporary, object_type, str_object_id, api, attr_count, attr_list);
             break;
     }
