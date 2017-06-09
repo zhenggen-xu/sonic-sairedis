@@ -125,7 +125,9 @@ sai_status_t internal_redis_generic_get(
             SWSS_LOG_DEBUG("response: op = %s, key = %s", opkey.c_str(), op.c_str());
 
             if (op != "getresponse") // ignore non response messages
+            {
                 continue;
+            }
 
             sai_status_t status = internal_redis_get_process(
                     object_type,
@@ -168,13 +170,6 @@ sai_status_t redis_generic_get(
         _Out_ sai_attribute_t *attr_list)
 {
     SWSS_LOG_ENTER();
-
-    if (object_id == SAI_NULL_OBJECT_ID && object_type != SAI_OBJECT_TYPE_SWITCH)
-    {
-        SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
 
     std::string str_object_id = sai_serialize_object_id(object_id);
 

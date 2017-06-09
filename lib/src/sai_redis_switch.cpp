@@ -10,6 +10,9 @@ volatile bool g_asicInitViewMode = false; // default mode is apply mode
 volatile bool g_run = false;
 volatile bool g_useTempView = false;
 
+// TODO support pointers with notifications !
+// move part of this to interface query ? or create new file sai_redis.cpp
+
 std::shared_ptr<std::thread> notification_thread;
 
 // this event is used to nice end notifications thread
@@ -101,19 +104,6 @@ sai_status_t redis_initialize_switch()
     return SAI_STATUS_SUCCESS;
 }
 
-/**
- * Routine Description:
- *   @brief Release all resources associated with currently opened switch
- *
- * Arguments:
- *   @param[in] warm_restart_hint - hint that indicates controlled warm restart.
- *                            Since warm restart can be caused by crash
- *                            (therefore there are no guarantees for this call),
- *                            this hint is really a performance optimization.
- *
- * Return Values:
- *   None
- */
 void redis_shutdown_switch(
         _In_ bool warm_restart_hint)
 {
@@ -340,6 +330,11 @@ sai_status_t redis_set_switch_attribute(
 
     if (attr != NULL)
     {
+        /*
+         * NOTE: that this will work without
+         * switch being created.
+         */
+
         switch (attr->id)
         {
             case SAI_REDIS_SWITCH_ATTR_RECORD:

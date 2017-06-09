@@ -30,18 +30,21 @@ sai_status_t redis_generic_remove(
 {
     SWSS_LOG_ENTER();
 
-    if (object_id == SAI_NULL_OBJECT_ID)
-    {
-        SWSS_LOG_ERROR("object id is zero on object type %d", object_type);
-
-        return SAI_STATUS_INVALID_PARAMETER;
-    }
-
     std::string str_object_id = sai_serialize_object_id(object_id);
 
-    return internal_redis_generic_remove(
+    sai_status_t status = internal_redis_generic_remove(
             object_type,
             str_object_id);
+
+    if (object_type == SAI_OBJECT_TYPE_SWITCH &&
+            status == SAI_STATUS_SUCCESS)
+    {
+        SWSS_LOG_NOTICE("removing switch id %s", sai_serialize_object_id(object_id).c_str());
+
+        redis_free_switch_id_index(redis_get_switch_id_index(object_id));
+    }
+
+    return status;
 }
 
 sai_status_t redis_generic_remove_fdb_entry(
