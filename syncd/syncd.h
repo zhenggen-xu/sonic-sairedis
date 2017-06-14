@@ -62,6 +62,8 @@ extern std::mutex g_mutex;
 
 extern std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;
 
+void startDiagShell();
+
 void hardReinit();
 
 void redisClearVidToRidMap();

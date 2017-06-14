@@ -1004,6 +1004,22 @@ service_method_table_t test_services = {
     profile_get_next_value
 };
 
+void startDiagShell()
+{
+    if (options.diagShell)
+    {
+        SWSS_LOG_NOTICE("starting diag shell thread");
+
+        /*
+         * TODO actual switch id must be supplied
+         */
+
+        std::thread diag_shell_thread = std::thread(sai_diag_shell, SAI_NULL_OBJECT_ID);
+
+        diag_shell_thread.detach();
+    }
+}
+
 void on_switch_create(
         _In_ sai_object_id_t switch_vid)
 {
@@ -1023,18 +1039,7 @@ void on_switch_create(
 
     switches[switch_vid] = std::make_shared<SaiSwitch>(switch_vid, switch_rid);
 
-    if (options.diagShell)
-    {
-        SWSS_LOG_NOTICE("starting diag shell thread");
-
-        /*
-         * TODO actual switch id must be supplied
-         */
-
-        std::thread diag_shell_thread = std::thread(sai_diag_shell, SAI_NULL_OBJECT_ID);
-
-        diag_shell_thread.detach();
-    }
+    startDiagShell();
 }
 
 void on_switch_remove(
@@ -2667,13 +2672,6 @@ void saiLoglevelNotify(std::string apiStr, std::string prioStr)
 
 void set_sai_api_loglevel()
 {
-    /*
-     * We want main to be logged as debug to be shown in syslog when new
-     * process starts, rest can be logged as notice.
-     */
-
-    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_DEBUG);
-
     SWSS_LOG_ENTER();
 
     /*
@@ -2853,7 +2851,7 @@ int main(int argc, char **argv)
 
     SWSS_LOG_ENTER();
 
-    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
+    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_NOTICE);
 
     set_sai_api_loglevel();
 
