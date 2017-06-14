@@ -1072,11 +1072,11 @@ std::vector<std::string> redisGetAsicStateKeys()
     return g_redisClient->keys(ASIC_STATE_TABLE + std::string(":*"));
 }
 
-void hardReinit()
+void readAsicState()
 {
     SWSS_LOG_ENTER();
 
-    SWSS_LOG_TIMER("hard reinit");
+    SWSS_LOG_TIMER("read asic state");
 
     /*
      * Repopulate asic view from redis db after hard asic initialize.
@@ -1135,6 +1135,17 @@ void hardReinit()
 
         g_attributesLists[key] = redisGetAttributesFromAsicKey(key);
     }
+
+
+}
+
+void hardReinit()
+{
+    SWSS_LOG_ENTER();
+
+    SWSS_LOG_TIMER("hard reinit");
+
+    readAsicState();
 
     processSwitches();
 
