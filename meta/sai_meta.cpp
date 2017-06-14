@@ -1345,9 +1345,69 @@ sai_status_t meta_generic_validation_create(
 
         if (it == attrs.end())
         {
-            if ((md.attrid == SAI_ACL_TABLE_ATTR_FIELD_ACL_RANGE_TYPE && md.objecttype == SAI_OBJECT_TYPE_ACL_TABLE) ||
-                (md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_DYNAMIC_TH && md.objecttype == SAI_OBJECT_TYPE_BUFFER_PROFILE) ||
-                (md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_STATIC_TH && md.objecttype == SAI_OBJECT_TYPE_BUFFER_PROFILE))
+            /*
+             * Buffer profile shared static/dynamic is special case since it's
+             * mandatory on create but condition is on
+             * SAI_BUFFER_PROFILE_ATTR_POOL_ID attribute (see file saibuffer.h).
+             */
+
+            if (md.objecttype == SAI_OBJECT_TYPE_BUFFER_PROFILE &&
+                    (md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_DYNAMIC_TH ||
+                    (md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_STATIC_TH)))
+            {
+                auto pool_id_attr = sai_metadata_get_attr_by_id(SAI_BUFFER_PROFILE_ATTR_POOL_ID, attr_count, attr_list);
+
+                if (pool_id_attr == NULL)
+                {
+                    META_LOG_ERROR(md, "buffer pool ID is not passed when creating buffer profile, attr is mandatory");
+
+                    return SAI_STATUS_MANDATORY_ATTRIBUTE_MISSING;
+                }
+
+                sai_object_id_t pool_id = pool_id_attr->value.oid;
+
+                if (pool_id == SAI_NULL_OBJECT_ID)
+                {
+                    /* attribute allows null */
+                    continue;
+                }
+
+                /*
+                 * Object type  pool_id is correct since previous loop checked that.
+                 * Now extract SAI_BUFFER_POOL_THRESHOLD_MODE attribute
+                 */
+
+                sai_object_meta_key_t mk = { .objecttype = SAI_OBJECT_TYPE_BUFFER_POOL, .objectkey = { .key = { .object_id = pool_id } } };
+
+                auto pool_md = sai_metadata_get_attr_metadata(SAI_OBJECT_TYPE_BUFFER_POOL, SAI_BUFFER_POOL_ATTR_THRESHOLD_MODE);
+
+                auto prev = get_object_previous_attr(mk, *pool_md);
+
+                sai_buffer_pool_threshold_mode_t mode;
+
+                if (prev == NULL)
+                {
+                    mode = (sai_buffer_pool_threshold_mode_t)pool_md->defaultvalue->s32;
+                }
+                else
+                {
+                    mode = (sai_buffer_pool_threshold_mode_t)prev->value.s32;
+                }
+
+                if ((mode == SAI_BUFFER_POOL_THRESHOLD_MODE_DYNAMIC && md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_DYNAMIC_TH) ||
+                    (mode == SAI_BUFFER_POOL_THRESHOLD_MODE_STATIC && md.attrid == SAI_BUFFER_PROFILE_ATTR_SHARED_STATIC_TH))
+                {
+                    /* attribute is mandatory */
+                }
+                else
+                {
+                    /* in this case attribute is not mandatory */
+                    META_LOG_INFO(md, "not mandatory");
+                    continue;
+                }
+            }
+
+            if (md.attrid == SAI_ACL_TABLE_ATTR_FIELD_ACL_RANGE_TYPE && md.objecttype == SAI_OBJECT_TYPE_ACL_TABLE)
             {
                 /*
                  * TODO Remove in future. Workaround for range type which in
