@@ -604,7 +604,7 @@ const sai_object_type_info_t* sai_metadata_get_object_type_info(
 {
     if (sai_metadata_is_object_type_valid(object_type))
     {
-        return sai_all_object_type_infos[object_type];
+        return sai_metadata_get_object_type_info(object_type);
     }
 
     return NULL;
@@ -1378,12 +1378,12 @@ int main(int argc, char **argv)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-attribute=format"
-    sai_meta_log = &sai_meta_log_syncd;
+    sai_metadata_log = &sai_meta_log_syncd;
 #pragma GCC diagnostic pop
 
     EXIT_ON_ERROR(sai_api_initialize(0, (const service_method_table_t *)&test_services));
 
-    sai_meta_apis_query(sai_api_query);
+    sai_metadata_apis_query(sai_api_query);
 
     sai_attribute_t attr;
 

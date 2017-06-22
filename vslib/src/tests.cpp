@@ -147,7 +147,7 @@ int main()
 
     SUCCESS(sai_api_initialize(0, (service_method_table_t*)&test_services));
 
-    sai_meta_apis_query(sai_api_query);
+    sai_metadata_apis_query(sai_api_query);
 
     //swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_DEBUG);
 

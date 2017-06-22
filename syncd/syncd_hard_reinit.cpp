@@ -647,7 +647,7 @@ sai_object_id_t processSingleVid(
         trapGroupWorkaround(vid, rid, createObject, attrCount, attrList);
     }
 
-    auto info = sai_all_object_type_infos[objectType];
+    auto info = sai_metadata_get_object_type_info(objectType);
 
     if (createObject)
     {
@@ -898,7 +898,7 @@ void processStructNonObjectIds(
 {
     SWSS_LOG_ENTER();
 
-    auto info = sai_all_object_type_infos[meta_key.objecttype];
+    auto info = sai_metadata_get_object_type_info(meta_key.objecttype);
 
     /*
      * Call processSingleVid method for each oid in non object id (struct
@@ -1101,7 +1101,7 @@ void readAsicState()
         sai_object_type_t objectType = getObjectTypeFromAsicKey(key);
         const std::string &strObjectId = getObjectIdFromAsicKey(key);
 
-        auto info = sai_all_object_type_infos[objectType];
+        auto info = sai_metadata_get_object_type_info(objectType);
 
         switch (objectType)
         {

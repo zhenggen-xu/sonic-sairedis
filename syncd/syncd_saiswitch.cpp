@@ -479,7 +479,7 @@ void SaiSwitch::removeExistingObject(
                 sai_serialize_object_id(rid).c_str());
     }
 
-    auto info = sai_all_object_type_infos[ot];
+    auto info = sai_metadata_get_object_type_info(ot);
 
     sai_object_meta_key_t meta_key = { .objecttype = ot, .objectkey = {.key = { .object_id = rid } } };
 
@@ -515,13 +515,13 @@ std::vector<sai_port_stat_t> SaiSwitch::saiGetSupportedCounters() const
 
     std::vector<sai_port_stat_t> supportedCounters;
 
-    for (uint32_t idx = 0; idx < metadata_enum_sai_port_stat_t.valuescount; ++idx)
+    for (uint32_t idx = 0; idx < sai_metadata_enum_sai_port_stat_t.valuescount; ++idx)
     {
-        sai_port_stat_t counter = (sai_port_stat_t)metadata_enum_sai_port_stat_t.values[idx];
+        sai_port_stat_t counter = (sai_port_stat_t)sai_metadata_enum_sai_port_stat_t.values[idx];
 
         uint64_t value;
 
-        sai_status_t status = sai_metadata_sai_port_api->get_port_stats(port_rid, &counter, 1, &value);
+        sai_status_t status = sai_metadata_sai_port_api->get_port_stats(port_rid, 1, &counter, &value);
 
         if (status != SAI_STATUS_SUCCESS)
         {
@@ -540,7 +540,7 @@ std::vector<sai_port_stat_t> SaiSwitch::saiGetSupportedCounters() const
 
     SWSS_LOG_NOTICE("supported %zu of %d",
             supportedCounters.size(),
-            metadata_enum_sai_port_stat_t.valuescount);
+            sai_metadata_enum_sai_port_stat_t.valuescount);
 
     return supportedCounters;
 }
@@ -573,8 +573,8 @@ void SaiSwitch::collectCounters(
     {
         sai_status_t status = sai_metadata_sai_port_api->get_port_stats(
                 port_rid,
-                m_supported_counters.data(),
                 countersSize,
+                m_supported_counters.data(),
                 counters.data());
 
         if (status != SAI_STATUS_SUCCESS)
@@ -874,7 +874,7 @@ void SaiSwitch::saiDiscover(
     }
 
     // TODO later use sai_metadata_get_object_type_info(ot);
-    const sai_object_type_info_t *info =  sai_all_object_type_infos[ot];
+    const sai_object_type_info_t *info =  sai_metadata_get_object_type_info(ot);
 
     /*
      * We will query only oid object types
@@ -1154,7 +1154,7 @@ void SaiSwitch::helperInternalOids()
 {
     SWSS_LOG_ENTER();
 
-    auto info = sai_all_object_type_infos[SAI_OBJECT_TYPE_SWITCH];
+    auto info = sai_metadata_get_object_type_info(SAI_OBJECT_TYPE_SWITCH);
 
     for (int idx = 0; info->attrmetadata[idx] != NULL; ++idx)
     {

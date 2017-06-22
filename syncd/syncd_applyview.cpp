@@ -279,7 +279,7 @@ const sai_object_type_info_t* sai_metadata_get_object_type_info(
 {
     if (sai_metadata_is_object_type_valid(object_type))
     {
-        return sai_all_object_type_infos[object_type];
+        return sai_metadata_get_object_type_info(object_type);
     }
 
     return NULL;

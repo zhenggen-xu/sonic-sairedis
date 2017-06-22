@@ -277,7 +277,7 @@ sai_object_id_t redis_create_virtual_object_id(
 
     sai_object_id_t vid = redis_construct_object_id(object_type, switch_index, virtual_id);
 
-    auto info = sai_all_object_type_infos[object_type];
+    auto info = sai_metadata_get_object_type_info(object_type);
 
     SWSS_LOG_DEBUG("created virtual object id 0x%lx for object type %s",
             vid,
@@ -1138,7 +1138,7 @@ sai_status_t handle_generic(
      * TODO: use metadata utils.
      */
 
-    auto info = sai_all_object_type_infos[object_type];
+    auto info = sai_metadata_get_object_type_info(object_type);
 
     if (info->isnonobjectid)
     {
@@ -1323,7 +1323,7 @@ void translate_vid_to_rid_non_object_id(
     SWSS_LOG_ENTER();
 
     // TODO use metadat utils
-    auto info = sai_all_object_type_infos[meta_key.objecttype];
+    auto info = sai_metadata_get_object_type_info(meta_key.objecttype);
 
     for (size_t j = 0; j < info->structmemberscount; ++j)
     {
@@ -1350,7 +1350,7 @@ sai_status_t handle_non_object_id(
 
     translate_vid_to_rid_non_object_id(meta_key);
 
-    auto info = sai_all_object_type_infos[meta_key.objecttype];
+    auto info = sai_metadata_get_object_type_info(meta_key.objecttype);
 
     switch (api)
     {
@@ -1727,7 +1727,7 @@ sai_status_t processEventInInitViewMode(
      * TODO: use metadata utils.
      */
 
-    auto info = sai_all_object_type_infos[object_type];
+    auto info = sai_metadata_get_object_type_info(object_type);
 
     switch (api)
     {
@@ -1902,7 +1902,7 @@ sai_object_id_t extractSwitchVid(
 {
     SWSS_LOG_ENTER();
 
-    auto info = sai_all_object_type_infos[object_type];
+    auto info = sai_metadata_get_object_type_info(object_type);
 
     /*
      * Could be replaced by meta_key.
@@ -2226,7 +2226,7 @@ sai_status_t processEvent(
     }
 
     // TODO use metadata utils
-    auto info = sai_all_object_type_infos[object_type];
+    auto info = sai_metadata_get_object_type_info(object_type);
 
     sai_status_t status;
 
@@ -2656,7 +2656,7 @@ void saiLoglevelNotify(std::string apiStr, std::string prioStr)
         return;
     }
 
-    sai_api_t api = (sai_api_t)get_enum_value_from_name(apiStr.c_str(), &metadata_enum_sai_api_t);
+    sai_api_t api = (sai_api_t)get_enum_value_from_name(apiStr.c_str(), &sai_metadata_enum_sai_api_t);
 
     sai_status_t status = sai_log_set(api, saiLoglevelMap.at(prioStr));
 
@@ -2678,9 +2678,9 @@ void set_sai_api_loglevel()
      * We start from 1 since 0 is SAI_API_UNSPECIFIED.
      */
 
-    for (uint32_t idx = 1; idx < metadata_enum_sai_api_t.valuescount; ++idx)
+    for (uint32_t idx = 1; idx < sai_metadata_enum_sai_api_t.valuescount; ++idx)
     {
-        swss::Logger::linkToDb(metadata_enum_sai_api_t.valuesnames[idx], saiLoglevelNotify, "SAI_LOG_LEVEL_NOTICE");
+        swss::Logger::linkToDb(sai_metadata_enum_sai_api_t.valuesnames[idx], saiLoglevelNotify, "SAI_LOG_LEVEL_NOTICE");
     }
 }
 
@@ -2859,7 +2859,7 @@ int main(int argc, char **argv)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-attribute=format"
-    sai_meta_log = &sai_meta_log_syncd;
+    sai_metadata_log = &sai_meta_log_syncd;
 #pragma GCC diagnostic pop
 
     meta_init_db();
@@ -2932,7 +2932,7 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    int failed = sai_meta_apis_query(sai_api_query);
+    int failed = sai_metadata_apis_query(sai_api_query);
 
     if (failed > 0)
     {

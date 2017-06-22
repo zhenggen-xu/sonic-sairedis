@@ -188,7 +188,7 @@ int main(int argc, char ** argv)
         sai_object_type_t object_type;
         sai_deserialize_object_type(str_object_type, object_type);
 
-        auto info = sai_all_object_type_infos[object_type];
+        auto info = sai_metadata_get_object_type_info(object_type);
 
         if (!info->isnonobjectid)
         {

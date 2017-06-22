@@ -31,8 +31,8 @@ sai_status_t redis_remove_vlan_members(
 
 sai_status_t redis_get_vlan_stats(
         _In_ sai_object_id_t vlan_id,
-        _In_ const sai_vlan_stat_t *counter_ids,
         _In_ uint32_t number_of_counters,
+        _In_ const sai_vlan_stat_t *counter_ids,
         _Out_ uint64_t *counters)
 {
     MUTEX();
@@ -44,8 +44,8 @@ sai_status_t redis_get_vlan_stats(
 
 sai_status_t redis_clear_vlan_stats(
         _In_ sai_object_id_t vlan_id,
-        _In_ const sai_vlan_stat_t *counter_ids,
-        _In_ uint32_t number_of_counters)
+        _In_ uint32_t number_of_counters,
+        _In_ const sai_vlan_stat_t *counter_ids)
 {
     MUTEX();
 
