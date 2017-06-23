@@ -120,8 +120,7 @@ class SaiAttr
          */
         bool isObjectIdAttr() const
         {
-            // XXX return m_meta->isoidattribute;
-            return m_meta->allowedobjecttypeslength > 0;
+            return m_meta->isoidattribute;
         }
 
         const std::string& getStrAttrId() const
@@ -228,8 +227,7 @@ class SaiAttr
 
                 default:
 
-                    // XXX if (m_meta->isoidattribute)
-                    if (m_meta->allowedobjecttypeslength > 0)
+                    if (m_meta->isoidattribute)
                     {
                         SWSS_LOG_THROW("attribute %s is oid attrubute but not handled", m_meta->attridname);
                     }
@@ -266,24 +264,6 @@ class SaiAttr
         const sai_attr_metadata_t* m_meta;
         sai_attribute_t m_attr;
 };
-
-// TODO remove later since exists in metadata
-bool sai_metadata_is_object_type_valid(
-        _In_ sai_object_type_t object_type)
-{
-    return object_type > SAI_OBJECT_TYPE_NULL && object_type < SAI_OBJECT_TYPE_MAX;
-}
-
-const sai_object_type_info_t* sai_metadata_get_object_type_info(
-        _In_ sai_object_type_t object_type)
-{
-    if (sai_metadata_is_object_type_valid(object_type))
-    {
-        return sai_metadata_get_object_type_info(object_type);
-    }
-
-    return NULL;
-}
 
 /**
  * @brief Class represents SAI object
@@ -5229,8 +5209,7 @@ void asic_translate_vid_to_rid_list(
 
             default:
 
-                // XXX if (meta->isoidattribute)
-                if (meta->allowedobjecttypeslength > 0)
+                if (meta->isoidattribute)
                 {
                     SWSS_LOG_THROW("attribute %s is oid attribute, but not handled, FIXME", meta->attridname);
                 }

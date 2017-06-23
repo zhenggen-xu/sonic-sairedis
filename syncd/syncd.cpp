@@ -175,11 +175,7 @@ sai_object_type_t redis_sai_object_type_query(
 
     sai_object_type_t ot = (sai_object_type_t)((object_id >> OT_POSITION) & 0xFF);
 
-    /*
-     * TODO: Later on use metadata utils.
-     */
-
-    if (ot == SAI_OBJECT_TYPE_NULL || ot >= SAI_OBJECT_TYPE_MAX)
+    if (!sai_metadata_is_object_type_valid(ot))
     {
         SWSS_LOG_THROW("invalid object id 0x%lx", object_id);
     }
@@ -252,11 +248,9 @@ sai_object_id_t redis_create_virtual_object_id(
 
     /*
      * Check if object type is in valid range.
-     *
-     * TODO: Later on we can use metadata utils.
      */
 
-    if (object_type == SAI_OBJECT_TYPE_NULL || object_type >= SAI_OBJECT_TYPE_MAX)
+    if (!sai_metadata_is_object_type_valid(object_type))
     {
         SWSS_LOG_THROW("invalid object type: %s", sai_serialize_object_type(object_type).c_str());
     }
@@ -487,11 +481,7 @@ void translate_rid_to_vid_list(
                  * will make sure that we will need to add handler here.
                  */
 
-                /*
-                 * TODO: Add metadata field for this.
-                 */
-
-                if (meta->allowedobjecttypeslength > 0)
+                if (meta->isoidattribute)
                 {
                     SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
@@ -642,11 +632,7 @@ void translate_vid_to_rid_list(
                  * will make sure that we will need to add handler here.
                  */
 
-                /*
-                 * TODO: Add metadata field for this.
-                 */
-
-                if (meta->allowedobjecttypeslength > 0)
+                if (meta->isoidattribute)
                 {
                     SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
@@ -801,11 +787,7 @@ void snoop_get_response(
                  * will make sure that we will need to add handler here.
                  */
 
-                /*
-                 * TODO: Add metadata field for this.
-                 */
-
-                if (meta->allowedobjecttypeslength > 0)
+                if (meta->isoidattribute)
                 {
                     SWSS_LOG_THROW("attribute %s is object id, but not processed, FIXME", meta->attridname);
                 }
