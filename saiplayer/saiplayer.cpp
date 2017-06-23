@@ -593,23 +593,6 @@ void update_notifications_pointers(
     }
 }
 
-bool sai_metadata_is_object_type_valid(
-        _In_ sai_object_type_t object_type)
-{
-    return object_type > SAI_OBJECT_TYPE_NULL && object_type < SAI_OBJECT_TYPE_MAX;
-}
-
-const sai_object_type_info_t* sai_metadata_get_object_type_info(
-        _In_ sai_object_type_t object_type)
-{
-    if (sai_metadata_is_object_type_valid(object_type))
-    {
-        return sai_metadata_get_object_type_info(object_type);
-    }
-
-    return NULL;
-}
-
 sai_status_t handle_generic(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &str_object_id,
