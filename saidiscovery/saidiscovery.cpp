@@ -100,7 +100,7 @@ int discover(
 
     discovered[id] = {};
 
-    const sai_object_type_info_t *info = sai_all_object_type_infos[ot];
+    const sai_object_type_info_t *info = sai_metadata_all_object_type_infos[ot];
 
     sai_object_meta_key_t mk = { .objecttype = ot, .objectkey = { .key = { .object_id = id } } };
 
@@ -399,7 +399,7 @@ void check_mandatory_attributes(
 {
     SWSS_LOG_ENTER();
 
-    auto info = sai_all_object_type_infos[SAI_OBJECT_TYPE_SWITCH];
+    auto info = sai_metadata_all_object_type_infos[SAI_OBJECT_TYPE_SWITCH];
 
     for (int idx = 0; info->attrmetadata[idx] != NULL; ++idx)
     {
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
         sai_log_set((sai_api_t)api, gOptions.saiApiLogLevel);
     }
 
-    sai_meta_apis_query(sai_api_query);
+    sai_metadata_apis_query(sai_api_query);
 
     sai_object_id_t switch_id;
 
