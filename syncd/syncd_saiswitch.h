@@ -145,6 +145,18 @@ class SaiSwitch
         void getDefaultMacAddress(
                 _Out_ sai_mac_t& mac);
 
+        /**
+         * @brief Gets default value of attribute for given object.
+         *
+         * This applies to objects discovered after switch init like
+         * SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID.
+         *
+         * If object or attribute is not found, SAI_NULL_OBJECT_ID is returned.
+         */
+        sai_object_id_t getDefaultValueForOidAttr(
+                _In_ sai_object_id_t rid,
+                _In_ sai_attr_id_t attr_id);
+
     private:
 
         /*
@@ -298,6 +310,25 @@ class SaiSwitch
 
         std::string getRedisLanesKey() const;
         std::string getRedisHiddenKey() const;
+
+        /**
+         * @brief Default oid map.
+         *
+         * This map will contain default created objects and all their "oid"
+         * attributes and it's default value. This will be needed for bringing
+         * default values.
+         *
+         * TODO later on we need to make this for all attributes.
+         *
+         * Example:
+         * SAI_OBJECT_TYPE_SCHEDULER: oid:0x16
+         *
+         * SAI_OBJECT_TYPE_SCHEDULER_GROUP: oid:0x17
+         *     SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID: oid:0x16
+         *
+         * m_defaultOidMap[0x17][SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID] == 0x16
+         */
+        std::unordered_map<sai_object_id_t, std::unordered_map<sai_attr_id_t, sai_object_id_t>> m_defaultOidMap;
 };
 
 extern std::map<sai_object_id_t, std::shared_ptr<SaiSwitch>> switches;

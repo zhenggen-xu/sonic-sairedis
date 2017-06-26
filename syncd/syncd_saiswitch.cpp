@@ -951,6 +951,8 @@ void SaiSwitch::saiDiscover(
                 continue;
             }
 
+            m_defaultOidMap[rid][attr.id] = attr.value.oid;
+
             if (!md->allownullobjectid && attr.value.oid == SAI_NULL_OBJECT_ID)
             {
                 // SWSS_LOG_WARN("got null on %s, but not allowed", md->attridname);
@@ -1166,6 +1168,29 @@ void SaiSwitch::helperInternalOids()
             helperGetSwitchAttrOid(md->attrid);
         }
     }
+}
+
+sai_object_id_t SaiSwitch::getDefaultValueForOidAttr(
+        _In_ sai_object_id_t rid,
+        _In_ sai_attr_id_t attr_id)
+{
+    SWSS_LOG_ENTER();
+
+    auto it = m_defaultOidMap.find(rid);
+
+    if (it == m_defaultOidMap.end())
+    {
+        return SAI_NULL_OBJECT_ID;
+    }
+
+    auto ita = it->second.find(attr_id);
+
+    if (ita == it->second.end())
+    {
+        return SAI_NULL_OBJECT_ID;
+    }
+
+    return ita->second;
 }
 
 /*

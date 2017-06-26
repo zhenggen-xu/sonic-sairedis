@@ -3998,11 +3998,6 @@ bool performObjectSetTransition(
                 if (meta->objecttype == SAI_OBJECT_TYPE_SCHEDULER_GROUP &&
                         meta->attrid == SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID)
                 {
-                    // XXX this is workaround, FIXME
-
-                    SWSS_LOG_WARN("workaround for %s, we will bring default value as NULL, but need previous from dep TREE, FIXME",
-                            meta->attridname);
-
                     /*
                      * This attribute can hold reference to user created
                      * objects which maybe required to be destroyed, thats why
@@ -4010,10 +4005,38 @@ bool performObjectSetTransition(
                      * removed?
                      */
 
+                    sai_object_id_t def = SAI_NULL_OBJECT_ID;
+
+                    auto sw = switches.begin()->second;
+
+                    sai_object_id_t vid = currentBestMatch->getVid();
+
+                    if (currentView.hasVid(vid))
+                    {
+                        // scheduler_group RID
+                        sai_object_id_t rid = currentView.vidToRid.at(vid);
+
+                        rid = sw->getDefaultValueForOidAttr(rid, SAI_SCHEDULER_GROUP_ATTR_SCHEDULER_PROFILE_ID);
+
+                        if (rid != SAI_NULL_OBJECT_ID && currentView.hasRid(rid))
+                        {
+                            /*
+                             * We found default value
+                             */
+
+                            SWSS_LOG_DEBUG("found default rid %s, vid %s for %s",
+                                    sai_serialize_object_id(rid).c_str(),
+                                    sai_serialize_object_id(vid).c_str(),
+                                    meta->attridname);
+
+                            def = currentView.ridToVid.at(rid);
+                        }
+                    }
+
                     sai_attribute_t defattr;
 
                     defattr.id = meta->attrid;
-                    defattr.value.oid = SAI_NULL_OBJECT_ID;
+                    defattr.value.oid = def;
 
                     std::string str_attr_value = sai_serialize_attr_value(*meta, defattr, false);
 
@@ -5521,6 +5544,8 @@ void executeOperationsOnAsic(
 
     try
     {
+        swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
+
         SWSS_LOG_TIMER("asic apply");
 
         for (const auto &op: currentView.asicGetOperations())
