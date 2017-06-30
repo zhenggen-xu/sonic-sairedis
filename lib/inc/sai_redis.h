@@ -58,6 +58,7 @@ extern std::string joinFieldValues(
 extern volatile bool g_record;
 extern volatile bool g_useTempView;
 extern volatile bool g_asicInitViewMode;
+extern volatile bool g_logrotate;
 
 extern service_method_table_t                       g_services;
 extern std::shared_ptr<swss::ProducerTable>         g_asicState;
