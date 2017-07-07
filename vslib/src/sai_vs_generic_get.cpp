@@ -18,7 +18,7 @@ sai_status_t refresh_read_only(
     switch (g_vs_switch_type)
     {
         case SAI_VS_SWITCH_TYPE_BCM56850:
-            break;
+            return refresh_read_only_BCM56850(meta, object_id, switch_id);
 
         case SAI_VS_SWITCH_TYPE_MLNX2700:
             return refresh_read_only_MLNX2700(meta, object_id, switch_id);
