@@ -519,6 +519,53 @@ class AsicView
         }
 
         /**
+         * @brief Release existing VID links (references) based on given attribute.
+         *
+         * @param[in] attr Attribute which will be used to obtain oids.
+         */
+        void releaseExisgingLinks(
+                _In_ const std::shared_ptr<const SaiAttr> &attr)
+        {
+            SWSS_LOG_ENTER();
+
+            /*
+             * For each VID on that attribute (it can be single oid or oid list,
+             * release link on current view.
+             *
+             * Second operation after could increase links of setting new attribute, or
+             * nothing if object was removed.
+             *
+             * Also if we want to keep track of object reverse dependency
+             * this action can be more complicated.
+             */
+
+            for (auto const &vid: attr->getOidListFromAttribute())
+            {
+                releaseVidReference(vid);
+            }
+        }
+
+        /**
+         * @brief Release existing VID links (references) based given obejct.
+         *
+         * All OID attributes will be scanned and released.
+         *
+         * @param[in] obj Object which will be used to obtain attributes and oids
+         */
+        void releaseExisgingLinks(
+                _In_ const std::shared_ptr<const SaiObj> &obj)
+        {
+            SWSS_LOG_ENTER();
+
+            for (const auto &ita: obj->getAllAttributes())
+            {
+                releaseExisgingLinks(ita.second);
+            }
+        }
+
+    private:
+
+        /**
          * @brief Release VID reference.
          *
          * If SET operation was performed on attribute, and attribute was OID
@@ -557,6 +604,38 @@ class AsicView
             SWSS_LOG_INFO("decreased vid %s refrence to %d",
                     sai_serialize_object_id(vid).c_str(),
                     referenceCount);
+        }
+
+    public:
+
+        /**
+         * @brief Bind new links (references) based on attribute
+         *
+         * @param[in] attr Attribute to obtain oids to bind references
+         */
+        void bindNewLinks(
+                _In_ const std::shared_ptr<const SaiAttr> &attr)
+        {
+            SWSS_LOG_ENTER();
+
+            /*
+             * For each VID on that attribute (it can be single oid or oid list,
+             * bind new link on current view.
+             *
+             * Notice that this list can contain VIDs from temporary view or default
+             * view, so they may not exists in current view. But that should also be
+             * not the case since we either created new object on current view or
+             * either we matched current object to temporary object so RID can be the
+             * same.
+             *
+             * Also if we want to keep track of object reverse dependency
+             * this action can be more complicated.
+             */
+
+            for (auto const &vid: attr->getOidListFromAttribute())
+            {
+                bindNewVidReference(vid);
+            }
         }
 
         /**
@@ -2689,70 +2768,8 @@ std::shared_ptr<SaiAttr> getSaiAttrFromDefaultValue(
         _In_ const AsicView &currentView,
         _In_ const sai_attr_metadata_t &meta);
 
-void releaseExisgingLinks(
-        _In_ AsicView &view,
-        _In_ const std::shared_ptr<const SaiAttr> &attr)
-{
-    SWSS_LOG_ENTER();
-
-    /*
-     * For each VID on that attribute (it can be single oid or oid list,
-     * release link on current view.
-     *
-     * Second operation after could increase links of setting new attribute, or
-     * nothing if object was removed.
-     *
-     * Also if we want to keep track of object reverse dependency
-     * this action can be more complicated.
-     */
-
-    for (auto const &vid: attr->getOidListFromAttribute())
-    {
-        view.releaseVidReference(vid);
-    }
-}
-
-void releaseExisgingLinks(
-        _In_ AsicView &currentView,
-        _In_ const std::shared_ptr<const SaiObj> &currentObj)
-{
-    SWSS_LOG_ENTER();
-
-    for (const auto &ita: currentObj->getAllAttributes())
-    {
-        releaseExisgingLinks(currentView, ita.second);
-    }
-}
-
-void bindNewLinks(
-        _In_ AsicView &view,
-        _In_ const std::shared_ptr<const SaiAttr> &attr)
-{
-    SWSS_LOG_ENTER();
-
-    /*
-     * For each VID on that attribute (it can be single oid or oid list,
-     * bind new link on current view.
-     *
-     * Notice that this list can contain VIDs from temporary view or default
-     * view, so they may not exists in current view. But that should also be
-     * not the case since we either created new object on current view or
-     * either we matched current object to temporary object so RID can be the
-     * same.
-     *
-     * Also if we want to keep track of object reverse dependency
-     * this action can be more complicated.
-     */
-
-    for (auto const &vid: attr->getOidListFromAttribute())
-    {
-        view.bindNewVidReference(vid);
-    }
-}
-
 void bringNonRemovableObjectToDefaultState(
         _In_ AsicView &currentView,
-        _In_ const AsicView &temporaryView,
         _In_ const std::shared_ptr<SaiObj> &currentObj)
 {
     SWSS_LOG_ENTER();
@@ -2792,6 +2809,9 @@ void bringNonRemovableObjectToDefaultState(
             continue;
         }
 
+        // TODO should this wich be inside asicSetAttr ? we can obtain current
+        // attr (if exists) from defaultValueAttr id.
+
         if (attr->isObjectIdAttr())
         {
             /*
@@ -2799,11 +2819,11 @@ void bringNonRemovableObjectToDefaultState(
              * and bind new links for new OID.
              */
 
-            releaseExisgingLinks(currentView, attr);
+            currentView.releaseExisgingLinks(attr);
 
             currentObj->setAttr(defaultValueAttr);
 
-            bindNewLinks(currentView, defaultValueAttr);
+            currentView.bindNewLinks(defaultValueAttr);
         }
         else
         {
@@ -2926,13 +2946,19 @@ void removeExistingObjectFromCurrentView(
 
     if (isNonRemovableObject(currentView, temporaryView, currentObj))
     {
-        bringNonRemovableObjectToDefaultState(currentView, temporaryView, currentObj);
+        bringNonRemovableObjectToDefaultState(currentView, currentObj);
     }
     else
     {
+        /*
+         * Asic remove object is decreasing reference count on non object ID if
+         * current obejct is non object id, release existing links only looks
+         * into attributes.
+         */
+
         currentView.asicRemoveObject(currentObj);
 
-        releaseExisgingLinks(currentView, currentObj);
+        currentView.releaseExisgingLinks(currentObj);
 
         currentObj->setObjectStatus(SAI_OBJECT_STATUS_REMOVED);
     }
@@ -3191,12 +3217,12 @@ void setAttributeOnCurrentObject(
              * they are not NULL.
              */
 
-            releaseExisgingLinks(currentView, currentObj->getSaiAttr(meta->attrid));
+            currentView.releaseExisgingLinks(currentObj->getSaiAttr(meta->attrid));
         }
 
         currentObj->setAttr(attr);
 
-        bindNewLinks(currentView, currentObj->getSaiAttr(meta->attrid));
+        currentView.bindNewLinks(currentObj->getSaiAttr(meta->attrid));
     }
     else
     {
@@ -3373,7 +3399,7 @@ void createNewObjectFromTemporaryObject(
 
             currentObj->setAttr(attr);
 
-            bindNewLinks(currentView, currentObj->getSaiAttr(pair.first)); // we can use attr here
+            currentView.bindNewLinks(currentObj->getSaiAttr(pair.first)); // we can use attr here
         }
         else
         {
