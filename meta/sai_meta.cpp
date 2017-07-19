@@ -776,6 +776,12 @@ sai_status_t meta_generic_validate_non_object_on_create(
 
         if (oid == SAI_NULL_OBJECT_ID)
         {
+            if (meta_key.objecttype == SAI_OBJECT_TYPE_FDB_ENTRY)
+            {
+                SWSS_LOG_WARN("workaround: %s is NULL, REMOVE when using bv_id", m->membername);
+                continue;
+            }
+
             SWSS_LOG_ERROR("oid on %s on struct member %s is NULL",
                     sai_serialize_object_type(meta_key.objecttype).c_str(),
                     m->membername);
