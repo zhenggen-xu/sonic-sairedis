@@ -986,8 +986,6 @@ void onSyncdStart(bool warmStart)
     // id's for ports, this may cause race condition so we need
     // to use a lock here to prevent that
 
-    std::lock_guard<std::mutex> lock(g_db_mutex);
-
     SWSS_LOG_ENTER();
 
     SWSS_LOG_TIMER("on syncd start");
