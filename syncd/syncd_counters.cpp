@@ -34,8 +34,6 @@ void collectCountersThread(
              * change and we don't want that during counters collection.
              */
 
-            std::lock_guard<std::mutex> lock(g_mutex);
-
             sw.second->collectCounters(countersTable);
         }
 

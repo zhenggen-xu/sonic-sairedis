@@ -1,6 +1,9 @@
 #include "syncd.h"
 #include "sairedis.h"
 
+// mutex to protect notification send call
+std::mutex g_ntf_mutex;
+
 void send_notification(
         _In_ std::string op,
         _In_ std::string data,
@@ -30,7 +33,7 @@ void on_switch_state_change(
         _In_ sai_object_id_t switch_rid,
         _In_ sai_switch_oper_status_t switch_oper_status)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_ntf_mutex);
 
     SWSS_LOG_ENTER();
 
@@ -120,6 +123,8 @@ void redisPutFdbEntryToAsicView(
     std::string strAttrId = sai_serialize_attr_id(*meta);
     std::string strAttrValue = sai_serialize_attr_value(*meta, attr);
 
+    std::lock_guard<std::mutex> lock(g_db_mutex);
+
     g_redisClient->hset(key, strAttrId, strAttrValue);
 }
 
@@ -127,7 +132,7 @@ void on_fdb_event(
         _In_ uint32_t count,
         _In_ sai_fdb_event_notification_data_t *data)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_ntf_mutex);
 
     SWSS_LOG_ENTER();
 
@@ -164,7 +169,7 @@ void on_port_state_change(
         _In_ uint32_t count,
         _In_ sai_port_oper_status_notification_t *data)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_ntf_mutex);
 
     SWSS_LOG_ENTER();
 
@@ -194,7 +199,7 @@ void on_port_state_change(
 void on_switch_shutdown_request(
         _In_ sai_object_id_t switch_rid)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_ntf_mutex);
 
     SWSS_LOG_ENTER();
 
@@ -212,7 +217,7 @@ void on_packet_event(
         _In_ uint32_t attr_count,
         _In_ const sai_attribute_t *attr_list)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_ntf_mutex);
 
     SWSS_LOG_ENTER();
 

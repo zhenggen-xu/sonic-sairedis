@@ -7,7 +7,7 @@
 #include <iostream>
 #include <map>
 
-std::mutex g_mutex;
+std::mutex g_db_mutex;
 
 std::shared_ptr<swss::RedisClient>          g_redisClient;
 std::shared_ptr<swss::ProducerTable>        getResponse;
@@ -327,6 +327,8 @@ sai_object_id_t translate_rid_to_vid(
         _In_ sai_object_id_t rid,
         _In_ sai_object_id_t switch_vid)
 {
+    std::lock_guard<std::mutex> lock(g_db_mutex);
+
     SWSS_LOG_ENTER();
 
     /*
@@ -514,6 +516,8 @@ void translate_rid_to_vid_list(
 sai_object_id_t translate_vid_to_rid(
         _In_ sai_object_id_t vid)
 {
+    std::lock_guard<std::mutex> lock(g_db_mutex);
+
     SWSS_LOG_ENTER();
 
     if (vid == SAI_NULL_OBJECT_ID)
@@ -674,6 +678,8 @@ void snoop_get_attr(
     std::string key = TEMP_PREFIX + (ASIC_STATE_TABLE + (":" + str_object_type + ":" + str_object_id));
 
     SWSS_LOG_DEBUG("%s", key.c_str());
+
+    std::lock_guard<std::mutex> lock(g_db_mutex);
 
     g_redisClient->hset(key, attr_id, attr_value);
 }
@@ -1201,6 +1207,8 @@ sai_status_t handle_generic(
                      * To support multiple switches vid/rid map must be per switch.
                      */
 
+                    std::lock_guard<std::mutex> lock(g_db_mutex);
+
                     g_redisClient->hset(VIDTORID, str_vid, str_rid);
                     g_redisClient->hset(RIDTOVID, str_rid, str_vid);
 
@@ -1234,6 +1242,8 @@ sai_status_t handle_generic(
                     /*
                      * TODO: This must be ATOMIC.
                      */
+
+                    std::lock_guard<std::mutex> lock(g_db_mutex);
 
                     g_redisClient->hdel(VIDTORID, str_vid);
                     g_redisClient->hdel(RIDTOVID, str_rid);
@@ -1396,6 +1406,8 @@ void clearTempView()
      *
      * We need to expose api to execute user lua script not only predefined.
      */
+
+    std::lock_guard<std::mutex> lock(g_db_mutex);
 
     for (const auto &key: g_redisClient->keys(pattern))
     {
@@ -2091,8 +2103,6 @@ sai_status_t processBulkEvent(
 sai_status_t processEvent(
         _In_ swss::ConsumerTable &consumer)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
-
     SWSS_LOG_ENTER();
 
     swss::KeyOpFieldsValuesTuple kco;
@@ -2599,7 +2609,7 @@ bool handleRestartQuery(swss::NotificationConsumer &restartQuery)
 
 bool isVeryFirstRun()
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(g_db_mutex);
 
     SWSS_LOG_ENTER();
 
@@ -2754,8 +2764,6 @@ void onSyncdStart(bool warmStart)
      * will generate new id's for ports, this may cause race condition so we
      * need to use a lock here to prevent that.
      */
-
-    std::lock_guard<std::mutex> lock(g_mutex);
 
     SWSS_LOG_ENTER();
 
