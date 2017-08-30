@@ -1207,12 +1207,14 @@ sai_status_t handle_generic(
                      * To support multiple switches vid/rid map must be per switch.
                      */
 
-                    std::lock_guard<std::mutex> lock(g_db_mutex);
+                    {
+                        std::lock_guard<std::mutex> lock(g_db_mutex);
 
-                    g_redisClient->hset(VIDTORID, str_vid, str_rid);
-                    g_redisClient->hset(RIDTOVID, str_rid, str_vid);
+                        g_redisClient->hset(VIDTORID, str_vid, str_rid);
+                        g_redisClient->hset(RIDTOVID, str_rid, str_vid);
 
-                    save_rid_and_vid_to_local(real_object_id, object_id);
+                        save_rid_and_vid_to_local(real_object_id, object_id);
+                    }
 
                     SWSS_LOG_INFO("saved VID %s to RID %s", str_vid.c_str(), str_rid.c_str());
 
@@ -1243,12 +1245,14 @@ sai_status_t handle_generic(
                      * TODO: This must be ATOMIC.
                      */
 
-                    std::lock_guard<std::mutex> lock(g_db_mutex);
+                    {
+                        std::lock_guard<std::mutex> lock(g_db_mutex);
 
-                    g_redisClient->hdel(VIDTORID, str_vid);
-                    g_redisClient->hdel(RIDTOVID, str_rid);
+                        g_redisClient->hdel(VIDTORID, str_vid);
+                        g_redisClient->hdel(RIDTOVID, str_rid);
 
-                    remove_rid_and_vid_from_local(rid, object_id);
+                        remove_rid_and_vid_from_local(rid, object_id);
+                    }
 
                     if (object_type == SAI_OBJECT_TYPE_SWITCH)
                     {
