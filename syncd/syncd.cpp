@@ -588,6 +588,9 @@ void internal_syncd_get_send(
     // since we have only one get at a time, we don't have to serialize
     // object type and object id, only get status is required
     // get response will not put any data to table only queue is used
+
+    std::lock_guard<std::mutex> lock(g_db_mutex);
+
     getResponse->set(key, entry, "getresponse");
 
     SWSS_LOG_INFO("response for GET api was send");
@@ -980,6 +983,8 @@ void sendResponse(sai_status_t status)
     std::vector<swss::FieldValueTuple> entry;
 
     SWSS_LOG_NOTICE("sending response: %s", str_status.c_str());
+
+    std::lock_guard<std::mutex> lock(g_db_mutex);
 
     getResponse->set(str_status, entry, "notify");
 }
