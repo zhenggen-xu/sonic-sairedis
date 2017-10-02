@@ -111,11 +111,11 @@ void test_bulk_route_set()
 
     sai_status_t    status;
 
-    sai_route_api_t *sai_route_api = NULL;
+    sai_route_api_t  *sai_route_api = NULL;
+    sai_switch_api_t *sai_switch_api = NULL;
 
     sai_api_query(SAI_API_ROUTE, (void**)&sai_route_api);
-
-    // TODO we need switch ID
+    sai_api_query(SAI_API_SWITCH, (void**)&sai_switch_api);
 
     uint32_t count = 3;
 
@@ -124,16 +124,33 @@ void test_bulk_route_set()
 
     uint32_t index = 15;
 
+    sai_attribute_t swattr;
+
+    swattr.id = SAI_SWITCH_ATTR_INIT_SWITCH;
+    swattr.value.booldata = true;
+
+    sai_object_id_t switch_id;
+
+    status = sai_switch_api->create_switch(&switch_id, 1, &swattr);
+
+    ASSERT_SUCCESS("Failed to create switch");
+
+    std::vector<std::vector<sai_attribute_t>> route_attrs;
+    std::vector<sai_attribute_t *> route_attrs_array;
+    std::vector<uint32_t> route_attrs_count;
+
     for (uint32_t i = index; i < index + count; ++i)
     {
         sai_route_entry_t route_entry;
 
+        // virtual router
         sai_object_id_t vr = create_dummy_object_id(SAI_OBJECT_TYPE_VIRTUAL_ROUTER);
         object_reference_insert(vr);
         sai_object_meta_key_t meta_key_vr = { .objecttype = SAI_OBJECT_TYPE_VIRTUAL_ROUTER, .objectkey = { .key = { .object_id = vr } } };
         std::string vr_key = sai_serialize_object_meta_key(meta_key_vr);
         ObjectAttrHash[vr_key] = { };
 
+        // next hop
         sai_object_id_t hop = create_dummy_object_id(SAI_OBJECT_TYPE_NEXT_HOP);
         object_reference_insert(hop);
         sai_object_meta_key_t meta_key_hop = { .objecttype = SAI_OBJECT_TYPE_NEXT_HOP, .objectkey = { .key = { .object_id = hop } } };
@@ -144,39 +161,46 @@ void test_bulk_route_set()
         route_entry.destination.addr.ip4 = htonl(0x0a000000 | i);
         route_entry.destination.mask.ip4 = htonl(0xffffffff);
         route_entry.vr_id = vr;
+        route_entry.switch_id = switch_id;
+        route_entry.destination.addr_family = SAI_IP_ADDR_FAMILY_IPV4;
+        routes.push_back(route_entry);
 
-        sai_attribute_t list[2] = { };
-
+        std::vector<sai_attribute_t> list(2);
         sai_attribute_t &attr1 = list[0];
         sai_attribute_t &attr2 = list[1];
 
         attr1.id = SAI_ROUTE_ENTRY_ATTR_NEXT_HOP_ID;
         attr1.value.oid = hop;
-
         attr2.id = SAI_ROUTE_ENTRY_ATTR_PACKET_ACTION;
         attr2.value.s32 = SAI_PACKET_ACTION_FORWARD;
+        route_attrs.push_back(list);
+        route_attrs_count.push_back(2);
+    }
 
-        route_entry.destination.addr_family = SAI_IP_ADDR_FAMILY_IPV4;
+    for (size_t j = 0; j < route_attrs.size(); j++)
+    {
+        route_attrs_array.push_back(route_attrs[j].data());
+    }
 
-        status = sai_route_api->create_route_entry(&route_entry, 2, list);
+    std::vector<sai_status_t> statuses(count);
+    sai_bulk_create_route_entry(count, routes.data(), route_attrs_count.data(), route_attrs_array.data()
+        , SAI_BULK_OP_TYPE_INGORE_ERROR, statuses.data());
+    ASSERT_SUCCESS("Failed to create route");
 
-        ASSERT_SUCCESS("Failed to create route");
-
-        routes.push_back(route_entry);
-
+    for (uint32_t i = index; i < index + count; ++i)
+    {
         sai_attribute_t attr;
         attr.id = SAI_ROUTE_ENTRY_ATTR_PACKET_ACTION;
         attr.value.s32 = SAI_PACKET_ACTION_DROP;
 
-        status = sai_route_api->set_route_entry_attribute(&route_entry, &attr);
+        status = sai_route_api->set_route_entry_attribute(&routes[i - index], &attr);
 
         attrs.push_back(attr);
 
         ASSERT_SUCCESS("Failed to set route");
     }
 
-    std::vector<sai_status_t> statuses;
-
+    statuses.clear();
     statuses.resize(attrs.size());
 
     for (auto &attr: attrs)
@@ -210,9 +234,7 @@ int main()
 
     SWSS_LOG_ENTER();
 
-    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
-
-    return 0; // temporary disabled since docker can't connect to redis
+//    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_INFO);
 
     try
     {
@@ -221,6 +243,8 @@ int main()
         test_enable_recording();
 
         test_bulk_route_set();
+
+        sai_api_uninitialize();
 
         printf("\n[ %s ]\n\n", sai_serialize_status(SAI_STATUS_SUCCESS).c_str());
     }

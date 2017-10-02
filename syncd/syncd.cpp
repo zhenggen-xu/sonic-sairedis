@@ -906,7 +906,7 @@ void internal_syncd_get_send(
         /*
          * In this case we got correct values for list, but list was too small
          * so serialize only count without list itself, sairedis will need to
-         * take this into account when deseralzie.
+         * take this into account when deserialize.
          *
          * If there was a list somewhere, count will be changed to actual value
          * different attributes can have different lists, many of them may
@@ -1989,6 +1989,16 @@ sai_status_t handle_bulk_route(
 
             status = handle_non_object_id(meta_key, SAI_COMMON_API_SET, attr_count, attr_list);
         }
+        else if (api == (sai_common_api_t)SAI_COMMON_API_BULK_CREATE)
+        {
+            sai_object_meta_key_t meta_key;
+
+            meta_key.objecttype = SAI_OBJECT_TYPE_ROUTE_ENTRY;
+
+            sai_deserialize_route_entry(object_ids[idx], meta_key.objectkey.key.route_entry);
+
+            status = handle_non_object_id(meta_key, SAI_COMMON_API_CREATE, attr_count, attr_list);
+        }
         else
         {
             SWSS_LOG_ERROR("api %d is not supported in bulk route", api);
@@ -2168,6 +2178,10 @@ sai_status_t processEvent(
     else if (op == "bulkset")
     {
         return processBulkEvent((sai_common_api_t)SAI_COMMON_API_BULK_SET, kco);
+    }
+    else if (op == "bulkcreate")
+    {
+        return processBulkEvent((sai_common_api_t)SAI_COMMON_API_BULK_CREATE, kco);
     }
     else if (op == "notify")
     {
