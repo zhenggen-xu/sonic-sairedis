@@ -2358,9 +2358,10 @@ void processPfcWdEvent(
     const auto &key = kfvKey(kco);
     const auto &op = kfvOp(kco);
 
-    sai_object_id_t queueVid = SAI_NULL_OBJECT_ID;
-    sai_deserialize_object_id(key, queueVid);
-    sai_object_id_t queueId = translate_vid_to_rid(queueVid);
+    sai_object_id_t vid = SAI_NULL_OBJECT_ID;
+    sai_deserialize_object_id(key, vid);
+    sai_object_id_t rid = translate_vid_to_rid(vid);
+    sai_object_type_t objectType = sai_object_type_query(rid);
 
     const auto values = kfvFieldsValues(kco);
     for (const auto& valuePair : values)
@@ -2370,33 +2371,94 @@ void processPfcWdEvent(
 
         if (op == DEL_COMMAND)
         {
-            PfcWatchdog::removeQueue(queueVid);
+            if (objectType == SAI_OBJECT_TYPE_PORT)
+            {
+                PfcWatchdog::removePort(vid);
+            }
+            else if (objectType == SAI_OBJECT_TYPE_QUEUE)
+            {
+                PfcWatchdog::removeQueue(vid);
+            }
+            else
+            {
+                SWSS_LOG_ERROR("Object type for removal not supported");
+            }
+        }
+        else if (op == SET_COMMAND)
+        {
+            auto idStrings  = swss::tokenize(value, ',');
+
+            if (objectType == SAI_OBJECT_TYPE_PORT && field == PFC_WD_PORT_COUNTER_ID_LIST)
+            {
+                std::vector<sai_port_stat_t> portCounterIds;
+                for (const auto &str : idStrings)
+                {
+                    sai_port_stat_t stat;
+                    sai_deserialize_port_stat(str, stat);
+                    portCounterIds.push_back(stat);
+                }
+                PfcWatchdog::setPortCounterList(vid, rid, portCounterIds);
+            }
+            else if (objectType == SAI_OBJECT_TYPE_QUEUE && field == PFC_WD_QUEUE_COUNTER_ID_LIST)
+            {
+                std::vector<sai_queue_stat_t> queueCounterIds;
+                for (const auto &str : idStrings)
+                {
+                    sai_queue_stat_t stat;
+                    sai_deserialize_queue_stat(str, stat);
+                    queueCounterIds.push_back(stat);
+                }
+                PfcWatchdog::setQueueCounterList(vid, rid, queueCounterIds);
+            }
+            else
+            {
+                SWSS_LOG_ERROR("Object type not supported");
+            }
+        }
+    }
+}
+
+void processPfcWdPluginEvent(
+        _In_ swss::ConsumerStateTable &consumer)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    SWSS_LOG_ENTER();
+
+    swss::KeyOpFieldsValuesTuple kco;
+    consumer.pop(kco);
+
+    const auto &key = kfvKey(kco);
+    const auto &op = kfvOp(kco);
+
+    if (op == DEL_COMMAND)
+    {
+        PfcWatchdog::removeCounterPlugin(key);
+        return;
+    }
+
+    const auto values = kfvFieldsValues(kco);
+    for (const auto& valuePair : values)
+    {
+        const auto field = fvField(valuePair);
+        const auto value = fvValue(valuePair);
+
+        if (field != SAI_OBJECT_TYPE)
+        {
             continue;
         }
 
-        auto idStrings  = swss::tokenize(value, ',');
-
-        if (field == PFC_WD_PORT_COUNTER_ID_LIST)
+        if (value == sai_serialize_object_type(SAI_OBJECT_TYPE_PORT))
         {
-            std::vector<sai_port_stat_t> portCounterIds;
-            for (const auto &str : idStrings)
-            {
-                sai_port_stat_t stat;
-                sai_deserialize_port_stat(str, stat);
-                portCounterIds.push_back(stat);
-            }
-            PfcWatchdog::setPortCounterList(queueVid, queueId, portCounterIds);
+            PfcWatchdog::addPortCounterPlugin(key);
         }
-        else if (field == PFC_WD_QUEUE_COUNTER_ID_LIST)
+        else if (value == sai_serialize_object_type(SAI_OBJECT_TYPE_QUEUE))
         {
-            std::vector<sai_queue_stat_t> queueCounterIds;
-            for (const auto &str : idStrings)
-            {
-                sai_queue_stat_t stat;
-                sai_deserialize_queue_stat(str, stat);
-                queueCounterIds.push_back(stat);
-            }
-            PfcWatchdog::setQueueCounterList(queueVid, queueId, queueCounterIds);
+            PfcWatchdog::addQueueCounterPlugin(key);
+        }
+        else
+        {
+            SWSS_LOG_ERROR("Plugin for %s is not supported", value.c_str());
         }
     }
 }
@@ -2981,6 +3043,7 @@ int main(int argc, char **argv)
     std::shared_ptr<swss::ConsumerTable> asicState = std::make_shared<swss::ConsumerTable>(dbAsic.get(), ASIC_STATE_TABLE);
     std::shared_ptr<swss::NotificationConsumer> restartQuery = std::make_shared<swss::NotificationConsumer>(dbAsic.get(), "RESTARTQUERY");
     std::shared_ptr<swss::ConsumerStateTable> pfcWdState = std::make_shared<swss::ConsumerStateTable>(dbPfcWatchdog.get(), PFC_WD_STATE_TABLE);
+    std::shared_ptr<swss::ConsumerStateTable> pfcWdPlugin = std::make_shared<swss::ConsumerStateTable>(dbPfcWatchdog.get(), PLUGIN_TABLE);
 
     /*
      * At the end we cant use producer consumer concept since if one proces
@@ -3077,6 +3140,7 @@ int main(int argc, char **argv)
         s.addSelectable(asicState.get());
         s.addSelectable(restartQuery.get());
         s.addSelectable(pfcWdState.get());
+        s.addSelectable(pfcWdPlugin.get());
 
         SWSS_LOG_NOTICE("starting main loop");
 
@@ -3104,6 +3168,10 @@ int main(int argc, char **argv)
             else if (sel == pfcWdState.get())
             {
                 processPfcWdEvent(*(swss::ConsumerStateTable*)sel);
+            }
+            else if (sel == pfcWdPlugin.get())
+            {
+                processPfcWdPluginEvent(*(swss::ConsumerStateTable*)sel);
             }
             else if (result == swss::Select::OBJECT)
             {
