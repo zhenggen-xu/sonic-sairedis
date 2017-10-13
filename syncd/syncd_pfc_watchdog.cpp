@@ -18,6 +18,13 @@ PfcWatchdog::QueueCounterIds::QueueCounterIds(
 {
 }
 
+PfcWatchdog::QueueAttrIds::QueueAttrIds(
+        _In_ sai_object_id_t queue,
+        _In_ const std::vector<sai_queue_attr_t> &queueIds):
+    queueId(queue), queueAttrIds(queueIds)
+{
+}
+
 void PfcWatchdog::setPortCounterList(
         _In_ sai_object_id_t portVid,
         _In_ sai_object_id_t portId,
@@ -64,6 +71,30 @@ void PfcWatchdog::setQueueCounterList(
     wd.startWatchdogThread();
 }
 
+void PfcWatchdog::setQueueAttrList(
+        _In_ sai_object_id_t queueVid,
+        _In_ sai_object_id_t queueId,
+        _In_ const std::vector<sai_queue_attr_t> &attrIds)
+{
+    SWSS_LOG_ENTER();
+
+    PfcWatchdog &wd = getInstance();
+
+    auto it = wd.m_queueAttrIdsMap.find(queueVid);
+    if (it != wd.m_queueAttrIdsMap.end())
+    {
+        (*it).second->queueAttrIds = attrIds;
+        return;
+    }
+
+    auto queueAttrIds = std::make_shared<QueueAttrIds>(queueId, attrIds);
+    wd.m_queueAttrIdsMap.emplace(queueVid, queueAttrIds);
+
+    // Start watchdog thread in case it was not running due to empty counter IDs map
+    wd.startWatchdogThread();
+}
+
+
 void PfcWatchdog::removePort(
         _In_ sai_object_id_t portVid)
 {
@@ -81,7 +112,7 @@ void PfcWatchdog::removePort(
     wd.m_portCounterIdsMap.erase(it);
 
     // Stop watchdog thread if counter IDs map is empty
-    if (wd.m_queueCounterIdsMap.empty() && wd.m_portCounterIdsMap.empty())
+    if (wd.m_queueCounterIdsMap.empty() && wd.m_portCounterIdsMap.empty() && wd.m_queueAttrIdsMap.empty())
     {
         wd.endWatchdogThread();
     }
@@ -94,17 +125,26 @@ void PfcWatchdog::removeQueue(
 
     PfcWatchdog &wd = getInstance();
 
-    auto it = wd.m_queueCounterIdsMap.find(queueVid);
-    if (it == wd.m_queueCounterIdsMap.end())
+    auto counterIter = wd.m_queueCounterIdsMap.find(queueVid);
+    if (counterIter == wd.m_queueCounterIdsMap.end())
     {
         SWSS_LOG_ERROR("Trying to remove nonexisting queue counter Ids 0x%lx", queueVid);
         return;
     }
 
-    wd.m_queueCounterIdsMap.erase(it);
+    wd.m_queueCounterIdsMap.erase(counterIter);
+
+    auto attrIter = wd.m_queueAttrIdsMap.find(queueVid);
+    if (attrIter == wd.m_queueAttrIdsMap.end())
+    {
+        SWSS_LOG_ERROR("Trying to remove nonexisting queue attr Ids 0x%lx", queueVid);
+        return;
+    }
+
+    wd.m_queueAttrIdsMap.erase(attrIter);
 
     // Stop watchdog thread if counter IDs map is empty
-    if (wd.m_queueCounterIdsMap.empty() && wd.m_portCounterIdsMap.empty())
+    if (wd.m_queueCounterIdsMap.empty() && wd.m_portCounterIdsMap.empty() && wd.m_queueAttrIdsMap.empty())
     {
         wd.endWatchdogThread();
     }
@@ -175,8 +215,6 @@ void PfcWatchdog::collectCounters(
         _In_ swss::Table &countersTable)
 {
     SWSS_LOG_ENTER();
-
-    std::lock_guard<std::mutex> lock(g_mutex);
 
     // Collect stats for every registered port
     for (const auto &kv: m_portCounterIdsMap)
@@ -249,14 +287,55 @@ void PfcWatchdog::collectCounters(
 
         countersTable.set(queueVidStr, values, "");
     }
+
+    // Collect stats for every registered queue
+    for (const auto &kv: m_queueAttrIdsMap)
+    {
+        const auto &queueVid = kv.first;
+        const auto &queueId = kv.second->queueId;
+        const auto &queueAttrIds = kv.second->queueAttrIds;
+
+        std::vector<sai_attribute_t> queueAttr(queueAttrIds.size());
+
+        for (uint64_t i =0; i< queueAttrIds.size(); i++)
+        {
+            queueAttr[i].id = queueAttrIds[i];
+        }
+
+        // Get queue attr
+        sai_status_t status = sai_metadata_sai_queue_api->get_queue_attribute(
+                queueId,
+                static_cast<uint32_t>(queueAttrIds.size()),
+                queueAttr.data());
+
+        if (status != SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_ERROR("Failed to get attr of queue 0x%lx: %d", queueVid, status);
+            continue;
+        }
+
+        // Push all counter values to a single vector
+        std::vector<swss::FieldValueTuple> values;
+
+        for (size_t i = 0; i != queueAttrIds.size(); i++)
+        {
+            const std::string &counterName = sai_serialize_queue_attr(queueAttrIds[i]);
+            auto meta = sai_metadata_get_attr_metadata(SAI_OBJECT_TYPE_QUEUE, queueAttr[i].id);
+
+            values.emplace_back(counterName, sai_serialize_attr_value(*meta, queueAttr[i]));
+        }
+        // Write counters to DB
+        std::string queueVidStr = sai_serialize_object_id(queueVid);
+
+        countersTable.set(queueVidStr, values, "");
+    }
+
 }
 
 void PfcWatchdog::runPlugins(
         _In_ swss::DBConnector& db)
 {
     SWSS_LOG_ENTER();
-
-    std::lock_guard<std::mutex> lock(g_mutex);
 
     const std::vector<std::string> argv = 
     {
@@ -299,6 +378,8 @@ void PfcWatchdog::pfcWatchdogThread(void)
 
     while (m_runPfcWatchdogThread)
     {
+
+        std::lock_guard<std::mutex> lock(g_mutex);
         collectCounters(countersTable);
         runPlugins(db);
 
