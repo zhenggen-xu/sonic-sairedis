@@ -244,7 +244,6 @@ sai_status_t sai_api_query(
         API_CASE(SEGMENTROUTE,segmentroute);
         API_CASE(STP,stp);
         API_CASE(SWITCH,switch);
-        API_CASE(TAM,tam);
         API_CASE(TUNNEL,tunnel);
         API_CASE(UDF,udf);
         API_CASE(VIRTUAL_ROUTER,virtual_router);
