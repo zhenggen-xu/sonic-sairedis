@@ -42,9 +42,7 @@ libsaivs_la_SOURCES = \
 					  sai_vs_segmentroute.cpp \
 					  sai_vs_stp.cpp \
 					  sai_vs_switch.cpp \
-					  sai_vs_tam.cpp \
 					  sai_vs_tunnel.cpp \
-					  sai_vs_uburst.cpp \
 					  sai_vs_udf.cpp \
 					  sai_vs_virtual_router.cpp \
 					  sai_vs_vlan.cpp \
