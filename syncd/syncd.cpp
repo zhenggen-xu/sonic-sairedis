@@ -36,6 +36,7 @@ extern "C" {
  */
 std::mutex g_mutex;
 
+std::shared_ptr<swss::DBConnector>          dbAsic;
 std::shared_ptr<swss::RedisClient>          g_redisClient;
 std::shared_ptr<swss::ProducerTable>        getResponse;
 std::shared_ptr<swss::NotificationProducer> notifications;
