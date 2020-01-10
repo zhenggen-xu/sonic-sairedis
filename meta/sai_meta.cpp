@@ -6044,15 +6044,45 @@ sai_status_t meta_sai_set_oid(
         return SAI_STATUS_FAILURE;
     }
 
-    status = set(object_type, object_id, attr);
+    // Temporary code start
+    // Remove this code once SAI_NULL_OBJECT_ID
+    // as value to SAI_PORT_ATTR_INGRESS_ACL is handled in Broadcom
+    // SAI SDK
+    //
+    auto mdp = sai_metadata_get_attr_metadata(meta_key.objecttype, attr->id);
 
-    if (status == SAI_STATUS_SUCCESS)
+    if (mdp == NULL)
     {
-        SWSS_LOG_DEBUG("set status: %s", sai_serialize_status(status).c_str());
+        SWSS_LOG_ERROR("unable to find attribute metadata %d:%d", meta_key.objecttype, attr->id);
+
+        return SAI_STATUS_FAILURE;
     }
+
+    const sai_attribute_value_t& value = attr->value;
+
+    const sai_attr_metadata_t& md = *mdp;
+
+    if (SAI_PORT_ATTR_INGRESS_ACL == md.attrid &&
+        SAI_NULL_OBJECT_ID == value.oid)
+    {
+        // Do nothing.
+        SWSS_LOG_NOTICE("Ignoring PORT ACL attribute set");
+    }
+    // Temporary code end.
     else
     {
-        SWSS_LOG_ERROR("set status: %s", sai_serialize_status(status).c_str());
+        SWSS_LOG_NOTICE("Setting attribute %d", attr->id);
+
+        status = set(object_type, object_id, attr);
+
+        if (status == SAI_STATUS_SUCCESS)
+        {
+            SWSS_LOG_DEBUG("set status: %s", sai_serialize_status(status).c_str());
+        }
+        else
+        {
+            SWSS_LOG_ERROR("set status: %s", sai_serialize_status(status).c_str());
+        }
     }
 
     if (status == SAI_STATUS_SUCCESS)
