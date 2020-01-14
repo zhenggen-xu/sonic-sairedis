@@ -6066,13 +6066,11 @@ sai_status_t meta_sai_set_oid(
         SAI_NULL_OBJECT_ID == value.oid)
     {
         // Do nothing.
-        SWSS_LOG_NOTICE("Ignoring PORT ACL attribute set");
+        SWSS_LOG_NOTICE("Ignoring %s attribute set with NULL object ID", md->attridname);
     }
     // Temporary code end.
     else
     {
-        SWSS_LOG_NOTICE("Setting attribute %d", attr->id);
-
         status = set(object_type, object_id, attr);
 
         if (status == SAI_STATUS_SUCCESS)
