@@ -6066,7 +6066,7 @@ sai_status_t meta_sai_set_oid(
         SAI_NULL_OBJECT_ID == value.oid)
     {
         // Do nothing.
-        SWSS_LOG_NOTICE("Ignoring %s attribute set with NULL object ID", md->attridname);
+        SWSS_LOG_NOTICE("Ignoring %s attribute set with NULL object ID", md.attridname);
     }
     // Temporary code end.
     else
