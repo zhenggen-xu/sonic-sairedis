@@ -6749,7 +6749,7 @@ sai_status_t meta_sai_flush_fdb_entries(
 
     auto status = flush_fdb_entries(switch_id, attr_count, attr_list);
 
-    if (status = SAI_STATUS_SUCCESS)
+    if (SAI_STATUS_SUCCESS == status)
     {
         // use same logic as notification, so create notification event
 
@@ -6807,6 +6807,8 @@ sai_status_t meta_sai_flush_fdb_entries(
             meta_sai_on_fdb_flush_event_consolidated(data);
         }
     }
+
+    return status;
 }
 
 // NAT
