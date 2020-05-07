@@ -671,7 +671,7 @@ void hostif_info_t::process_packet_for_fdb_event(
 
     if (fi.fdb_entry.bv_id == SAI_NULL_OBJECT_ID)
     {
-        SWSS_LOG_DEBUG("skipping mac learn for %s, since BV_ID was not found for mac",
+        SWSS_LOG_WARN("skipping mac learn for %s, since BV_ID was not found for mac",
                 sai_serialize_fdb_entry(fi.fdb_entry).c_str());
 
         // bridge was not found, skip mac learning
